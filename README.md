@@ -1,6 +1,7 @@
 ## SOS69069 dSOS
 
 0x75fEc69CcA3887FFB65254f1078e5c1B27B8F74A
+
 An ownerless ETH contract with three parallel offer instruments (B / T / P), a credit-based common pool, and a minimal embedded GasClaim token. Everything is gated by real signed records on the external **SOS69069** reputation ledger.
 
 ## How SOS69069 dSOS works (User Guide)
