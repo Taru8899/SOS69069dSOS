@@ -16,8 +16,9 @@ interface ISOS69069 {
 /// ALLOWANCE (free)
 ///   receive / donateCommon → 1 GASC only. NO free.
 ///   Free is created ONLY at G redeem (PIN, before sweepableAt), never at creation.
-///   Free = 0.006 (UNIT) per full 7200 blocks actually waited, never more than the principal.
-///   Free exists only in whole UNIT slices. Principal below 0.006 → NO free, never.
+///   Free = 0.006 (UNIT) per full 7200 blocks actually waited, strictly less than principal.
+///   Free exists only in whole UNIT slices. Principal must be > 0.006 (>= 0.006 + 1 wei)
+///   to earn any slice; principal at or below 0.006 → NO free, ever.
 ///   B/T/P → NO free ever. G declared delay < 7200 → NO free ever.
 ///   CAP: free is granted only while totalFree + totalTrustCredits + new free <= unallocatedBalance().
 ///
@@ -46,9 +47,10 @@ interface ISOS69069 {
 ///     0 → DEFAULT_DELAY (1)
 ///     WARNING: delay 1 means the offer is sweepable by anyone from the next block, so the
 ///              recipient can only redeem in the same block. Use a longer delay.
-///     1 .. 7199 allowed, but NO free ever
+///     1 .. 7200 allowed, but NO free ever in practice
+///     RECOMMENDED: > 7200 (e.g. 14400) so at least one full FREE_WINDOW can be waited
 ///     no upper cap (only uint64 overflow guard)
-///   G FREE (G only; declared delay >= 7200 and principal >= UNIT):
+///   G FREE (G only; declared delay > 7200 and principal > UNIT, i.e. >= 0.006 + 1 wei):
 ///     at create  → 0
 ///     at redeem  → slices = min(floor(ELAPSED/7200), floor(principal/UNIT)), then limited by the cap;
 ///                  free = slices * UNIT, paid to the donor. ELAPSED = blocks actually waited.
@@ -325,12 +327,14 @@ contract dSOS {
             }
             delete offerPinCommitment[id];
 
-            // Free: UNIT per full 7200 blocks actually waited, whole slices only,
-            // never more than the principal, never more than the unallocated balance.
+       // Free: UNIT per full 7200 blocks actually waited, whole slices only.
+// Slices are capped by principal with a strict "greater than" rule:
+// (principal - 1) / UNIT means principal must be at least n*UNIT + 1 wei
+// to earn n slices. principal == UNIT → 0 slices. Never equal to principal.
             uint256 freeRemainder;
             if (uint256(o.sweepableAt) - uint256(o.createdAt) >= FREE_WINDOW) {
                 uint256 slices = (block.number - uint256(o.createdAt)) / FREE_WINDOW;
-                uint256 maxSlices = uint256(principal) / UNIT;
+                uint256 maxSlices = (uint256(principal) - 1) / UNIT;
                 if (slices > maxSlices) slices = maxSlices;
 
                 uint256 claims = totalFree + totalTrustCredits;
