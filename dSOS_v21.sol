@@ -19,7 +19,7 @@ interface ISOS69069 {
 ///   Free = 0.006 (UNIT) per full 7200 blocks actually waited, strictly less than principal.
 ///   Free exists only in whole UNIT slices. Principal must be > 0.006 (>= 0.006 + 1 wei)
 ///   to earn any slice; principal at or below 0.006 → NO free, ever.
-///   B/T/P → NO free ever. G declared delay < 7200 → NO free ever.
+///   B/T/P → NO free ever. G declared delay <= 7200 → NO free ever in practice.
 ///   CAP: free is granted only while totalFree + totalTrustCredits + new free <= unallocatedBalance().
 ///
 /// GATE (staking ticket)
@@ -52,7 +52,7 @@ interface ISOS69069 {
 ///     no upper cap (only uint64 overflow guard)
 ///   G FREE (G only; declared delay > 7200 and principal > UNIT, i.e. >= 0.006 + 1 wei):
 ///     at create  → 0
-///     at redeem  → slices = min(floor(ELAPSED/7200), floor(principal/UNIT)), then limited by the cap;
+///     at redeem  → slices = min(floor(ELAPSED/7200), floor((principal - 1)/UNIT)), then limited by the cap;
 ///                  free = slices * UNIT, paid to the donor. ELAPSED = blocks actually waited.
 ///     at sweep   → 0
 ///   Sweep: principal stays in the unallocated pool. Never returns to donor.
@@ -327,10 +327,10 @@ contract dSOS {
             }
             delete offerPinCommitment[id];
 
-       // Free: UNIT per full 7200 blocks actually waited, whole slices only.
-// Slices are capped by principal with a strict "greater than" rule:
-// (principal - 1) / UNIT means principal must be at least n*UNIT + 1 wei
-// to earn n slices. principal == UNIT → 0 slices. Never equal to principal.
+            // Free: UNIT per full 7200 blocks actually waited, whole slices only.
+            // Slices are capped by principal with a strict "greater than" rule:
+            // (principal - 1) / UNIT means principal must be at least n*UNIT + 1 wei
+            // to earn n slices. principal == UNIT → 0 slices. Never equal to principal.
             uint256 freeRemainder;
             if (uint256(o.sweepableAt) - uint256(o.createdAt) >= FREE_WINDOW) {
                 uint256 slices = (block.number - uint256(o.createdAt)) / FREE_WINDOW;
