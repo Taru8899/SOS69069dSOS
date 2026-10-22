@@ -1,6 +1,6 @@
 ## SOS69069 dSOS
 
-0x75fEc69CcA3887FFB65254f1078e5c1B27B8F74A
+0x7Bd7c427b3c69e2a09603573ac875987c61ECAB8
 
 It's a fixed, ownerless smart contract. It has no owner, no admin and no upgrade path, so nobody can rescue or reverse anything. 
 People can put money in and later take money out, but with strict rules. The main new rule is a **staking gate**.
