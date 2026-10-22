@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>dSOS dApp (v28 slices)</title>
+<style>
+  :root{--bg:#0f1115;--card:#171a21;--line:#262b36;--fg:#e6e8ee;--mut:#8b93a5;--acc:#6ea8fe;--bad:#ff6b6b;--ok:#4ade80}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 system-ui,sans-serif}
+  main{max-width:900px;margin:0 auto;padding:16px}
+  h1{font-size:20px;margin:8px 0 2px} h2{font-size:15px;margin:0 0 10px}
+  .sub{color:var(--mut);margin-bottom:14px;word-break:break-all}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}
+  .kv{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+  .kv b{display:block;color:var(--mut);font-weight:500;font-size:12px}
+  .kv span{word-break:break-all}
+  label{display:block;color:var(--mut);font-size:12px;margin:8px 0 3px}
+  input,select{width:100%;padding:8px;border-radius:6px;border:1px solid var(--line);background:var(--bg);color:var(--fg);font:inherit}
+  button{padding:8px 14px;border-radius:6px;border:0;background:var(--acc);color:#04122b;font-weight:600;cursor:pointer;margin-top:10px;margin-right:6px}
+  button.sec{background:var(--line);color:var(--fg)} button:disabled{opacity:.5;cursor:not-allowed}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:8px} @media(max-width:560px){.row{grid-template-columns:1fr}}
+  .warn{border:1px solid #6b4a1f;background:#2a2112;color:#f5d28a;padding:10px;border-radius:8px;margin-bottom:10px;font-size:13px}
+  .hint{color:var(--mut);font-size:12px;margin-top:4px}
+  #log{white-space:pre-wrap;word-break:break-all;font:12px ui-monospace,monospace;max-height:240px;overflow:auto}
+  .ok{color:var(--ok)} .bad{color:var(--bad)}
+  table{width:100%;border-collapse:collapse;font-size:12px} td,th{padding:5px 6px;border-bottom:1px solid var(--line);text-align:left;word-break:break-all}
+  .top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <div><h1>dSOS</h1><div class="sub">1 dSOS = 1 slice = 0.001 ETH &middot; Ethereum mainnet</div></div>
+    <div><button id="connectBtn">Connect wallet</button></div>
+  </div>
+  <div class="card">
+    <label>Contract address (v28)</label>
+    <input id="addrIn" placeholder="0x... paste the deployed v28 address">
+    <button class="sec" id="addrBtn">Use this address</button>
+    <div class="hint">Saved in this browser. You can also open this page with ?c=0xYourAddress</div>
+  </div>
+  <div class="warn">Unaudited contract. Gate offers are a one-way donation: once swept, the ETH stays in the pool. Offers expire: after the sweep block anyone can sweep them and the holder gets nothing. Test with small amounts.</div>
+
+  <div class="card"><h2>Pool</h2><div class="grid" id="pool"></div></div>
+  <div class="card"><h2>You</h2><div class="grid" id="me"><div class="kv"><b>Wallet</b><span>not connected</span></div></div>
+    <button class="sec" id="refreshBtn">Refresh</button>
+  </div>
+
+  <div class="card"><h2>Donate to pool</h2>
+    <label>Amount (ETH)</label><input id="donAmt" value="0.001">
+    <button id="donBtn">Donate</button>
+  </div>
+
+  <div class="card"><h2>Create offer (one record, any number of slices)</h2>
+    <div class="row">
+      <div><label>Type</label>
+        <select id="offKind">
+          <option value="G">G: gated, PIN-protected, not sendable</option>
+          <option value="B">B: sendable</option>
+          <option value="T">T: sendable</option>
+          <option value="P">P: sendable</option>
+        </select></div>
+      <div><label>Recipient (holder)</label><input id="offTo" placeholder="0x... (blank = yourself)"></div>
+    </div>
+    <div class="row">
+      <div><label>Slices (dSOS), each 0.001 ETH</label><input id="offSlices" type="number" min="1" step="1" value="5"></div>
+      <div><label>Delay in blocks (0 = default 1)</label><input id="offDelay" value="100"></div>
+    </div>
+    <div class="hint" id="offTotal"></div>
+    <div id="pinWrap"><label>PIN / passphrase (G only; hashed to bytes32, keep it secret)</label><input id="offPin" placeholder="my secret"></div>
+    <label>Ledger signature (optional, hex; "0x" to skip the ledger record)</label><input id="offSig" value="0x">
+    <label>Metadata (optional)</label><input id="offMeta" value="">
+    <button id="offBtn">Create offer</button>
+  </div>
+
+  <div class="card"><h2>Send dSOS (wallet-style)</h2>
+    <div class="hint">Sends exactly N slices from your newest sendable offers (B/T/P, not expired). Splits an offer if needed. Writes no ledger record.</div>
+    <div class="row">
+      <div><label>To</label><input id="sendTo" placeholder="0x..."></div>
+      <div><label>Slices (dSOS)</label><input id="sendN" type="number" min="1" step="1" value="1"></div>
+    </div>
+    <button id="sendBtn">Send</button>
+  </div>
+
+  <div class="card"><h2>Stake (gate offer helper)</h2>
+    <div class="warn">Creates a G offer with delay 1 for the smallest whole multiple of 0.001 ETH above the gate requirement. After the next block anyone can sweep it. The ETH is donated to the pool and you become staked.</div>
+    <div class="grid"><div class="kv"><b>Required now</b><span id="stakeReq">-</span></div></div>
+    <button id="stakeBtn">Stake (create gate offer)</button>
+    <button class="sec" id="stakeSweepBtn">Sweep my newest gate offer</button>
+  </div>
+
+  <div class="card"><h2>My offers</h2>
+    <div id="offers">Connect wallet.</div>
+    <div class="row">
+      <div><label>Offer id (click a row)</label><input id="actId"></div>
+      <div><label>Slices (blank = whole offer)</label><input id="actN" type="number" min="1" step="1"></div>
+    </div>
+    <div class="row">
+      <div><label>PIN (redeem G)</label><input id="actPin" placeholder="same passphrase used when creating"></div>
+      <div><label>Transfer to (B/T/P)</label><input id="actTo" placeholder="0x..."></div>
+    </div>
+    <button id="redeemBtn">Redeem</button>
+    <button class="sec" id="transferBtn">Transfer</button>
+    <button class="sec" id="sweepBtn">Sweep (expired)</button>
+  </div>
+
+  <div class="card"><h2>Credits</h2>
+    <div class="grid" id="credits"></div>
+    <button class="sec" id="syncBtn">Sync credits</button>
+    <div class="row">
+      <div><label>Credits to redeem (1 credit = 0.001 ETH)</label><input id="credAmt" value="1"></div>
+      <div><label>Ledger signature (optional)</label><input id="credSig" value="0x"></div>
+    </div>
+    <button id="credBtn">Redeem credits</button>
+  </div>
+
+  <div class="card"><h2>Log</h2><div id="log"></div></div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
+<script>
+const LEDGER  = "0x7373DBC24Dcd785896E8Ac3d5372c6ced9B75a8A";
+const ABI = [
+ "error BadDelay()","error BadOfferPin()","error BadRedeemHash()","error InsufficientCredits()","error InsufficientSlices()",
+ "error InvalidValue()","error NoCredit()","error NotEnoughSendable()","error NotHolder()","error NotStaked()",
+ "error NotTransferable()","error OfferNotActive()","error PoolTooThin()","error Reentrant()","error SelfTransfer()",
+ "error TooEarly()","error TooManyOffers()","error TransferFailed()","error WindowClosed()","error ZeroAddress()","error ZeroAmount()",
+ "function UNIT() view returns (uint256)","function MIN_RESERVE() view returns (uint256)",
+ "function STAKE_COOLDOWN() view returns (uint256)",
+ "function balanceOf(address) view returns (uint256)",
+ "function totalSupply() view returns (uint256)",
+ "function canRedeem(address) view returns (bool)",
+ "function createOffer(uint8 kind,address to,uint256 delayBlocks,bytes32 payloadHash,bytes signature,string metadata) payable",
+ "function createOfferGated(address to,uint256 delayBlocks,bytes32 pinCommitment_,bytes32 payloadHash,bytes signature,string metadata) payable",
+ "function formableCredits(address) view returns (uint256)",
+ "function gateRequirement() view returns (uint256)",
+ "function nextOfferId() view returns (uint64)",
+ "function offerIdsOf(address) view returns (uint256[])",
+ "function offers(uint256) view returns (address donor,address holder,uint256 principal,bool active,uint8 kind,bytes32 recordHash,uint64 createdAt,uint64 sweepableAt,uint256 count)",
+ "function pendingCredits(address) view returns (uint256)",
+ "function poolBalance() view returns (uint256)",
+ "function redeemCredit(uint256 creditsToSpend,(bytes32 payloadHash,bytes signature,string metadata) r)",
+ "function redeemNonce(address) view returns (uint256)",
+ "function redeemOffer(uint256 id,bytes32 pin,bytes32 payloadHash,bytes signature,string metadata)",
+ "function redeemSlices(uint256 id,uint256 slices,bytes32 pin,(bytes32 payloadHash,bytes signature,string metadata) r)",
+ "function redeemPayloadHash(address user,uint8 kind,uint256 amount) view returns (bytes32)",
+ "function redemptionCredits(address) view returns (uint256)",
+ "function stakeRequirement() view returns (uint256)",
+ "function staked(address) view returns (bool)",
+ "function stakedAt(address) view returns (uint64)",
+ "function sweepOffer(uint256 id)",
+ "function syncCredits() returns (uint256)",
+ "function totalEarmarked() view returns (uint256)",
+ "function transfer(address to,uint256 n) returns (bool)",
+ "function transferOffer(uint256 id,address to,bytes32 payloadHash,bytes signature,string metadata)",
+ "function transferSlices(uint256 id,uint256 slices,address to,(bytes32 payloadHash,bytes signature,string metadata) r)",
+ "function unallocatedBalance() view returns (uint256)",
+ "function lastTrust(address) view returns (uint256)"
+];
+const KINDS = ["G","B","T","P"];
+const $ = id => document.getElementById(id);
+const eth = v => ethers.formatEther(v) + " ETH";
+const store = { get(k){ try { return localStorage.getItem(k); } catch { return null; } },
+                set(k,v){ try { localStorage.setItem(k,v); } catch {} } };
+
+let ADDRESS = null, provider, signer, me, readC, writeC;
+
+function log(msg, cls) {
+  const d = document.createElement("div");
+  if (cls) d.className = cls;
+  d.textContent = new Date().toLocaleTimeString() + "  " + msg;
+  $("log").prepend(d);
+}
+function decodeErr(e) {
+  try {
+    const data = e.data || e.error?.data || e.info?.error?.data;
+    if (data && writeC) { const p = writeC.interface.parseError(data); if (p) return p.name; }
+  } catch {}
+  return e.shortMessage || e.reason || e.message || String(e);
+}
+function kv(label, value) {
+  const d = document.createElement("div"); d.className = "kv";
+  const b = document.createElement("b"); b.textContent = label;
+  const s = document.createElement("span"); s.textContent = value;
+  d.append(b, s); return d;
+}
+function fill(el, pairs) { el.replaceChildren(...pairs.map(([k, v]) => kv(k, v))); }
+
+function toPin(s) {
+  s = s.trim();
+  if (/^0x[0-9a-fA-F]{64}$/.test(s)) return s;
+  return ethers.keccak256(ethers.toUtf8Bytes(s));
+}
+const pinCommitment = (pin, donor, to) =>
+  ethers.keccak256(ethers.AbiCoder.defaultAbiCoder().encode(["bytes32","address","address"], [pin, donor, to]));
+const hexOrEmpty = s => (s && s.trim() ? s.trim() : "0x");
+const PAYLOAD = () => ethers.keccak256(ethers.toUtf8Bytes("dsos-dapp:" + Date.now() + ":" + Math.random()));
+const UNIT = 10n ** 15n;
+const slicesToWei = n => BigInt(n) * UNIT;
+const rec = (sig, meta) => ({ payloadHash: PAYLOAD(), signature: hexOrEmpty(sig), metadata: meta || "" });
+
+function setAddress(a) {
+  if (!ethers.isAddress(a)) { log("Not a valid address.", "bad"); return false; }
+  ADDRESS = ethers.getAddress(a); store.set("dsos_addr", ADDRESS); $("addrIn").value = ADDRESS;
+  log("Using contract " + ADDRESS);
+  return true;
+}
+
+async function connect() {
+  if (!ADDRESS) { log("Enter the v28 contract address first.", "bad"); return; }
+  if (!window.ethereum) { log("No wallet found. Install MetaMask or another EIP-1193 wallet.", "bad"); return; }
+  provider = new ethers.BrowserProvider(window.ethereum);
+  await provider.send("eth_requestAccounts", []);
+  const net = await provider.getNetwork();
+  if (net.chainId !== 1n) {
+    try { await provider.send("wallet_switchEthereumChain", [{ chainId: "0x1" }]); }
+    catch { log("Please switch your wallet to Ethereum mainnet.", "bad"); return; }
+    provider = new ethers.BrowserProvider(window.ethereum);
+  }
+  signer = await provider.getSigner();
+  me = await signer.getAddress();
+  readC = new ethers.Contract(ADDRESS, ABI, provider);
+  writeC = new ethers.Contract(ADDRESS, ABI, signer);
+  $("connectBtn").textContent = me.slice(0, 6) + "…" + me.slice(-4);
+  log("Connected " + me, "ok");
+  if ((await provider.getCode(ADDRESS)) === "0x") { log("No contract at that address on this chain.", "bad"); return; }
+  try { await readC.totalSupply(); } catch { log("This does not look like a v28 contract (totalSupply failed).", "bad"); return; }
+  if ((await provider.getCode(LEDGER)) === "0x") log("WARNING: SOS ledger has no code on this chain. syncCredits and redeemCredit will always revert.", "bad");
+  window.ethereum.on?.("accountsChanged", () => location.reload());
+  window.ethereum.on?.("chainChanged", () => location.reload());
+  await refresh();
+}
+
+async function refresh() {
+  if (!readC) return;
+  const [bal, unalloc, earm, gate, stakeReq, nextId, supply, reserve] = await Promise.all([
+    readC.poolBalance(), readC.unallocatedBalance(), readC.totalEarmarked(),
+    readC.gateRequirement(), readC.stakeRequirement(), readC.nextOfferId(), readC.totalSupply(), readC.MIN_RESERVE()
+  ]);
+  fill($("pool"), [
+    ["Pool balance", eth(bal)], ["Unallocated", eth(unalloc)], ["Earmarked (offers)", eth(earm)],
+    ["Total dSOS (active slices)", String(supply)], ["Gate requirement (offer must exceed)", eth(gate)],
+    ["Offer records created", String(nextId - 1n)], ["Min reserve", eth(reserve)]
+  ]);
+  $("stakeReq").textContent = eth(stakeReq) + " (" + (stakeReq / UNIT) + " slices)";
+  const [st, at, can, cred, form, nonce, last, blk, cd, dsos] = await Promise.all([
+    readC.staked(me), readC.stakedAt(me), readC.canRedeem(me), readC.redemptionCredits(me),
+    readC.formableCredits(me), readC.redeemNonce(me), readC.lastTrust(me), provider.getBlockNumber(), readC.STAKE_COOLDOWN(), readC.balanceOf(me)
+  ]);
+  fill($("me"), [
+    ["Wallet", me], ["ETH balance", eth(await provider.getBalance(me))],
+    ["dSOS balance (slices)", String(dsos) + "  =  " + eth(dsos * UNIT) + " redeemable before expiry"],
+    ["Staked", String(st)], ["Staked at block", st ? String(at) : "-"],
+    ["Can redeem credits now", String(can) + (st && !can ? " (ready at block " + (at + cd) + ", now " + blk + ")" : "")],
+    ["Block now", String(blk)]
+  ]);
+  fill($("credits"), [["Credits held", String(cred)], ["Formable (pending trust records)", String(form)], ["Redeem nonce", String(nonce)], ["Last trust snapshot", String(last)]]);
+  await loadOffers(blk);
+}
+
+async function loadOffers(blk) {
+  const ids = await readC.offerIdsOf(me);
+  const box = $("offers");
+  if (!ids.length) { box.textContent = "No active offers held by you."; return; }
+  const shown = ids.slice(-100);
+  const rows = await Promise.all(shown.map(async id => ({ id, o: await readC.offers(id) })));
+  const t = document.createElement("table");
+  t.innerHTML = "<tr><th>id</th><th>type</th><th>slices</th><th>ETH</th><th>donor</th><th>sweepable at</th><th>status</th></tr>";
+  for (const { id, o } of rows) {
+    const tr = document.createElement("tr");
+    const open = BigInt(blk) < o.sweepableAt;
+    [String(id), KINDS[Number(o.kind)], String(o.count), ethers.formatEther(o.principal), o.donor, String(o.sweepableAt),
+     open ? "redeemable" : "expired, sweepable"].forEach(v => { const td = document.createElement("td"); td.textContent = v; tr.append(td); });
+    tr.style.cursor = "pointer"; tr.onclick = () => { $("actId").value = String(id); };
+    t.append(tr);
+  }
+  box.replaceChildren(t);
+  if (ids.length > shown.length) { const n = document.createElement("div"); n.className = "hint"; n.textContent = "Showing your newest 100 of " + ids.length + " offers."; box.append(n); }
+}
+
+async function run(label, fn) {
+  if (!writeC) { log("Connect wallet first.", "bad"); return; }
+  try {
+    log(label + " … simulating");
+    const tx = await fn();
+    log(label + " sent: " + tx.hash);
+    const rc = await tx.wait();
+    log(label + " confirmed in block " + rc.blockNumber, "ok");
+    await refresh();
+  } catch (e) { log(label + " failed: " + decodeErr(e), "bad"); }
+}
+async function guarded(name, args, overrides = {}) {
+  await writeC[name].staticCall(...args, overrides);
+  return writeC[name](...args, overrides);
+}
+
+$("addrBtn").onclick = () => { if (setAddress($("addrIn").value.trim())) { readC = writeC = null; $("connectBtn").textContent = "Connect wallet"; } };
+$("connectBtn").onclick = () => connect().catch(e => log("Connect failed: " + decodeErr(e), "bad"));
+$("refreshBtn").onclick = () => refresh().catch(e => log(decodeErr(e), "bad"));
+$("offKind").onchange = () => { $("pinWrap").style.display = $("offKind").value === "G" ? "" : "none"; };
+const showTotal = () => { try { $("offTotal").textContent = "Total to send: " + ethers.formatEther(slicesToWei($("offSlices").value || "0")) + " ETH"; } catch { $("offTotal").textContent = ""; } };
+$("offSlices").oninput = showTotal; showTotal();
+
+$("donBtn").onclick = () => run("Donate", () =>
+  signer.sendTransaction({ to: ADDRESS, value: ethers.parseEther($("donAmt").value) }));
+
+$("offBtn").onclick = () => run("Create offer", async () => {
+  const kind = $("offKind").value;
+  const to = $("offTo").value.trim() || me;
+  const n = BigInt($("offSlices").value || "0");
+  if (n < 1n) throw new Error("Slices must be at least 1.");
+  const value = slicesToWei(n);
+  const delay = BigInt($("offDelay").value || "0");
+  const sig = hexOrEmpty($("offSig").value), meta = $("offMeta").value;
+  if (kind === "G") {
+    if (!$("offPin").value) throw new Error("Enter a PIN/passphrase for a G offer.");
+    const pin = toPin($("offPin").value);
+    return guarded("createOfferGated", [to, delay, pinCommitment(pin, me, to), PAYLOAD(), sig, meta], { value });
+  }
+  return guarded("createOffer", [KINDS.indexOf(kind), to, delay, PAYLOAD(), sig, meta], { value });
+});
+
+$("sendBtn").onclick = () => run("Send dSOS", () =>
+  guarded("transfer", [$("sendTo").value.trim(), BigInt($("sendN").value || "0")]));
+
+$("stakeBtn").onclick = () => run("Stake (gate offer)", async () => {
+  const value = await readC.stakeRequirement();
+  if (!confirm("This donates " + ethers.formatEther(value) + " ETH to the pool permanently once swept. Continue?")) throw new Error("cancelled");
+  const pin = toPin("stake-" + me + "-" + Date.now());
+  return guarded("createOfferGated", [me, 1n, pinCommitment(pin, me, me), PAYLOAD(), "0x", ""], { value });
+});
+
+$("stakeSweepBtn").onclick = () => run("Sweep newest gate offer", async () => {
+  const ids = await readC.offerIdsOf(me);
+  if (!ids.length) throw new Error("no offers");
+  return guarded("sweepOffer", [ids[ids.length - 1]]);
+});
+
+$("redeemBtn").onclick = () => run("Redeem", () => {
+  const id = BigInt($("actId").value);
+  const pinTxt = $("actPin").value;
+  const pin = pinTxt ? toPin(pinTxt) : ethers.ZeroHash;
+  const n = $("actN").value.trim();
+  if (n) return guarded("redeemSlices", [id, BigInt(n), pin, rec("0x", "")]);
+  return guarded("redeemOffer", [id, pin, PAYLOAD(), "0x", ""]);
+});
+
+$("transferBtn").onclick = () => run("Transfer", () => {
+  const id = BigInt($("actId").value), to = $("actTo").value.trim();
+  const n = $("actN").value.trim();
+  if (n) return guarded("transferSlices", [id, BigInt(n), to, rec("0x", "")]);
+  return guarded("transferOffer", [id, to, PAYLOAD(), "0x", ""]);
+});
+
+$("sweepBtn").onclick = () => run("Sweep offer", () => guarded("sweepOffer", [BigInt($("actId").value)]));
+$("syncBtn").onclick = () => run("Sync credits", () => guarded("syncCredits", []));
+
+$("credBtn").onclick = () => run("Redeem credits", async () => {
+  const n = BigInt($("credAmt").value);
+  const hash = await readC.redeemPayloadHash(me, 0, n * UNIT);
+  return guarded("redeemCredit", [n, { payloadHash: hash, signature: hexOrEmpty($("credSig").value), metadata: "" }]);
+});
+
+$("offKind").onchange();
+(function init() {
+  const q = new URLSearchParams(location.search).get("c");
+  const saved = store.get("dsos_addr");
+  if (q && ethers.isAddress(q)) setAddress(q); else if (saved && ethers.isAddress(saved)) setAddress(saved);
+  else log("Paste the deployed v28 contract address above to begin.");
+})();
+</script>
+</body>
+</html>
