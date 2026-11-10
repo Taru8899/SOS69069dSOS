@@ -7,7 +7,8 @@ on:
 
 jobs:
   apk:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
 
@@ -18,14 +19,39 @@ jobs:
             sed -i '/^\[app\]/a icon.filename = %(source.dir)s/icon.png' android/buildozer.spec
           fi
 
-      - name: Build with Buildozer
-        id: buildozer
-        uses: ArtemSBulgakov/buildozer-action@v1
+      - uses: actions/setup-python@v5
         with:
-          workdir: android
-          buildozer_version: stable
+          python-version: "3.11"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: System packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git zip unzip autoconf automake libtool \
+            pkg-config zlib1g-dev libncurses-dev cmake libffi-dev libssl-dev \
+            libltdl-dev build-essential
+
+      - name: Install Buildozer
+        run: pip install buildozer "cython<3" virtualenv
+
+      - name: Cache Buildozer downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.buildozer
+            android/.buildozer/android/platform
+          key: buildozer-${{ hashFiles('android/buildozer.spec') }}
+          restore-keys: buildozer-
+
+      - name: Build APK
+        working-directory: android
+        run: buildozer -v android debug
 
       - uses: actions/upload-artifact@v4
         with:
           name: dsos-apk
-          path: ${{ steps.buildozer.outputs.filename }}
+          path: android/bin/*.apk
