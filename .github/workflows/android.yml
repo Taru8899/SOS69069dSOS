@@ -36,16 +36,13 @@ jobs:
             libltdl-dev build-essential
 
       - name: Install Buildozer
-        run: pip install buildozer "cython<3" virtualenv
+        run: pip install "buildozer==1.5.0" "cython<3" virtualenv
 
       - name: Cache Buildozer downloads
         uses: actions/cache@v4
         with:
-          path: |
-            ~/.buildozer
-            android/.buildozer/android/platform
-          key: buildozer-${{ hashFiles('android/buildozer.spec') }}
-          restore-keys: buildozer-
+          path: ~/.buildozer
+          key: buildozer-v2-${{ hashFiles('android/buildozer.spec') }}
 
       - name: Build APK
         working-directory: android
