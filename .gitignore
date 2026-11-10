@@ -1,6 +1,39 @@
+# Secrets (never commit)
 .env
-__pycache__/
-*.pyc
-.venv/
-.pytest_cache/
+.env.*
+!.env.example
+*.pem
+*.key
+secrets.toml
 .streamlit/secrets.toml
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+build/
+dist/
+
+# Tests and caches
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Node (if you add tooling for the dapp)
+node_modules/
+
+# Local data and logs
+*.log
+*.sqlite
+*.db
