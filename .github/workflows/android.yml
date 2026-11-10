@@ -12,11 +12,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Use logo as app icon if it exists
+      - name: Prepare logo (icon + splash)
         run: |
           if [ -f assets/logo.png ]; then
-            cp assets/logo.png android/icon.png
-            sed -i '/^\[app\]/a icon.filename = %(source.dir)s/icon.png' android/buildozer.spec
+            cp assets/logo.png android/logo.png
+          else
+            echo "::warning::assets/logo.png not found - building with the default icon"
+            sed -i '/logo.png/d;/presplash_color/d' android/buildozer.spec
           fi
 
       - uses: actions/setup-python@v5
