@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """dSOS read-only CLI.  Examples:
-    python cli.py summary 0xYourWallet
-    python cli.py offers  0xYourWallet
+    python cli.py summary 0x08E5aaCaFAeFEf90d048AE4f97Cd4A8690E85fEE
+    python cli.py offers  0x08E5aaCaFAeFEf90d048AE4f97Cd4A8690E85fEE
     python cli.py pool
-    python cli.py stake   0xYourWallet
-    python cli.py summary 0xYourWallet --json
+    python cli.py stake   0x08E5aaCaFAeFEf90d048AE4f97Cd4A8690E85fEE
+    python cli.py summary  0x08E5aaCaFAeFEf90d048AE4f97Cd4A8690E85fEE-json
 """
 import argparse
 import dataclasses
