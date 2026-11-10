@@ -1,0 +1,31 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use logo as app icon if it exists
+        run: |
+          if [ -f assets/logo.png ]; then
+            cp assets/logo.png android/icon.png
+            sed -i '/^\[app\]/a icon.filename = %(source.dir)s/icon.png' android/buildozer.spec
+          fi
+
+      - name: Build with Buildozer
+        id: buildozer
+        uses: ArtemSBulgakov/buildozer-action@v1
+        with:
+          workdir: android
+          buildozer_version: stable
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dsos-apk
+          path: ${{ steps.buildozer.outputs.filename }}
