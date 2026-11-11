@@ -56,3 +56,58 @@ def create_offer_tx(kind, holder, slices, delay_blocks, payload_hash=None):
             "metadata": "",
         },
     }
+
+
+# ---------------------------------------------------------------- send (ERC-20 style transfer)
+TRANSFER_SIG = "transfer(address,uint256)"
+MIN_SEND_WINDOW = 7200
+ZERO_ADDR = "0x" + "0" * 40
+
+
+def transfer_tx(to, n):
+    """Data for dSOS.transfer(to, n): wallet send of n slices, no ETH value."""
+    if not valid_address(to):
+        raise ValueError("Recipient must be a 0x address (42 characters)")
+    if n < 1:
+        raise ValueError("Send at least 1 dSOS")
+    data = "0x" + (selector(TRANSFER_SIG) + enc(to.strip().lower()) + enc(int(n))).hex()
+    return {
+        "to": DSOS,
+        "value_wei": 0,
+        "value_eth": "0",
+        "data": data,
+        "params": {"to": to.strip(), "n": str(int(n))},
+    }
+
+
+def is_sendable(o, window=MIN_SEND_WINDOW):
+    """Same rule as the contract: not a G offer and more than `window` blocks left."""
+    return o["kind"] != "G" and o["left"] > window
+
+
+def sendable_total(offers, window=MIN_SEND_WINDOW):
+    return sum(o["count"] for o in offers if is_sendable(o, window))
+
+
+def plan_send(offers, n, window=MIN_SEND_WINDOW):
+    """Mirror of dSOS.transfer(): walk the holder's offer list from the newest entry
+    (highest `pos`) to the oldest, skipping G and short-window offers, splitting the
+    last one if needed. Returns (picks, remaining) with picks = [(offer, slices)]."""
+    picks, remaining = [], n
+    for o in sorted(offers, key=lambda x: x["pos"], reverse=True):
+        if remaining <= 0:
+            break
+        if is_sendable(o, window):
+            take = min(o["count"], remaining)
+            picks.append((o, take))
+            remaining -= take
+    return picks, remaining
+
+
+def blocked_summary(offers, window=MIN_SEND_WINDOW):
+    """Slices that wallet send cannot move: (gated, short window, expired), each (offers, slices)."""
+    g = [o for o in offers if o["kind"] == "G" and o["left"] > 0]
+    s = [o for o in offers if o["kind"] != "G" and 0 < o["left"] <= window]
+    e = [o for o in offers if o["left"] <= 0]
+    tot = lambda xs: (len(xs), sum(o["count"] for o in xs))  # noqa: E731
+    return tot(g), tot(s), tot(e)
