@@ -2,6 +2,7 @@
 import os
 
 import core
+import strings as S
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 LOGO = os.path.join(HERE, "logo.png")
@@ -28,7 +29,7 @@ def short(addr):
 
 
 def left_text(left):
-    return "expired" if left <= 0 else f"{core.dur(left)} left"
+    return S.EXPIRED if left <= 0 else S.LEFT.format(time=core.dur(left))
 
 
 def set_visible(w, show):

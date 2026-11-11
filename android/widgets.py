@@ -10,6 +10,7 @@ from kivy.uix.textinput import TextInput
 from kivy.uix.widget import Widget
 
 import core
+import strings as S
 from theme import (BLACK, BLUE, GREEN, HAS_LOGO, LOGO, WHITE, left_text)
 
 
@@ -50,7 +51,7 @@ class Splash(Overlay):
             self.add_widget(Image(source=LOGO, size_hint=(0.6, 0.6),
                                   pos_hint={"center_x": 0.5, "center_y": 0.5}))
         else:
-            self.add_widget(Label(text="[b]dSOS[/b]", markup=True, font_size="48sp",
+            self.add_widget(Label(text=S.SPLASH_FALLBACK, markup=True, font_size="48sp",
                                   color=WHITE, pos_hint={"center_x": 0.5, "center_y": 0.5}))
 
 
@@ -243,13 +244,13 @@ def label(text, **kw):
 
 def offer_card(o):
     colors = {"redeemable": "00a82d", "expiring": "0b0b0b", "expired": "b00021"}
-    col = colors.get(o["status"], "0b0b0b")
-    return Card(
-        f"[b]{o['kind']}[/b]  {o['count']:,} dSOS  #{o['id']}"
-        f"{'  PIN' if o['kind'] == 'G' else ''}   "
-        f"[color={col}][b]{o['status'].capitalize()}[/b][/color]\n"
-        f"{core.eth(o['count'] * core.UNIT)} ETH - {left_text(o['left'])}\n"
-        f"Sendable: {'yes' if o['sendable'] else 'no'}   Sweepable at block {o['sweepable_at']:,}")
+    return Card(S.OFFER_CARD.format(
+        kind=o["kind"], count=o["count"], id=o["id"],
+        pin=S.OFFER_PIN_TAG if o["kind"] == "G" else "",
+        color=colors.get(o["status"], "0b0b0b"),
+        status=S.STATUS.get(o["status"], o["status"]),
+        eth=core.eth(o["count"] * core.UNIT), left=left_text(o["left"]),
+        sendable=S.YES if o["sendable"] else S.NO, sweepable_at=o["sweepable_at"]))
 
 
 def title_row(text, link_text=None, on_link=None):

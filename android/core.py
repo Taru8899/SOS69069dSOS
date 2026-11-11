@@ -3,6 +3,8 @@ import time
 import requests
 from Crypto.Hash import keccak
 
+import strings as S
+
 DSOS = "0x7Bd7c427b3c69e2a09603573ac875987c61ECAB8".lower()
 LEDGER = "0x7373DBC24Dcd785896E8Ac3d5372c6ced9B75a8A".lower()
 ES_URL = "https://api.etherscan.io/v2/api"
@@ -52,12 +54,13 @@ def eth(wei):
 
 def dur(blocks):
     if blocks <= 0:
-        return "expired"
+        return S.EXPIRED
     sec = blocks * BLOCK_TIME
     d, r = divmod(sec, 86400)
     h, r = divmod(r, 3600)
     m = r // 60
-    return f"{d}d {h}h" if d else (f"{h}h {m}m" if h else f"{m}m")
+    return (S.DUR_DAYS.format(d=d, h=h) if d else
+            (S.DUR_HOURS.format(h=h, m=m) if h else S.DUR_MINUTES.format(m=m)))
 
 
 class Chain:
@@ -95,7 +98,7 @@ class Chain:
                 return j["result"]
             except Exception as e:  # noqa: BLE001
                 last = e
-        raise RuntimeError(f"All RPCs failed: {last}")
+        raise RuntimeError(S.ERR_ALL_RPC.format(error=last))
 
     def block(self):
         if self.api_key:
@@ -120,13 +123,13 @@ class Chain:
             res = self._pub("eth_call", [{"to": to, "data": data}, "latest"])
         ws = words(res)
         if not ws:
-            raise RuntimeError(f"Empty result for {sig}")
+            raise RuntimeError(S.ERR_EMPTY_RESULT.format(sig=sig))
         return ws
 
     def load(self, address):
         a = address.strip().lower()
         if not (a.startswith("0x") and len(a) == 42):
-            raise ValueError("Enter a valid 0x wallet address (42 characters)")
+            raise ValueError(S.ERR_BAD_WALLET)
         blk = self.block()
         c = self.call
         bal = u(c(DSOS, "balanceOf(address)", [a])[0])

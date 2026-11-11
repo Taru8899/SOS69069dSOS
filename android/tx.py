@@ -1,6 +1,7 @@
 """Build the data for a dSOS createOffer transaction (no signing, no sending)."""
 import os
 
+import strings as S
 from core import DSOS, enc, selector
 
 CREATE_SIG = "createOffer(uint8,address,uint256,bytes32,bytes,string)"
@@ -23,13 +24,13 @@ def create_offer_tx(kind, holder, slices, delay_blocks, payload_hash=None):
     """Return dict(to, value_wei, value_eth, data, params). Empty signature and
     metadata: the contract skips the ledger record and still creates the offer."""
     if kind not in KIND_ID:
-        raise ValueError("Only B, T and P offers are supported here")
+        raise ValueError(S.ERR_ONLY_BTP)
     if not valid_address(holder):
-        raise ValueError("Holder must be a 0x address (42 characters)")
+        raise ValueError(S.ERR_HOLDER_ADDR)
     if slices < 1:
-        raise ValueError("At least 1 slice")
+        raise ValueError(S.ERR_MIN_SLICE)
     if delay_blocks < 1:
-        raise ValueError("Window must be at least 1 block")
+        raise ValueError(S.ERR_MIN_WINDOW)
     ph = payload_hash if payload_hash is not None else os.urandom(32)
     head = [
         enc(KIND_ID[kind]),
@@ -67,9 +68,9 @@ ZERO_ADDR = "0x" + "0" * 40
 def transfer_tx(to, n):
     """Data for dSOS.transfer(to, n): wallet send of n slices, no ETH value."""
     if not valid_address(to):
-        raise ValueError("Recipient must be a 0x address (42 characters)")
+        raise ValueError(S.ERR_RECIPIENT_ADDR)
     if n < 1:
-        raise ValueError("Send at least 1 dSOS")
+        raise ValueError(S.ERR_MIN_SEND)
     data = "0x" + (selector(TRANSFER_SIG) + enc(to.strip().lower()) + enc(int(n))).hex()
     return {
         "to": DSOS,

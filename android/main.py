@@ -21,6 +21,7 @@ import page_credits
 import page_offers
 import page_stake
 import page_wallet
+import strings as S
 import util
 from page_create import CreateScreen
 from page_send import SendScreen
@@ -42,7 +43,7 @@ PAGES = {
 
 class DsosApp(App):
     def build(self):
-        self.title = "dSOS"
+        self.title = S.APP_TITLE
         if HAS_LOGO:
             self.icon = LOGO
         self.cfg_path = os.path.join(self.user_data_dir, "cfg.json")
@@ -63,9 +64,9 @@ class DsosApp(App):
         head = BoxLayout(size_hint_y=None, height=dp(56), spacing=dp(10))
         if HAS_LOGO:
             head.add_widget(Image(source=LOGO, size_hint=(None, 1), width=dp(52)))
-        self.sub = label("[b]Main wallet[/b]\n" + (short(cfg.get("addr", "")) or "enter address"))
+        self.sub = label(S.HEADER_WALLET.format(addr=short(cfg.get("addr", "")) or S.HEADER_NO_ADDR))
         head.add_widget(self.sub)
-        head.add_widget(Pill(text="Ethereum", color=WHITE, bold=True,
+        head.add_widget(Pill(text=S.CHAIN_PILL, color=WHITE, bold=True,
                              size_hint=(None, None), size=(dp(104), dp(34)),
                              pos_hint={"center_y": 0.5}))
         top.add_widget(head)
@@ -74,13 +75,13 @@ class DsosApp(App):
         top.add_widget(self.msg)
 
         # wallet inputs: created once and only hidden/shown, never re-parented
-        self.addr = make_input("Wallet address 0x...", cfg.get("addr", ""))
-        self.key = make_input("Etherscan API key (optional)", cfg.get("key", ""), password=True)
+        self.addr = make_input(S.HINT_ADDRESS, cfg.get("addr", ""))
+        self.key = make_input(S.HINT_API_KEY, cfg.get("key", ""), password=True)
         self.inputs = BoxLayout(orientation="vertical", size_hint_y=None, height=dp(148),
                                 spacing=dp(6))
         self.inputs.add_widget(self._with_paste(self.addr))
         self.inputs.add_widget(self._with_paste(self.key))
-        load_btn = Button(text="Load", size_hint_y=None, height=dp(48),
+        load_btn = Button(text=S.BTN_LOAD, size_hint_y=None, height=dp(48),
                           background_normal="", background_color=BLUE, color=WHITE, bold=True)
         load_btn.bind(on_release=self.load)
         self.inputs.add_widget(load_btn)
@@ -100,12 +101,12 @@ class DsosApp(App):
         nav.bind(pos=lambda i, p: setattr(nav_bg, "pos", p),
                  size=lambda i, s: setattr(nav_bg, "size", s))
         self.nav_btns = {}
-        for name, lab in (("wallet", "Wallet"), ("offers", "Offers")):
+        for name, lab in (("wallet", S.TAB_WALLET), ("offers", S.TAB_OFFERS)):
             nav.add_widget(self._tab(name, lab))
-        plus = RoundBtn(text="+", font_size="34sp", color=WHITE, bold=True, size_hint_x=0.9)
+        plus = RoundBtn(text=S.TAB_PLUS, font_size="34sp", color=WHITE, bold=True, size_hint_x=0.9)
         plus.bind(on_release=lambda *_: self.open_create())
         nav.add_widget(plus)
-        for name, lab in (("stake", "Stake"), ("credits", "Credits")):
+        for name, lab in (("stake", S.TAB_STAKE), ("credits", S.TAB_CREDITS)):
             nav.add_widget(self._tab(name, lab))
 
         main = BoxLayout(orientation="vertical")
@@ -124,7 +125,7 @@ class DsosApp(App):
     def _with_paste(self, field):
         row = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(6))
         row.add_widget(field)
-        pb = Button(text="Paste", size_hint=(None, 1), width=dp(72), background_normal="",
+        pb = Button(text=S.BTN_PASTE, size_hint=(None, 1), width=dp(72), background_normal="",
                     background_color=BLUE, color=WHITE, bold=True)
         pb.bind(on_release=lambda *_: self.paste_into(field))
         row.add_widget(pb)
@@ -134,9 +135,9 @@ class DsosApp(App):
         t = util.paste_text()
         if t:
             field.text = t
-            self.msg.text = "Pasted from clipboard"
+            self.msg.text = S.MSG_PASTED
         else:
-            self.msg.text = "Clipboard is empty or not readable"
+            self.msg.text = S.MSG_CLIPBOARD_EMPTY
 
     def _tab(self, name, text):
         b = NavBtn(text=text)
@@ -156,7 +157,7 @@ class DsosApp(App):
         self.render()
         self.sv.scroll_y = 1
 
-    # ---- overlays (Create offer, Send, Transaction ready)
+    # ---- overlays (Create offer, Transaction ready)
     def open_overlay(self, w):
         self.overlays.append(w)
         self.root.add_widget(w)
@@ -166,12 +167,12 @@ class DsosApp(App):
 
     def open_send(self):
         if not self.data:
-            self.msg.text = "Load your wallet first, then tap Send."
+            self.msg.text = S.MSG_LOAD_FIRST
             return
         self.open_overlay(SendScreen(self))
 
     def coming(self, name):
-        self.msg.text = f"{name} is coming in the next step."
+        self.msg.text = S.MSG_COMING.format(name=name)
 
     def close_top(self):
         if self.overlays:
@@ -205,7 +206,7 @@ class DsosApp(App):
 
     def load(self, *_):
         self.save_cfg()
-        self.msg.text = "Loading..."
+        self.msg.text = S.MSG_LOADING
         threading.Thread(target=self._work, args=(self.addr.text, self.key.text),
                          daemon=True).start()
 
@@ -225,8 +226,8 @@ class DsosApp(App):
     def show(self, d):
         self.data = d
         self.err = None
-        self.msg.text = f"Block {d['block']:,} via {d['source']}"
-        self.sub.text = f"[b]Main wallet[/b]\n{short(d['address'])}"
+        self.msg.text = S.MSG_BLOCK_VIA.format(block=d["block"], source=d["source"])
+        self.sub.text = S.HEADER_WALLET.format(addr=short(d["address"]))
         self.render()
 
     # ---------------------------------------------------------- pages
@@ -237,13 +238,13 @@ class DsosApp(App):
         d = self.data
         set_visible(self.inputs, p == "wallet")
         if self.err:
-            b.add_widget(Card("[b]Error[/b]\n" + escape_markup(self.err)))
+            b.add_widget(Card(S.ERROR_CARD.format(error=escape_markup(self.err))))
         if d is None:
             if p == "wallet":
                 if not self.err:
-                    b.add_widget(Card("Enter your wallet address above and tap Load."))
+                    b.add_widget(Card(S.EMPTY_WALLET))
             else:
-                b.add_widget(Card("No data yet. Open the Wallet tab, enter your address and tap Load."))
+                b.add_widget(Card(S.EMPTY_OTHER_TABS))
             return
         PAGES[p](self, b, d)
 
