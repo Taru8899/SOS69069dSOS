@@ -134,14 +134,14 @@ class Chain:
         ids = [u(x) for x in ws[2:2 + u(ws[1])]][-MAX_OFFERS:]
 
         offers = []
-        for oid in ids:
+        for pos, oid in enumerate(ids):   # pos = place in the holder's list (newest = highest)
             w = c(DSOS, "offers(uint256)", [oid])
             kind = KIND.get(u(w[4]), "?")
             sweep = u(w[7])
             left = sweep - blk
             status = "expired" if left <= 0 else ("expiring" if left <= WINDOW else "redeemable")
             offers.append({
-                "id": oid, "kind": kind, "count": u(w[8]), "active": u(w[3]) != 0,
+                "id": oid, "pos": pos, "kind": kind, "count": u(w[8]), "active": u(w[3]) != 0,
                 "sweepable_at": sweep, "left": left, "status": status,
                 "sendable": kind != "G" and left > WINDOW,
             })
