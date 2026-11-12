@@ -21,10 +21,14 @@ KIND = {0: "G", 1: "B", 2: "T", 3: "P"}
 MAX_OFFERS = 40
 
 
-def selector(sig):
+def keccak256(data):
     k = keccak.new(digest_bits=256)
-    k.update(sig.encode())
-    return k.digest()[:4]
+    k.update(data)
+    return k.digest()
+
+
+def selector(sig):
+    return keccak256(sig.encode())[:4]
 
 
 def enc(x):
@@ -159,6 +163,11 @@ class Chain:
         supply = u(c(DSOS, "totalSupply()")[0])
         need = u(c(DSOS, "stakeRequirement()")[0])
         st = c(LEDGER, "statsOf(address)", [a])
+        staked_at = u(c(DSOS, "stakedAt(address)", [a])[0])
+        nonce = u(c(DSOS, "redeemNonce(address)", [a])[0])
+        earmarked = u(c(DSOS, "totalEarmarked()")[0])
+        reserve = u(c(DSOS, "MIN_RESERVE()")[0])
+        cooldown = u(c(DSOS, "STAKE_COOLDOWN()")[0])
 
         return {
             "address": address.strip(), "block": blk, "source": self.source,
@@ -170,5 +179,7 @@ class Chain:
             "offers": offers, "staked": staked, "can_redeem": can,
             "credits": credits, "formable": formable,
             "pool_wei": pool, "supply": supply, "stake_need_wei": need,
+            "staked_at": staked_at, "redeem_nonce": nonce, "earmarked_wei": earmarked,
+            "min_reserve_wei": reserve, "cooldown": cooldown,
             "push": u(st[0]), "trust": u(st[1]), "effective": s(st[2]),
         }

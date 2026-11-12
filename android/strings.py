@@ -53,6 +53,8 @@ ERR_MIN_SLICE = "At least 1 slice"
 ERR_MIN_WINDOW = "Window must be at least 1 block"
 ERR_RECIPIENT_ADDR = "Recipient must be a 0x address (42 characters)"
 ERR_MIN_SEND = "Send at least 1 dSOS"
+ERR_USER_ADDR = "Wallet must be a 0x address (42 characters)"
+ERR_MIN_CREDIT = "Redeem at least 1 credit"
 
 # ------------------------------------------------------------------ shared offer card / rows
 OFFER_CARD = (
@@ -109,14 +111,46 @@ STAKE_HOW = (
     "Redeeming any part of a gate offer removes its gate flag, so you do not get staked.")
 
 # ------------------------------------------------------------------ credits tab
-CREDITS_HELD = (
-    "Credits held\n[size=44sp][b]{credits:,}[/b][/size]\n"
-    "+ {formable:,} formable from SOS trust records\n"
-    "Worth up to [b]{eth} ETH[/b]")
-CREDITS_LEDGER = "[b]SOS ledger[/b]\nPush {push:,}   Trust {trust:,}\nEffective {effective:,}"
-CREDITS_RULES = ("1 credit = 0.001 ETH. Credits come 1:1 from trust records, "
-                 "need a staked wallet, and cannot be transferred.")
-CREDITS_NOT_STAKED = "This wallet is not staked, so it cannot form or redeem credits."
+CREDITS_TITLE = "[b]Credits[/b]"
+CREDITS_PILL_STAKED = "Staked"
+CREDITS_PILL_NOT_STAKED = "Not staked"
+CREDITS_HELD_BOX = ("[size=14sp]Credits held[/size]\n[size=50sp][b]{n:,}[/b][/size]\n"
+                    "[size=14sp]= {eth} ETH[/size]")
+CREDITS_READY_BOX = ("[size=14sp]Ready to form[/size]\n"
+                     "[size=36sp][color=0033ff][b]+{n:,}[/b][/color][/size]\n"
+                     "[size=14sp]pending trust records[/size]")
+CREDITS_SYNC = "Sync credits"
+CREDITS_ROW_STAKED_SINCE = "Staked since block"
+CREDITS_ROW_COOLDOWN = "{n:,}-block cooldown"
+CREDITS_ROW_POOL = "Pool can pay out"
+CREDITS_ROW_NONCE = "Redeem nonce"
+CREDITS_PASSED = "Passed"
+CREDITS_DASH = "-"
+CREDITS_REDEEM_TITLE = "Redeem credits"
+CREDITS_RATE = "1 credit = 0.001 ETH"
+CREDITS_AMOUNT = "[size=50sp][b]{n}[/b][/size]\n[size=15sp]you receive {eth} ETH[/size]"
+CREDITS_REDEEM_BTN = "Redeem {n} {word}"
+CREDITS_WORD_ONE = "credit"
+CREDITS_WORD_MANY = "credits"
+CREDITS_FOOTNOTE = "Credits come from your SOS trust records and cannot be transferred."
+CREDITS_ERR_NOT_STAKED = "This wallet is not staked yet, so it cannot redeem credits."
+CREDITS_ERR_COOLDOWN = "Cooldown not finished: {time} left."
+CREDITS_ERR_NONE = "You have no credits to redeem."
+CREDITS_ERR_POOL = "The pool cannot pay this amount right now."
+SYNC_SUMMARY = "[b]Sync credits[/b]\nForms {n} {word} from your pending trust records."
+SYNC_TIP = ("syncCredits has no parameters. On Etherscan just press Write. "
+            "Use the same wallet that holds the credits.")
+SYNC_WARN = "Only a staked wallet can sync credits. If the call fails, check the Stake tab."
+SYNC_FN = "syncCredits"
+REDEEM_SUMMARY = ("[b]Redeem {n} {word}[/b]\n= {eth} ETH paid to your wallet\n"
+                  "Redeem nonce {nonce}")
+REDEEM_ROWS = {"n": "creditsToSpend (uint256)", "r": "r (tuple: paste as one value)"}
+REDEEM_TIP = ("On Etherscan paste the r value above into the single field called r. "
+              "Its payloadHash only fits redeem nonce {nonce} and this exact amount, and "
+              "the transaction must come from {wallet}. If anything changes first, reload "
+              "the app and build it again.")
+REDEEM_WARN = "Redeeming burns the credits and cannot be undone."
+REDEEM_FN = "redeemCredit"
 
 # ------------------------------------------------------------------ shared page chrome
 ICON_BACK = "<"

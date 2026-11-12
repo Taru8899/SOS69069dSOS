@@ -262,3 +262,20 @@ def title_row(text, link_text=None, on_link=None):
         btn.bind(on_release=lambda *_: on_link())
         row.add_widget(btn)
     return row
+
+
+class Divider(Widget):
+    """Thin horizontal line between rows."""
+
+    def __init__(self, **kw):
+        kw.setdefault("size_hint_y", None)
+        kw.setdefault("height", dp(1))
+        super().__init__(**kw)
+        with self.canvas:
+            Color(0.9, 0.91, 0.91, 1)
+            self._r = Rectangle()
+        self.bind(pos=self._upd, size=self._upd)
+
+    def _upd(self, *_):
+        self._r.pos = self.pos
+        self._r.size = self.size

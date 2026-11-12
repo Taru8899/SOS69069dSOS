@@ -2,7 +2,7 @@
 import os
 
 import strings as S
-from core import DSOS, enc, selector
+from core import DSOS, enc, keccak256, selector
 
 CREATE_SIG = "createOffer(uint8,address,uint256,bytes32,bytes,string)"
 KIND_ID = {"B": 1, "T": 2, "P": 3}   # G (=0) needs a PIN and is not built here
@@ -112,3 +112,47 @@ def blocked_summary(offers, window=MIN_SEND_WINDOW):
     e = [o for o in offers if o["left"] <= 0]
     tot = lambda xs: (len(xs), sum(o["count"] for o in xs))  # noqa: E731
     return tot(g), tot(s), tot(e)
+
+
+# ---------------------------------------------------------------- credits
+SYNC_SIG = "syncCredits()"
+REDEEM_CREDIT_SIG = "redeemCredit(uint256,(bytes32,bytes,string))"
+CHAIN_ID = 1
+
+
+def sync_credits_tx():
+    """syncCredits(): no arguments, no ETH."""
+    return {"to": DSOS, "value_wei": 0, "value_eth": "0",
+            "data": "0x" + selector(SYNC_SIG).hex(), "params": {}}
+
+
+def redeem_hash(user, amount_wei, nonce):
+    """Same as dSOS._redeemHash(user, 0, amount): keccak256(abi.encode(user, kind=0,
+    amount, nonce, dSOS contract, chainid))."""
+    return keccak256(enc(user.strip().lower()) + enc(0) + enc(int(amount_wei)) +
+                     enc(int(nonce)) + enc(DSOS) + enc(CHAIN_ID))
+
+
+def redeem_credit_tx(user, credits, nonce):
+    """redeemCredit(credits, (payloadHash, 0x, "")): empty signature, so the contract
+    skips the ledger record and still pays out."""
+    if not valid_address(user):
+        raise ValueError(S.ERR_USER_ADDR)
+    if credits < 1:
+        raise ValueError(S.ERR_MIN_CREDIT)
+    ph = redeem_hash(user, int(credits) * UNIT_WEI, nonce)
+    data = selector(REDEEM_CREDIT_SIG) + b"".join([
+        enc(int(credits)),
+        enc(2 * 32),        # offset of the tuple r
+        ph,                 # r.payloadHash
+        enc(3 * 32),        # r.signature offset (inside the tuple)
+        enc(4 * 32),        # r.metadata offset (inside the tuple)
+        enc(0),             # signature = 0x
+        enc(0),             # metadata = ""
+    ])
+    ph_hex = "0x" + ph.hex()
+    value_wei = int(credits) * UNIT_WEI
+    return {"to": DSOS, "value_wei": 0, "value_eth": "0", "data": "0x" + data.hex(),
+            "params": {"creditsToSpend": str(int(credits)), "payloadHash": ph_hex,
+                       "r": '["' + ph_hex + '","0x",""]'},
+            "payout_eth": f"{value_wei / 1e18:.6f}".rstrip("0").rstrip(".")}
