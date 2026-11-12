@@ -100,6 +100,14 @@ class CreateScreen(Overlay):
         self.win_note = label("", size_hint_y=None, height=dp(60), valign="top", font_size="13sp")
         form.add_widget(self.win_note)
 
+        # PIN (gated offers only)
+        self.pin_in = make_input(S.CREATE_PIN_HINT, password=True)
+        self.pin_in.bind(text=lambda *_: self.refresh())
+        form.add_widget(self.pin_in)
+        self.pin_note = label(S.CREATE_PIN_NOTE, size_hint_y=None, height=dp(96), valign="top",
+                              font_size="13sp")
+        form.add_widget(self.pin_note)
+
         # holder
         form.add_widget(label(S.CREATE_HOLDER, size_hint_y=None, height=dp(26)))
         hold = Panel(orientation="vertical", size_hint_y=None, height=dp(150), spacing=dp(6))
@@ -188,14 +196,17 @@ class CreateScreen(Overlay):
         return self.other_in.text.strip()
 
     def problem(self):
-        if self.kind == "G":
-            return S.CREATE_ERR_GATED
         if self.blocks() < 1:
             return S.CREATE_ERR_WINDOW
         if not tx.valid_address(self.holder_addr()):
             if self.holder_mode == "me":
                 return S.CREATE_ERR_OWN_ADDR
             return S.CREATE_ERR_HOLDER
+        if self.kind == "G":
+            if not tx.valid_address(self.app.addr.text.strip()):
+                return S.CREATE_ERR_OWN_ADDR
+            if not self.pin_in.text.strip():
+                return S.CREATE_ERR_PIN
         return ""
 
     def refresh(self):
@@ -211,10 +222,20 @@ class CreateScreen(Overlay):
 
         b = self.blocks()
         data = self.app.data
-        self.win_note.text = S.WIN_NOTE.format(
+        gated = self.kind == "G"
+        note = S.WIN_NOTE.format(
             blocks=b,
             expires=S.WIN_EXPIRES.format(block=data["block"] + b) if data else "",
-            rule=S.WIN_RULE_OK if b > core.WINDOW else S.WIN_RULE_SHORT)
+            rule=(S.WIN_RULE_GATED if gated else
+                  S.WIN_RULE_OK if b > core.WINDOW else S.WIN_RULE_SHORT))
+        gate_risk = (gated and b == 1 and data is not None
+                     and self.slices * core.UNIT >= data["stake_need_wei"])
+        if gate_risk:
+            note += "\n" + S.CREATE_GATE_WARN.format(eth=core.eth(data["stake_need_wei"]))
+        self.win_note.text = note
+        self.win_note.height = dp(150 if gate_risk else 60)
+        set_visible(self.pin_in, gated)
+        set_visible(self.pin_note, gated)
 
         me = self.holder_mode == "me"
         mine = self.app.addr.text.strip()
@@ -230,6 +251,9 @@ class CreateScreen(Overlay):
 
     def on_create(self):
         if self.problem():
+            return
+        if self.kind == "G":
+            self.on_create_gated()
             return
         try:
             t = tx.create_offer_tx(self.kind, self.holder_addr(), self.slices, self.blocks())
@@ -247,3 +271,25 @@ class CreateScreen(Overlay):
                 (R["hash"], p["payloadHash"], short(p["payloadHash"])),
                 (R["sig"], "0x", "0x")]
         self.app.open_overlay(TxScreen(self.app, t, summary, S.CREATE_FN, rows, S.CREATE_TIP))
+
+    def on_create_gated(self):
+        donor = self.app.addr.text.strip()
+        try:
+            t = tx.create_gated_tx(donor, self.holder_addr(), self.slices, self.blocks(),
+                                   self.pin_in.text)
+        except Exception as e:  # noqa: BLE001
+            self.note.text = str(e)
+            return
+        summary = S.CREATE_GATED_SUMMARY.format(
+            slices=self.slices, eth=t["value_eth"], blocks=self.blocks(),
+            holder=short(self.holder_addr()))
+        p = t["params"]
+        R = S.CREATE_GATED_ROWS
+        rows = [(R["payable"], t["value_eth"], t["value_eth"]),
+                (R["to"], p["to"], short(p["to"])),
+                (R["delay"], p["delayBlocks"], p["delayBlocks"]),
+                (R["pin"], p["pinCommitment_"], short(p["pinCommitment_"])),
+                (R["hash"], p["payloadHash"], short(p["payloadHash"])),
+                (R["sig"], "0x", "0x")]
+        self.app.open_overlay(TxScreen(self.app, t, summary, S.CREATE_GATED_FN, rows,
+                                       S.CREATE_GATED_TIP))

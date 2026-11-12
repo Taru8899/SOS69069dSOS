@@ -24,8 +24,10 @@ import page_wallet
 import strings as S
 import util
 from page_create import CreateScreen
+from page_donate import DonateScreen
 from page_redeem import RedeemScreen
 from page_send import SendScreen
+from wallet import Wallet
 from theme import (BLACK, BLUE, GREEN, HAS_LOGO, LOGO, SPLASH_SECONDS, WHITE,
                    set_visible, short)
 from widgets import Card, NavBtn, Pill, RoundBtn, Splash, label, make_input
@@ -55,6 +57,7 @@ class DsosApp(App):
         except Exception:  # noqa: BLE001
             pass
 
+        self.wallet = Wallet(self)
         self.data = None
         self.err = None
         self.page = "wallet"
@@ -178,6 +181,9 @@ class DsosApp(App):
             return
         self.open_overlay(RedeemScreen(self))
 
+    def open_donate(self):
+        self.open_overlay(DonateScreen(self))
+
     def coming(self, name):
         self.msg.text = S.MSG_COMING.format(name=name)
 
@@ -190,6 +196,12 @@ class DsosApp(App):
             self.close_top()
             return True
         return False
+
+    def on_pause(self):
+        return True                      # the wallet app comes to the front while it approves
+
+    def on_resume(self):
+        self.wallet.on_resume()
 
     def on_start(self):
         Window.bind(on_keyboard=self.on_back)

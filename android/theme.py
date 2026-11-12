@@ -27,7 +27,14 @@ SPLASH_SECONDS = 1.8
 DSOS_ADDR = "0x7Bd7c427b3c69e2a09603573ac875987c61ECAB8"
 ETHERSCAN_WRITE = "https://etherscan.io/address/" + DSOS_ADDR + "#writeContract"
 DAPP_URL = "https://taru8899.github.io/SOS69069dSOS/dsos-dapp-v29.html"
+ETHERSCAN_TX = "https://etherscan.io/tx/"
 WINDOWS = {"1 day": 7200, "2 days": 14400, "7 days": 50400}
+
+# WalletConnect (the wallet link). The project id is public: it only names this app to the relay.
+WC_PROJECT_ID = "fc829de5747f7a577fcee0c2ddbad0f8"
+WC_ORIGIN = "https://taru8899.github.io"                  # page origin shown to the relay / wallet
+WC_APP_URL = "https://taru8899.github.io/SOS69069dSOS/"
+WC_RPC = "https://ethereum-rpc.publicnode.com"
 
 
 def short(addr):

@@ -90,6 +90,7 @@ NEXT_EXPIRY = "[b]Next expiry in ~{time}[/b]\nRedeem before block {block:,}"
 ACTIVE_OFFERS = "Active offers"
 NO_ACTIVE_OFFERS = "No active offers."
 SHARED_POOL = "Shared pool\n[b]{eth} ETH[/b] - {supply:,} dSOS active"
+BTN_DONATE = "Donate"
 
 # ------------------------------------------------------------------ offers tab (My offers)
 OFFERS_TITLE = "[b]My offers[/b]"
@@ -113,8 +114,8 @@ OD_NOTE_PARTIAL = ("The other {n} slice{s} stay with you with the same expiry. "
                    "Gated offers ask for the PIN.")
 OD_NOTE_ALL = "This uses the whole offer. Gated offers ask for the PIN."
 OD_NOTE_TRANSFER = "The recipient gets {n} slice{s} with the same expiry."
-OD_NOTE_GATED = ("Gated offers need the PIN to redeem and cannot be sent. "
-                 "Coming in the next step.")
+OD_NOTE_GATED = ("Enter the PIN, then tap Redeem. The PIN is checked against the chain first, so "
+                 "a wrong one never reaches your wallet. Gated offers cannot be sent.")
 OD_NOTE_EXPIRED = ("Expired offers cannot be redeemed or sent. Sweeping moves their ETH into "
                    "the shared pool.")
 OD_SWEEP_SUMMARY = "[b]Sweep offer #{id}[/b]\nMoves its ETH into the shared pool"
@@ -236,16 +237,17 @@ WIN_NOTE = "{blocks:,} blocks{expires}. {rule}"
 WIN_EXPIRES = " - expires near block {block:,}"
 WIN_RULE_OK = "Windows over 7,200 blocks stay sendable from your wallet."
 WIN_RULE_SHORT = "Windows of 7,200 blocks or less are NOT sendable from a wallet."
+WIN_RULE_GATED = "Gated offers are never sendable. The holder redeems them with the PIN."
 CREATE_HOLDER = "[b]Holder[/b]"
 HOLDER_ME = "[b]Myself[/b]\n{addr}"
 HOLDER_ME_EMPTY = "enter address on Wallet tab"
 HOLDER_OTHER = "[b]Another address[/b]\ntap to use my own address"
 HINT_HOLDER = "Holder address 0x..."
-CREATE_LEDGER = "Ledger record - optional signature"
-CREATE_LEDGER_SKIPPED = "Skipped"
+CREATE_LEDGER = "Ledger record - choose when sending"
+CREATE_LEDGER_SKIPPED = "Optional"
 CREATE_BUTTON = "Create offer · {eth} ETH"
 CREATE_NOTE = "Offers not redeemed before expiry can be swept into the shared pool."
-CREATE_ERR_GATED = "Gated offers need a PIN. Coming in the next step."
+CREATE_ERR_PIN = "Enter a PIN for a gated offer."
 CREATE_ERR_WINDOW = "Enter the window in blocks."
 CREATE_ERR_OWN_ADDR = "Enter your address on the Wallet tab first."
 CREATE_ERR_HOLDER = "Holder needs a valid 0x address."
@@ -293,9 +295,9 @@ SEND_FN = "transfer"
 
 # ------------------------------------------------------------------ transaction ready page
 TX_TITLE = "[b]Transaction ready[/b]"
-TX_NOT_SENDER = ("This app cannot sign or send yet. Send the transaction from a wallet or "
-                 "website that can call contracts (see the buttons below). Check every value "
-                 "first, and test with a small amount.")
+TX_NOT_SENDER = ("This app never holds your keys. Your wallet app signs and sends. Check every "
+                 "value first, and test with a small amount. You can also copy the values below "
+                 "into any wallet or website.")
 TX_TO = "To (dSOS contract)"
 TX_VALUE = "Value (ETH)"
 TX_VALUE_SHOWN = "{eth} ETH"
@@ -323,8 +325,8 @@ RO_BUTTON_EMPTY = "Redeem"
 RO_NOTE = "Redeem before block {block:,}. The ETH is paid straight to your wallet."
 RO_ERR_NONE = "Nothing can be redeemed right now."
 RO_ERR_AMOUNT = "Pick an amount."
-RO_GATED = ("{n} gated offer{s} ({slices} dSOS) need a PIN and are not listed. "
-            "Coming in the next step.")
+RO_GATED = ("{n} gated offer{s} ({slices} dSOS) need a PIN and are not listed here. "
+            "Redeem them in the Offers tab.")
 RO_SWEEP_TITLE = "[b]Expired offers[/b]"
 RO_SWEEP_HELP = ("Expired offers can no longer be redeemed. Sweeping moves their ETH into the "
                  "shared pool.")
@@ -338,3 +340,125 @@ RO_TIP = ("On Etherscan paste the r value above into the single field called r. 
           "zeros because this offer has no PIN. Send it from {wallet} before block {block:,}.")
 RO_WARN = "Redeemed slices are burned and the ETH is paid out. This cannot be undone."
 RO_FN = "redeemSlices"
+
+# ------------------------------------------------------------------ errors added in v7
+ERR_PIN_EMPTY = "Enter the PIN."
+ERR_PIN_BYTES = "The PIN must be 32 bytes."
+ERR_AMOUNT_ETH = "Enter an amount in ETH, for example 0.01."
+ERR_AMOUNT_ZERO = "The amount must be above 0."
+ERR_AMOUNT_DECIMALS = "ETH has at most 18 decimal places."
+
+# ------------------------------------------------------------------ dry run (eth_call before sending)
+SIM_RUNNING = "[b]Dry run[/b]\nChecking this transaction against the chain..."
+SIM_OK = "[b]Dry run passed[/b]\nThe contract would accept this transaction right now."
+SIM_FAIL = "[b]Dry run failed[/b]\n{reason}\nNothing was sent. Fix this first."
+SIM_UNKNOWN = ("[b]Dry run unavailable[/b]\n{error}\nYou can still send it, but the wallet may "
+               "show a failure.")
+SIM_NEEDS_WALLET = "[b]Dry run skipped[/b]\nLoad your wallet address first."
+REVERT_TEXT = {
+    "BadDelay": "The window is too long for this contract.",
+    "BadOfferPin": "Wrong PIN for this offer.",
+    "BadRedeemHash": "The redeem hash is out of date (nonce or amount changed). Reload and build it again.",
+    "InsufficientCredits": "You do not have that many credits.",
+    "InsufficientSlices": "The offer has fewer slices than you asked for.",
+    "InvalidValue": "The ETH amount must be a whole number of slices (0.001 ETH each).",
+    "NoCredit": "No credit available.",
+    "NotEnoughSendable": "Fewer sendable slices than that. Gated, expiring and expired offers cannot be wallet-sent.",
+    "NotHolder": "This wallet does not hold that offer.",
+    "NotStaked": "This wallet is not staked yet.",
+    "NotTransferable": "That cannot be sent (gated offers and the contract itself are blocked).",
+    "OfferNotActive": "That offer is no longer active.",
+    "PoolTooThin": "The pool cannot pay this amount right now.",
+    "Reentrant": "The contract is busy. Try again.",
+    "SelfTransfer": "You cannot send to yourself.",
+    "TooEarly": "Too early: the stake cool-down or the offer's window is not over yet.",
+    "TooManyOffers": "The holder already has too many offers.",
+    "TransferFailed": "The ETH payout failed.",
+    "WindowClosed": "The offer's redeem window has closed. Sweep it instead.",
+    "ZeroAddress": "The zero address is not allowed.",
+    "ZeroAmount": "The amount must be at least 1.",
+    "InsufficientFunds": "This wallet does not hold enough ETH for the amount plus gas.",
+    "InvalidSignature": "The ledger rejected the signature.",
+    "DuplicatePayloadHash": "That ledger record already exists.",
+    "MetadataTooLong": "The metadata is too long (64 characters at most).",
+    "revert": "The contract would reject this transaction.",
+}
+REVERT_UNKNOWN = "The contract would reject this transaction ({name})."
+
+# ------------------------------------------------------------------ send with wallet (transaction page)
+TX_BTN_WALLET = "Send with wallet"
+TX_BTN_WALLET_BUSY = "Waiting for your wallet..."
+TX_BTN_WALLET_BLOCKED = "Send with wallet (dry run failed)"
+TX_BTN_VIEW = "View on Etherscan"
+TX_LEDGER_OFF = "Ledger record: off"
+TX_LEDGER_ON = "Ledger record: on"
+TX_LEDGER_HELP = ("[b]Ledger record[/b]\nOn: your wallet first signs a record for the SOS ledger "
+                  "(a second approval), and it is sent together with the transaction. Off: no record "
+                  "is written and the action works the same.")
+TX_WALLET_UNAVAILABLE = ("The wallet link is not available on this device. Use the copy buttons "
+                         "below.")
+TX_WC_NO_PROJECT = "The WalletConnect project id is not set (WC_PROJECT_ID in theme.py)."
+TX_WC_NOT_READY = ("The wallet link did not start: {error}. Check your internet connection and try "
+                   "again.")
+TX_CONNECTING = "Opening your wallet to connect..."
+TX_CONNECT_PASTE = ("No wallet app opened. The connection link is copied: paste it into your "
+                    "wallet's WalletConnect field.")
+TX_CONNECTED = "Connected to {wallet}: {addr}"
+TX_WRONG_ACCOUNT = ("Your wallet is on {got} but this app loaded {want}. Switch the account in "
+                    "your wallet, or load that address.")
+TX_SIGNING = "Approve the signature in {wallet}..."
+TX_SIGN_BAD = "The signature did not verify on the ledger ({reason}). Nothing was sent."
+TX_SENDING = "Approve the transaction in {wallet}..."
+TX_OPEN_WALLET = "Open {wallet} to approve."
+TX_SENT = "Sent. Transaction {hash}"
+TX_SENT_NOTE = "Reload from the Wallet tab in a minute to see the result."
+TX_REJECTED = "Cancelled in the wallet. Nothing was sent."
+TX_ERROR = "Wallet error: {error}"
+TX_DISCONNECT = "Disconnect wallet"
+TX_DISCONNECTED = "Wallet disconnected."
+TX_PEER_DEFAULT = "your wallet"
+TX_COPY_ROWS_HEAD = "[b]Or copy the values into another wallet[/b]"
+TX_NO_ETHERSCAN_FN = "[b]Plain ETH transfer (no function)[/b]"
+
+# ------------------------------------------------------------------ donate page
+DONATE_TITLE = "[b]Donate to the pool[/b]"
+DONATE_INTRO = "ETH sent here joins the shared pool and cannot be taken back."
+DONATE_HINT = "Amount in ETH, e.g. 0.01"
+DONATE_AMOUNTS = ("0.001", "0.01", "0.1")
+DONATE_BUTTON = "Donate {eth} ETH"
+DONATE_BUTTON_EMPTY = "Donate"
+DONATE_NOTE = ("A donation raises the pool's unallocated balance, so the stake requirement "
+               "goes up too.")
+DONATE_SUMMARY = "[b]Donate {eth} ETH[/b]\nPlain ETH transfer to the dSOS contract"
+DONATE_TIP = ("In any wallet: send {eth} ETH on Ethereum to the contract address above, with no "
+              "data. The contract's receive function adds it to the pool.")
+DONATE_WARN = "A donation is permanent. The ETH stays in the shared pool."
+
+# ------------------------------------------------------------------ gated offers (create + redeem)
+CREATE_PIN_HINT = "PIN or passphrase (keep it secret)"
+CREATE_PIN_NOTE = ("The holder needs this PIN to redeem. Only a hash goes on-chain: your text is "
+                   "hashed with keccak256 (a 0x + 64 hex value is used as it is), the same rule "
+                   "as the dApp.")
+CREATE_GATE_WARN = ("A gated offer with a 1-block window above {eth} ETH counts as a gate offer: "
+                    "once swept you become staked and the ETH is donated. Use a longer window "
+                    "unless that is what you want.")
+CREATE_GATED_SUMMARY = ("[b]Create gated offer[/b]\n{slices} dSOS = {eth} ETH\n"
+                        "Window {blocks:,} blocks\nHolder {holder}\nProtected by your PIN")
+CREATE_GATED_ROWS = {"payable": "payable amount (ETH)", "to": "to (address)",
+                     "delay": "delayBlocks", "pin": "pinCommitment_", "hash": "payloadHash",
+                     "sig": "signature (bytes)"}
+CREATE_GATED_TIP = ("metadata (string): leave it empty. Give the PIN to the holder privately: it "
+                    "is not part of this data. Only that holder can redeem, with the PIN.")
+CREATE_GATED_FN = "createOfferGated"
+OD_PIN_HINT = "PIN for this offer"
+OD_PIN_NEEDED = "Enter the PIN first."
+OD_PIN_CHECKING = "Checking the PIN against the chain..."
+OD_PIN_BAD = "That PIN does not match this offer. Nothing was built."
+OD_PIN_ERROR = "Could not read the offer's PIN hash: {error}"
+OD_NOTE_GATED_ACTIVE = "The PIN is checked against the chain before anything is sent."
+RO_TIP_PIN = ("The pin value is the 32-byte form of your PIN that matches this offer's on-chain "
+              "hash. Send it from {wallet} before block {block:,}.")
+
+# ------------------------------------------------------------------ wallet link metadata (shown in the wallet)
+WC_APP_NAME = "dSOS"
+WC_APP_DESC = "dSOS companion app. It never holds keys: your wallet signs and sends."

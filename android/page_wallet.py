@@ -6,7 +6,7 @@ from kivy.uix.label import Label
 import core
 import strings as S
 from theme import BLACK, BLUE, GRAY, RED, WHITE
-from widgets import Card, Panel, Ring, RoundBtn, label, offer_card, title_row
+from widgets import Card, Choice, Panel, Ring, RoundBtn, label, offer_card, title_row
 
 
 class BalanceCard(Panel):
@@ -59,4 +59,10 @@ def build(app, b, d):
         b.add_widget(Card(S.NO_ACTIVE_OFFERS))
     for o in d["offers"][:2]:
         b.add_widget(offer_card(o))
-    b.add_widget(Card(S.SHARED_POOL.format(eth=core.eth(d["pool_wei"]), supply=d["supply"])))
+    pool = Panel(size_hint_y=None, height=dp(88), spacing=dp(10))
+    pool.add_widget(label(S.SHARED_POOL.format(eth=core.eth(d["pool_wei"]), supply=d["supply"])))
+    don = Choice(base=BLACK, fg=WHITE, text=S.BTN_DONATE, bold=True, size_hint=(None, None),
+                 size=(dp(110), dp(52)), pos_hint={"center_y": 0.5})
+    don.bind(on_release=lambda *_: app.open_donate())
+    pool.add_widget(don)
+    b.add_widget(pool)

@@ -20,6 +20,17 @@ WINDOW = 7200
 KIND = {0: "G", 1: "B", 2: "T", 3: "P"}
 MAX_OFFERS = 40
 
+# every custom error of dSOS and of the SOS ledger (names only; 4-byte selectors are derived)
+REVERT_NAMES = (
+    "BadDelay", "BadOfferPin", "BadRedeemHash", "InsufficientCredits", "InsufficientSlices",
+    "InvalidValue", "NoCredit", "NotEnoughSendable", "NotHolder", "NotStaked", "NotTransferable",
+    "OfferNotActive", "PoolTooThin", "Reentrant", "SelfTransfer", "TooEarly", "TooManyOffers",
+    "TransferFailed", "WindowClosed", "ZeroAddress", "ZeroAmount",
+    "BatchTooLarge", "DuplicatePayloadHash", "EmptyBatch", "InvalidSignature", "LengthMismatch",
+    "MetadataTooLong", "NoETHAccepted",
+)
+_REVERT_BY_SELECTOR = {}
+
 
 def keccak256(data):
     k = keccak.new(digest_bits=256)
@@ -49,6 +60,28 @@ def u(w):
 def s(w):
     v = int.from_bytes(w, "big")
     return v - (1 << 256) if v >> 255 else v
+
+
+def revert_reason(err):
+    """Read a JSON-RPC error object. Returns (False, name_or_text) for a revert,
+    (False, 'InsufficientFunds') when the sender lacks ETH, or (True, None) when the error
+    says nothing about this transaction (caller should try another node)."""
+    if not _REVERT_BY_SELECTOR:
+        for n in REVERT_NAMES:
+            _REVERT_BY_SELECTOR[selector(n + "()").hex()] = n
+    data = err.get("data") if isinstance(err, dict) else None
+    if isinstance(data, dict):
+        data = data.get("data")
+    if isinstance(data, str) and data.startswith("0x") and len(data) >= 10:
+        sel = data[2:10].lower()
+        return False, _REVERT_BY_SELECTOR.get(sel, "revert 0x" + sel)
+    msg = str(err.get("message", "") if isinstance(err, dict) else err)
+    low = msg.lower()
+    if "insufficient funds" in low:
+        return False, "InsufficientFunds"
+    if "revert" in low:
+        return False, "revert"
+    return True, None
 
 
 def eth(wei):
@@ -129,6 +162,36 @@ class Chain:
         if not ws:
             raise RuntimeError(S.ERR_EMPTY_RESULT.format(sig=sig))
         return ws
+
+    def simulate(self, frm, to, data, value_wei=0):
+        """Dry-run a transaction with eth_call as `frm`. Returns (ok, reason). `reason` is the
+        name of the contract error (e.g. 'NotStaked') or a short node message. Raises
+        RuntimeError only when no node answered at all."""
+        call = {"from": frm, "to": to, "data": data}
+        if value_wei:
+            call["value"] = hex(int(value_wei))
+        last = None
+        for url in PUBLIC_RPCS:
+            try:
+                r = self.s.post(url, json={"jsonrpc": "2.0", "id": 1, "method": "eth_call",
+                                           "params": [call, "latest"]}, timeout=15)
+                j = r.json()
+            except Exception as e:  # noqa: BLE001
+                last = e
+                continue
+            if "error" not in j:
+                self.source = url.split("//")[1].split("/")[0]
+                return True, ""
+            ok, reason = revert_reason(j["error"])
+            if reason is not None:
+                self.source = url.split("//")[1].split("/")[0]
+                return ok, reason
+            last = j["error"]          # node-side trouble: try the next RPC
+        raise RuntimeError(S.ERR_ALL_RPC.format(error=last))
+
+    def pin_commitment(self, offer_id):
+        """offerPinCommitment(id) as 32 raw bytes."""
+        return self.call(DSOS, "offerPinCommitment(uint256)", [offer_id])[0]
 
     def load(self, address):
         a = address.strip().lower()

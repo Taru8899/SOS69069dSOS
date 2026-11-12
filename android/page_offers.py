@@ -1,4 +1,7 @@
 """Offers tab (My offers): list, details, redeem / transfer / sweep. Builds data, sends nothing."""
+import threading
+
+from kivy.clock import Clock
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
@@ -30,6 +33,8 @@ class OffersPage:
         self.amount = self.offers[0]["count"] if self.offers else 0
         self.transfer_mode = False
         self.to_text = ""
+        self.pin_text = ""
+        self.pin_msg = ""
         self.rebuild()
 
     # ---- helpers
@@ -47,6 +52,8 @@ class OffersPage:
         o = self.selected()
         self.amount = o["count"] if o else 0
         self.transfer_mode = False
+        self.pin_text = ""
+        self.pin_msg = ""
         self.rebuild()
 
     def set_filter(self, key):
@@ -57,6 +64,8 @@ class OffersPage:
             o = self.selected()
             self.amount = o["count"] if o else 0
             self.transfer_mode = False
+            self.pin_text = ""
+            self.pin_msg = ""
         self.rebuild()
 
     # ---- layout
@@ -166,6 +175,17 @@ class OffersPage:
         self.to_row.add_widget(pb)
         p.add_widget(self.to_row)
 
+        if o["kind"] == "G":                  # gated: the PIN goes where the recipient would be
+            pin_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(6))
+            self.pin_in = make_input(S.OD_PIN_HINT, self.pin_text, password=True)
+            self.pin_in.bind(text=lambda _i, v: self.on_pin_text(v))
+            pp = Button(text=S.BTN_PASTE, size_hint=(None, 1), width=dp(72), background_normal="",
+                        background_color=BLUE, color=WHITE, bold=True)
+            pp.bind(on_release=lambda *_: self.paste_pin())
+            pin_row.add_widget(self.pin_in)
+            pin_row.add_widget(pp)
+            p.add_widget(pin_row)
+
         btns = BoxLayout(size_hint_y=None, height=dp(56), spacing=dp(10))
         self.redeem_btn = Choice(base=BLUE, fg=WHITE, bold=True, font_size="16sp")
         self.redeem_btn.bind(on_release=lambda *_: self.on_redeem(o))
@@ -198,6 +218,20 @@ class OffersPage:
         else:
             self.note.text = S.MSG_CLIPBOARD_EMPTY_DOT
 
+    def on_pin_text(self, v):
+        self.pin_text = v
+        if self.pin_msg:
+            self.pin_msg = ""
+            self.refresh_detail()
+
+    def paste_pin(self):
+        import util
+        t = util.paste_text()
+        if t:
+            self.pin_in.text = t
+        else:
+            self.note.text = S.MSG_CLIPBOARD_EMPTY_DOT
+
     def transfer_problem(self):
         a = self.to_text.strip()
         if not tx.valid_address(a):
@@ -220,12 +254,12 @@ class OffersPage:
         self.of_mid.text = S.OD_OF.format(n=n, total=total)
         self.redeem_btn.text = S.OD_REDEEM.format(eth=core.eth(n * core.UNIT))
         self.transfer_btn.text = S.OD_TRANSFER.format(n=n)
-        self.redeem_btn.set_enabled(not gated)
+        self.redeem_btn.set_enabled(True)
         self.transfer_btn.set_enabled(not gated)
         set_visible(self.to_row, self.transfer_mode and not gated)
         s = "" if n == 1 else "s"
         if gated:
-            self.note.text = S.OD_NOTE_GATED
+            self.note.text = self.pin_msg or S.OD_NOTE_GATED
         elif self.transfer_mode:
             self.note.text = self.transfer_problem() or S.OD_NOTE_TRANSFER.format(n=n, s=s)
         elif n < total:
@@ -236,17 +270,57 @@ class OffersPage:
 
     # ---- transactions (built, never sent)
     def on_redeem(self, o):
-        if o["kind"] == "G" or o["left"] <= 0:
+        if o["left"] <= 0:
             return
         n = self.amount
-        t = tx.redeem_slices_tx(o["id"], n)
+        if o["kind"] == "G":
+            self.redeem_gated(o, n)
+        else:
+            self.open_redeem_tx(o, n, None)
+
+    def redeem_gated(self, o, n):
+        text = self.pin_text.strip()
+        if not text:
+            self.pin_msg = S.OD_PIN_NEEDED
+            self.refresh_detail()
+            return
+        self.pin_msg = S.OD_PIN_CHECKING
+        self.refresh_detail()
+        threading.Thread(target=self._pin_worker,
+                         args=(o, n, text, self.d["address"].strip()), daemon=True).start()
+
+    def _pin_worker(self, o, n, text, me):
+        """Read the offer's on-chain PIN hash and find which form of the typed PIN matches it."""
+        try:
+            c = core.Chain(self.app.key.text).pin_commitment(o["id"])
+            pin = tx.match_pin(text, c, o.get("donor", ""), me)
+            Clock.schedule_once(lambda dt: self.pin_done(o, n, pin, None))
+        except Exception as e:  # noqa: BLE001
+            m = str(e)
+            Clock.schedule_once(lambda dt: self.pin_done(o, n, None, m))
+
+    def pin_done(self, o, n, pin, err):
+        if self.sel_id != o["id"]:
+            return                              # the person moved on to another offer
+        if err:
+            self.pin_msg = S.OD_PIN_ERROR.format(error=err)
+        elif pin is None:
+            self.pin_msg = S.OD_PIN_BAD
+        else:
+            self.pin_msg = ""
+            self.open_redeem_tx(o, n, pin)
+        self.refresh_detail()
+
+    def open_redeem_tx(self, o, n, pin):
+        t = tx.redeem_slices_tx(o["id"], n, pin, o.get("donor"))
         p = t["params"]
         R = S.RO_ROWS
         rows = [(R["id"], p["id"], p["id"]), (R["slices"], p["slices"], p["slices"]),
                 (R["pin"], p["pin"], short(p["pin"])),
                 (R["r"], p["r"], '["' + short(p["payloadHash"]) + '","0x",""]')]
         summary = S.RO_SUMMARY.format(n=n, id=o["id"], kind=o["kind"], eth=t["payout_eth"])
-        tip = S.RO_TIP.format(wallet=short(self.d["address"]), block=o["sweepable_at"])
+        tip = (S.RO_TIP_PIN if pin is not None else S.RO_TIP).format(
+            wallet=short(self.d["address"]), block=o["sweepable_at"])
         self.app.open_overlay(TxScreen(self.app, t, summary, S.RO_FN, rows, tip, S.RO_WARN))
 
     def on_transfer(self, o):
