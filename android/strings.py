@@ -55,6 +55,8 @@ ERR_RECIPIENT_ADDR = "Recipient must be a 0x address (42 characters)"
 ERR_MIN_SEND = "Send at least 1 dSOS"
 ERR_USER_ADDR = "Wallet must be a 0x address (42 characters)"
 ERR_MIN_CREDIT = "Redeem at least 1 credit"
+ERR_STAKE_VALUE = "Stake amount must be a whole number of slices (0.001 ETH each)"
+ERR_OFFER_ID = "Offer id must be 1 or higher"
 
 # ------------------------------------------------------------------ shared offer card / rows
 OFFER_CARD = (
@@ -95,20 +97,47 @@ OFFERS_HELP = (
     "Expired offers still count in your balance until someone sweeps them.")
 
 # ------------------------------------------------------------------ stake tab
-STAKE_STATUS = (
-    "[size=22sp][b]{state}[/b][/size]\n{redeem}\n\n"
-    "Cheapest gate offer right now:\n[b]{eth} ETH[/b] (type G, delay 1 block)")
-STAKE_STAKED = "Staked"
-STAKE_NOT_STAKED = "Not staked"
-STAKE_CAN_REDEEM = "You can redeem credits now."
-STAKE_CANNOT_REDEEM = "Credits cannot be redeemed yet."
-STAKE_HOW = (
-    "[b]How staking works[/b]\n"
-    "1. Create a G offer with delay 1 and a value above the gate requirement.\n"
-    "2. Let it expire and sweep it. The ETH stays in the pool for good.\n"
-    "3. You are staked forever, then wait 14,400 blocks (about 2 days) "
-    "before your first credit redemption.\n\n"
-    "Redeeming any part of a gate offer removes its gate flag, so you do not get staked.")
+STAKE_TITLE = "[b]Stake[/b]"
+STAKE_PILL_STAKED = "Staked"
+STAKE_PILL_NOT_STAKED = "Not staked"
+STAKE_INTRO = "Stakers can form and redeem credits from their SOS trust records."
+STAKE_REQUIRED_BOX = ("[size=14sp]Required now[/size]\n"
+                      "[size=44sp][b]{eth}[/b][/size] [size=18sp]ETH[/size]")
+STAKE_REQUIRED_NOTE = ("{n:,} slices · the smallest gate offer above the pool's "
+                       "unallocated balance + 0.001 ETH")
+STAKE_STEPS = (  # title, subtitle
+    ("Create the gate offer", "A gated offer with a 1-block window."),
+    ("Sweep it after the next block", "You become permanently staked."),
+    ("Wait 14,400 blocks", "About 2 days before your first credit redeem."),
+)
+STAKE_STEP_TEXT = "[b]{title}[/b]\n[size=14sp]{sub}[/size]"
+STAKE_DONATION_WARN = ("One-way donation. Once swept, the ETH stays in the shared pool "
+                       "and cannot be redeemed.")
+STAKE_CHECK = "I understand this donation is permanent."
+STAKE_BTN = "Stake {eth} ETH"
+STAKE_BTN_DONE = "Already staked"
+STAKE_SWEEP = "Sweep mine"
+STAKE_SWEEP_NONE = "No offers are ready to sweep yet."
+STAKE_SWEEP_READY = "{n} offer{s} ready to sweep."
+STAKE_SUMMARY = ("[b]Stake: create a gate offer[/b]\n{eth} ETH ({n:,} slices)\n"
+                 "Holder {holder}, window 1 block, gated")
+STAKE_ROWS = {"payable": "payable amount (ETH)", "to": "to (address)", "delay": "delayBlocks",
+              "pin": "pinCommitment_", "hash": "payloadHash", "sig": "signature (bytes)"}
+STAKE_TIP = ("metadata (string): leave it empty. The PIN commitment is random on purpose: "
+             "nobody can redeem this offer, so its ETH can only be swept into the pool, and "
+             "that is what stakes you. After the transaction is mined, wait one block and "
+             "tap Sweep mine.")
+STAKE_WARN = ("The offer only counts as a gate if its value is above the pool's unallocated "
+              "balance + 0.001 ETH when it is mined. If the pool grew in between, the ETH is "
+              "donated and you are not staked. Reload right before you send.")
+STAKE_FN = "createOfferGated"
+SWEEP_SUMMARY = ("[b]Sweep offer #{id}[/b]\nMoves its ETH into the shared pool\n"
+                 "{pos} of {total} ready to sweep")
+SWEEP_ROWS = {"id": "id (uint256)"}
+SWEEP_TIP = ("Anyone can sweep an expired offer. If this was your gate offer, you become "
+             "permanently staked. Sweep the rest one by one.")
+SWEEP_WARN = "Sweeping burns the slices of this offer. Its ETH stays in the pool."
+SWEEP_FN = "sweepOffer"
 
 # ------------------------------------------------------------------ credits tab
 CREDITS_TITLE = "[b]Credits[/b]"

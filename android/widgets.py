@@ -267,15 +267,112 @@ def title_row(text, link_text=None, on_link=None):
 class Divider(Widget):
     """Thin horizontal line between rows."""
 
-    def __init__(self, **kw):
+    def __init__(self, color=(0.9, 0.91, 0.91, 1), **kw):
         kw.setdefault("size_hint_y", None)
         kw.setdefault("height", dp(1))
         super().__init__(**kw)
         with self.canvas:
-            Color(0.9, 0.91, 0.91, 1)
+            Color(*color)
             self._r = Rectangle()
         self.bind(pos=self._upd, size=self._upd)
 
     def _upd(self, *_):
         self._r.pos = self.pos
         self._r.size = self.size
+
+
+class Check(Widget):
+    """Tick box. `active` is True when ticked; on_change(active) is called on every tap."""
+
+    def __init__(self, on_change=None, **kw):
+        kw.setdefault("size_hint", (None, None))
+        kw.setdefault("size", (dp(34), dp(34)))
+        super().__init__(**kw)
+        self.active = False
+        self.on_change = on_change
+        self.bind(pos=self.redraw, size=self.redraw)
+        self.redraw()
+
+    def redraw(self, *_):
+        self.canvas.clear()
+        x, y = self.pos
+        w, h = self.size
+        with self.canvas:
+            Color(*(BLUE if self.active else WHITE))
+            RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(6)])
+            if self.active:
+                Color(*WHITE)
+                Line(points=[x + w * .22, y + h * .52, x + w * .42, y + h * .30,
+                             x + w * .78, y + h * .72], width=dp(2.6))
+
+    def toggle(self):
+        self.active = not self.active
+        self.redraw()
+        if self.on_change:
+            self.on_change(self.active)
+
+    def on_touch_down(self, touch):
+        if self.collide_point(*touch.pos):
+            self.toggle()
+            return True
+        return super().on_touch_down(touch)
+
+
+class LockIcon(Widget):
+    """Blue padlock on a light-blue rounded square."""
+
+    def __init__(self, **kw):
+        kw.setdefault("size_hint", (None, None))
+        kw.setdefault("size", (dp(54), dp(60)))
+        super().__init__(**kw)
+        self.bind(pos=self.redraw, size=self.redraw)
+        self.redraw()
+
+    def redraw(self, *_):
+        self.canvas.clear()
+        x, y = self.pos
+        w, h = self.size
+        with self.canvas:
+            Color(0.87, 0.9, 1, 1)
+            RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(16)])
+            Color(*BLUE)
+            Line(rounded_rectangle=(x + w * .34, y + h * .42, w * .32, h * .28, dp(8)),
+                 width=dp(2.4))
+            RoundedRectangle(pos=(x + w * .26, y + h * .24), size=(w * .48, h * .30),
+                             radius=[dp(5)])
+
+
+class Dot(Label):
+    """Round numbered marker used in the step list."""
+
+    def __init__(self, bg=BLUE, **kw):
+        kw.setdefault("size_hint", (None, None))
+        kw.setdefault("size", (dp(40), dp(40)))
+        kw.setdefault("bold", True)
+        super().__init__(**kw)
+        with self.canvas.before:
+            self._c = Color(*bg)
+            self._e = Ellipse()
+        self.bind(pos=self._upd, size=self._upd)
+
+    def _upd(self, *_):
+        self._e.pos = self.pos
+        self._e.size = self.size
+
+
+class Steps(BoxLayout):
+    """Vertical list of equal rows with a line running through the dots."""
+
+    def __init__(self, **kw):
+        kw.setdefault("orientation", "vertical")
+        super().__init__(**kw)
+        with self.canvas.before:
+            Color(0.78, 0.8, 0.8, 1)
+            self._ln = Line(points=[0, 0, 0, 0], width=dp(3))
+        self.bind(pos=self.update_line, size=self.update_line)
+
+    def update_line(self, *_):
+        n = max(len(self.children), 1)
+        row = self.height / n
+        x = self.x + dp(25)
+        self._ln.points = [x, self.top - row / 2, x, self.y + row / 2]

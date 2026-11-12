@@ -156,3 +156,44 @@ def redeem_credit_tx(user, credits, nonce):
             "params": {"creditsToSpend": str(int(credits)), "payloadHash": ph_hex,
                        "r": '["' + ph_hex + '","0x",""]'},
             "payout_eth": f"{value_wei / 1e18:.6f}".rstrip("0").rstrip(".")}
+
+
+# ---------------------------------------------------------------- stake / sweep
+GATED_SIG = "createOfferGated(address,uint256,bytes32,bytes32,bytes,string)"
+SWEEP_SIG = "sweepOffer(uint256)"
+GATE_DELAY = 1
+
+
+def stake_tx(holder, need_wei):
+    """createOfferGated(holder, 1, randomCommitment, randomHash, 0x, ""). The PIN commitment is
+    random and the PIN is never kept, so nobody can redeem the offer: it can only be swept into
+    the pool, which is what stakes the donor. `need_wei` = stakeRequirement()."""
+    if not valid_address(holder):
+        raise ValueError(S.ERR_HOLDER_ADDR)
+    if need_wei < UNIT_WEI or need_wei % UNIT_WEI:
+        raise ValueError(S.ERR_STAKE_VALUE)
+    pin_c = os.urandom(32)
+    while pin_c == bytes(32):
+        pin_c = os.urandom(32)
+    ph = os.urandom(32)
+    head = [enc(holder.strip().lower()), enc(GATE_DELAY), pin_c, ph, enc(6 * 32), enc(7 * 32)]
+    tail = [enc(0), enc(0)]
+    data = "0x" + (selector(GATED_SIG) + b"".join(head + tail)).hex()
+    return {
+        "to": DSOS,
+        "value_wei": int(need_wei),
+        "value_eth": f"{need_wei / 1e18:.6f}".rstrip("0").rstrip("."),
+        "data": data,
+        "params": {"to": holder.strip(), "delayBlocks": str(GATE_DELAY),
+                   "pinCommitment_": "0x" + pin_c.hex(), "payloadHash": "0x" + ph.hex(),
+                   "signature": "0x", "metadata": ""},
+    }
+
+
+def sweep_offer_tx(offer_id):
+    """sweepOffer(id): anyone may call it once the offer has expired."""
+    if offer_id < 1:
+        raise ValueError(S.ERR_OFFER_ID)
+    return {"to": DSOS, "value_wei": 0, "value_eth": "0",
+            "data": "0x" + (selector(SWEEP_SIG) + enc(int(offer_id))).hex(),
+            "params": {"id": str(int(offer_id))}}

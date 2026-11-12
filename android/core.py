@@ -163,6 +163,8 @@ class Chain:
         supply = u(c(DSOS, "totalSupply()")[0])
         need = u(c(DSOS, "stakeRequirement()")[0])
         st = c(LEDGER, "statsOf(address)", [a])
+        sw = c(DSOS, "sweepableOffers(address)", [a])
+        sweepable_ids = [u(x) for x in sw[2:2 + u(sw[1])]]
         staked_at = u(c(DSOS, "stakedAt(address)", [a])[0])
         nonce = u(c(DSOS, "redeemNonce(address)", [a])[0])
         earmarked = u(c(DSOS, "totalEarmarked()")[0])
@@ -179,7 +181,7 @@ class Chain:
             "offers": offers, "staked": staked, "can_redeem": can,
             "credits": credits, "formable": formable,
             "pool_wei": pool, "supply": supply, "stake_need_wei": need,
-            "staked_at": staked_at, "redeem_nonce": nonce, "earmarked_wei": earmarked,
+            "sweepable_ids": sweepable_ids, "staked_at": staked_at, "redeem_nonce": nonce, "earmarked_wei": earmarked,
             "min_reserve_wei": reserve, "cooldown": cooldown,
             "push": u(st[0]), "trust": u(st[1]), "effective": s(st[2]),
         }
