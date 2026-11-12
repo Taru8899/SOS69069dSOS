@@ -24,6 +24,7 @@ import page_wallet
 import strings as S
 import util
 from page_create import CreateScreen
+from page_redeem import RedeemScreen
 from page_send import SendScreen
 from theme import (BLACK, BLUE, GREEN, HAS_LOGO, LOGO, SPLASH_SECONDS, WHITE,
                    set_visible, short)
@@ -170,6 +171,12 @@ class DsosApp(App):
             self.msg.text = S.MSG_LOAD_FIRST
             return
         self.open_overlay(SendScreen(self))
+
+    def open_redeem(self):
+        if not self.data:
+            self.msg.text = S.MSG_LOAD_FIRST_REDEEM
+            return
+        self.open_overlay(RedeemScreen(self))
 
     def coming(self, name):
         self.msg.text = S.MSG_COMING.format(name=name)

@@ -46,7 +46,7 @@ def build(app, b, d):
     acts = BoxLayout(size_hint_y=None, height=dp(96), spacing=dp(8))
     acts.add_widget(action_btn(S.ICON_SEND, S.ACTION_SEND, app.open_send, bg=BLUE, fg=WHITE))
     acts.add_widget(action_btn(S.ICON_CREATE, S.ACTION_CREATE, app.open_create))
-    acts.add_widget(action_btn(S.ICON_REDEEM, S.ACTION_REDEEM, lambda: app.coming(S.ACTION_REDEEM)))
+    acts.add_widget(action_btn(S.ICON_REDEEM, S.ACTION_REDEEM, app.open_redeem))
     acts.add_widget(action_btn(S.ICON_STAKE, S.ACTION_STAKE, lambda: app.set_page("stake")))
     b.add_widget(acts)
     if d["next_expiry"]:

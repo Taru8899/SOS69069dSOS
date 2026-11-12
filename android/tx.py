@@ -197,3 +197,33 @@ def sweep_offer_tx(offer_id):
     return {"to": DSOS, "value_wei": 0, "value_eth": "0",
             "data": "0x" + (selector(SWEEP_SIG) + enc(int(offer_id))).hex(),
             "params": {"id": str(int(offer_id))}}
+
+
+# ---------------------------------------------------------------- redeem slices of an offer
+REDEEM_SLICES_SIG = "redeemSlices(uint256,uint256,bytes32,(bytes32,bytes,string))"
+
+
+def redeem_slices_tx(offer_id, slices):
+    """redeemSlices(id, slices, pin=0, (payloadHash, 0x, "")) for B/T/P offers (no PIN).
+    Empty signature: the ledger record is skipped and the redeem still pays out."""
+    if offer_id < 1:
+        raise ValueError(S.ERR_OFFER_ID)
+    if slices < 1:
+        raise ValueError(S.ERR_SLICES)
+    ph = os.urandom(32)
+    data = selector(REDEEM_SLICES_SIG) + b"".join([
+        enc(int(offer_id)), enc(int(slices)),
+        bytes(32),          # pin = 0x00..00 (only G offers use a PIN)
+        enc(4 * 32),        # offset of the tuple r
+        ph,                 # r.payloadHash
+        enc(3 * 32),        # r.signature offset (inside the tuple)
+        enc(4 * 32),        # r.metadata offset (inside the tuple)
+        enc(0), enc(0),     # signature = 0x, metadata = ""
+    ])
+    ph_hex = "0x" + ph.hex()
+    wei = int(slices) * UNIT_WEI
+    return {"to": DSOS, "value_wei": 0, "value_eth": "0", "data": "0x" + data.hex(),
+            "params": {"id": str(int(offer_id)), "slices": str(int(slices)),
+                       "pin": "0x" + "00" * 32, "payloadHash": ph_hex,
+                       "r": '["' + ph_hex + '","0x",""]'},
+            "payout_eth": f"{wei / 1e18:.6f}".rstrip("0").rstrip(".")}

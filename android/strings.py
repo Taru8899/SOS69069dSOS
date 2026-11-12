@@ -29,6 +29,7 @@ MSG_CLIPBOARD_EMPTY_DOT = "Clipboard is empty or not readable."
 MSG_LOADING = "Loading..."
 MSG_BLOCK_VIA = "Block {block:,} via {source}"
 MSG_LOAD_FIRST = "Load your wallet first, then tap Send."
+MSG_LOAD_FIRST_REDEEM = "Load your wallet first, then tap Redeem."
 MSG_COMING = "{name} is coming in the next step."
 
 ERROR_CARD = "[b]Error[/b]\n{error}"
@@ -57,6 +58,7 @@ ERR_USER_ADDR = "Wallet must be a 0x address (42 characters)"
 ERR_MIN_CREDIT = "Redeem at least 1 credit"
 ERR_STAKE_VALUE = "Stake amount must be a whole number of slices (0.001 ETH each)"
 ERR_OFFER_ID = "Offer id must be 1 or higher"
+ERR_SLICES = "Redeem at least 1 slice"
 
 # ------------------------------------------------------------------ shared offer card / rows
 OFFER_CARD = (
@@ -277,3 +279,33 @@ TX_DEFAULT_WARN = ("Offers not redeemed before expiry can be swept into the shar
 TX_COPIED = "Copied: {title}"
 TX_COPY_FAILED = "Copy failed on this phone."
 TX_OPEN_FAILED = "Could not open the browser."
+
+# ------------------------------------------------------------------ redeem offers page
+RO_TITLE = "[b]Redeem[/b]"
+RO_AVAILABLE = "[size=13sp]Redeemable now[/size]\n[size=24sp][b]{n:,} dSOS[/b][/size]"
+RO_AVAILABLE_ETH = "[size=13sp]= {eth} ETH[/size]"
+RO_PICK = "[b]Pick an offer[/b]"
+RO_ROW = "{kind}    #{id}    {left}    {count} dSOS"
+RO_AMOUNT = ("[size=56sp][b]{n}[/b][/size] [size=18sp]dSOS[/size]\n"
+             "[size=15sp]you receive {eth} ETH[/size]")
+RO_MAX = "Max {n}"
+RO_BUTTON = "Redeem {n} dSOS"
+RO_BUTTON_EMPTY = "Redeem"
+RO_NOTE = "Redeem before block {block:,}. The ETH is paid straight to your wallet."
+RO_ERR_NONE = "Nothing can be redeemed right now."
+RO_ERR_AMOUNT = "Pick an amount."
+RO_GATED = ("{n} gated offer{s} ({slices} dSOS) need a PIN and are not listed. "
+            "Coming in the next step.")
+RO_SWEEP_TITLE = "[b]Expired offers[/b]"
+RO_SWEEP_HELP = ("Expired offers can no longer be redeemed. Sweeping moves their ETH into the "
+                 "shared pool.")
+RO_SWEEP_ROW = "[b]#{id}[/b]  {kind}  {count} dSOS"
+RO_SWEEP_ROW_UNKNOWN = "[b]#{id}[/b]"
+RO_SWEEP_BTN = "Sweep"
+RO_SUMMARY = "[b]Redeem {n} dSOS[/b]\nOffer #{id} - {kind}\n= {eth} ETH paid to your wallet"
+RO_ROWS = {"id": "id (uint256)", "slices": "slices (uint256)", "pin": "pin (bytes32)",
+           "r": "r (tuple: paste as one value)"}
+RO_TIP = ("On Etherscan paste the r value above into the single field called r. The pin is all "
+          "zeros because this offer has no PIN. Send it from {wallet} before block {block:,}.")
+RO_WARN = "Redeemed slices are burned and the ETH is paid out. This cannot be undone."
+RO_FN = "redeemSlices"
