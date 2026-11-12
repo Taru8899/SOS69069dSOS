@@ -91,12 +91,41 @@ ACTIVE_OFFERS = "Active offers"
 NO_ACTIVE_OFFERS = "No active offers."
 SHARED_POOL = "Shared pool\n[b]{eth} ETH[/b] - {supply:,} dSOS active"
 
-# ------------------------------------------------------------------ offers tab
-OFFERS_TITLE = "Offers ({n})"
-OFFERS_HELP = (
-    "[b]How to read this[/b]\n"
-    "Sendable = not a G offer and more than 7,200 blocks (about 1 day) left.\n"
-    "Expired offers still count in your balance until someone sweeps them.")
+# ------------------------------------------------------------------ offers tab (My offers)
+OFFERS_TITLE = "[b]My offers[/b]"
+OFFERS_SUMMARY = "{n} active · {slices:,} dSOS"
+OFFERS_FILTERS = (("all", "All"), ("redeemable", "Redeemable"), ("expiring", "Expiring"),
+                  ("expired", "Expired"))
+OFFERS_EMPTY = "No offers in this view."
+OC_TITLE = "[b]{count:,} dSOS · #{id}{pin}[/b]"
+OC_SUB_FROM = "{eth} ETH · from {donor}"
+OC_SUB_YOU = "{eth} ETH · created by you"
+OC_SUB_GATED = "{eth} ETH · not sendable"
+OC_SUB_EXPIRED = "Expired · anyone can sweep"
+OC_LEFT = "{left} · expires block {block:,}"
+OD_TITLE = "[b]Offer #{id}[/b]\n{count:,} dSOS · {eth} ETH · {left}"
+OD_SLICES = "Slices to use"
+OD_OF = "[size=26sp][b]{n}[/b][/size] of {total}"
+OD_REDEEM = "Redeem {eth} ETH"
+OD_TRANSFER = "Transfer {n}"
+OD_SWEEP = "Sweep offer #{id}"
+OD_NOTE_PARTIAL = ("The other {n} slice{s} stay with you with the same expiry. "
+                   "Gated offers ask for the PIN.")
+OD_NOTE_ALL = "This uses the whole offer. Gated offers ask for the PIN."
+OD_NOTE_TRANSFER = "The recipient gets {n} slice{s} with the same expiry."
+OD_NOTE_GATED = ("Gated offers need the PIN to redeem and cannot be sent. "
+                 "Coming in the next step.")
+OD_NOTE_EXPIRED = ("Expired offers cannot be redeemed or sent. Sweeping moves their ETH into "
+                   "the shared pool.")
+OD_SWEEP_SUMMARY = "[b]Sweep offer #{id}[/b]\nMoves its ETH into the shared pool"
+OT_SUMMARY = "[b]Transfer {n} dSOS[/b]\nOffer #{id} - {kind}\nTo {to}"
+OT_ROWS = {"id": "id (uint256)", "slices": "slices (uint256)", "to": "to (address)",
+           "r": "r (tuple: paste as one value)"}
+OT_TIP = ("On Etherscan paste the r value above into the single field called r. If you send "
+          "fewer slices than the offer holds, the recipient gets a new offer with the same "
+          "expiry. Send it from {wallet}.")
+OT_WARN = "A transfer cannot be undone. Check the recipient address character by character."
+OT_FN = "transferSlices"
 
 # ------------------------------------------------------------------ stake tab
 STAKE_TITLE = "[b]Stake[/b]"

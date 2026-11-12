@@ -1,6 +1,7 @@
 """Reusable widgets and small UI helpers."""
 from kivy.graphics import Color, Ellipse, Line, Rectangle, RoundedRectangle
 from kivy.metrics import dp
+from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
@@ -376,3 +377,69 @@ class Steps(BoxLayout):
         row = self.height / n
         x = self.x + dp(25)
         self._ln.points = [x, self.top - row / 2, x, self.y + row / 2]
+
+
+class Tappable(ButtonBehavior, Panel):
+    """White card that can be tapped (on_release) and shows a blue border when selected."""
+
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        with self.canvas.after:
+            self._bc = Color(0, 0, 0, 0)
+            self._ln = Line(rounded_rectangle=(0, 0, 1, 1, dp(18)), width=dp(2))
+        self.bind(pos=self._upd_border, size=self._upd_border)
+
+    def _upd_border(self, *_):
+        self._ln.rounded_rectangle = (self.x, self.y, self.width, self.height, dp(18))
+
+    def set_selected(self, on):
+        self._bc.rgba = BLUE if on else (0, 0, 0, 0)
+
+
+class Badge(Label):
+    """Rounded square with the offer type letter (B, T, P, G)."""
+    STYLE = {"B": (BLUE, WHITE), "T": (BLACK, WHITE), "P": (GREEN, WHITE), "G": (WHITE, BLACK)}
+
+    def __init__(self, kind, **kw):
+        kw.setdefault("size_hint", (None, None))
+        kw.setdefault("size", (dp(48), dp(48)))
+        bg, fg = self.STYLE.get(kind, (BLACK, WHITE))
+        super().__init__(text=kind, color=fg, bold=True, font_size="20sp", **kw)
+        with self.canvas.before:
+            Color(*bg)
+            self._r = RoundedRectangle(radius=[dp(12)])
+            if kind == "G":
+                Color(*BLACK)
+                self._ln = Line(rounded_rectangle=(0, 0, 1, 1, dp(12)), width=dp(2))
+            else:
+                self._ln = None
+        self.bind(pos=self._upd, size=self._upd)
+
+    def _upd(self, *_):
+        self._r.pos = self.pos
+        self._r.size = self.size
+        if self._ln is not None:
+            self._ln.rounded_rectangle = (self.x, self.y, self.width, self.height, dp(12))
+
+
+class ProgressBar(Widget):
+    """Thin rounded bar: frac = share of the window still left (0..1)."""
+
+    def __init__(self, frac=0.0, color=GREEN, **kw):
+        kw.setdefault("size_hint_y", None)
+        kw.setdefault("height", dp(8))
+        super().__init__(**kw)
+        self.frac = max(0.0, min(1.0, frac))
+        self.color = color
+        self.bind(pos=self.redraw, size=self.redraw)
+        self.redraw()
+
+    def redraw(self, *_):
+        self.canvas.clear()
+        with self.canvas:
+            Color(0.9, 0.91, 0.91, 1)
+            RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(4)])
+            if self.frac > 0:
+                Color(*self.color)
+                RoundedRectangle(pos=self.pos, size=(max(self.width * self.frac, dp(8)), self.height),
+                                 radius=[dp(4)])
