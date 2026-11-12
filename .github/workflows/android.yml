@@ -21,6 +21,30 @@ jobs:
             sed -i '/logo.png/d;/presplash_color/d' android/buildozer.spec
           fi
 
+      # ---- wallet link: bundle the WalletConnect client (JavaScript) into android/wc_bundle.js
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Test and bundle the wallet link
+        working-directory: wc
+        run: |
+          npm install --no-audit --no-fund
+          npm test
+          npm run build
+          ls -l ../android/wc_bundle.js
+
+      - name: Package .js files in the APK
+        run: |
+          spec=android/buildozer.spec
+          if grep -q '^source.include_exts' "$spec"; then
+            grep '^source.include_exts' "$spec" | grep -qE '(=|,) *js *(,|$)' || \
+              sed -i '/^source.include_exts/ s/$/,js/' "$spec"
+          else
+            sed -i '/^\[app\]/a source.include_exts = py,png,jpg,kv,atlas,js' "$spec"
+          fi
+          grep '^source.include_exts' "$spec"
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -32,21 +56,14 @@ jobs:
 
       - name: System packages
         run: |
-          # The Azure mirror is sometimes unreachable: use the main Ubuntu mirror and retry
-          sudo sed -i 's|azure.archive.ubuntu.com|archive.ubuntu.com|g' \
-            /etc/apt/sources.list /etc/apt/sources.list.d/* 2>/dev/null || true
-          ok=0
-          for i in 1 2 3; do
-            if sudo apt-get update -o Acquire::Retries=5 -o Acquire::http::Timeout=30 && \
-               sudo apt-get install -y -o Acquire::Retries=5 -o Acquire::http::Timeout=30 \
-                 git zip unzip autoconf automake libtool \
-                 pkg-config zlib1g-dev libncurses-dev cmake libffi-dev libssl-dev \
-                 libltdl-dev build-essential; then
-              ok=1; break
-            fi
-            echo "apt failed (attempt $i), retrying in 20s"; sleep 20
-          done
-          [ "$ok" = 1 ] || exit 1
+          retry() { for i in 1 2 3 4; do "$@" && return 0; echo "retry $i"; sleep 20; done; return 1; }
+          # the default Azure mirror is sometimes unreachable: use the main Ubuntu archive
+          sudo sed -i 's#http://azure.archive.ubuntu.com#http://archive.ubuntu.com#g' \
+            /etc/apt/sources.list /etc/apt/sources.list.d/*.sources 2>/dev/null || true
+          retry sudo apt-get update
+          retry sudo apt-get install -y git zip unzip autoconf automake libtool \
+            pkg-config zlib1g-dev libncurses-dev cmake libffi-dev libssl-dev \
+            libltdl-dev build-essential
 
       - name: Install Buildozer
         run: pip install "buildozer==1.5.0" "cython<3" virtualenv
