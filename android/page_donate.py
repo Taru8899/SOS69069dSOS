@@ -100,5 +100,5 @@ class DonateScreen(Overlay):
             self.note.text = str(e)
             return
         summary = S.DONATE_SUMMARY.format(eth=t["value_eth"])
-        self.app.safe_overlay(lambda: TxScreen(self.app, t, summary, "", [], S.DONATE_TIP.format(
+        self.app.open_overlay(TxScreen(self.app, t, summary, "", [], S.DONATE_TIP.format(
             eth=t["value_eth"]), S.DONATE_WARN))

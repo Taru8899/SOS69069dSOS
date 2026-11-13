@@ -123,7 +123,7 @@ class StakePage:
                 (R["sig"], "0x", "0x")]
         summary = S.STAKE_SUMMARY.format(eth=t["value_eth"], n=self.need // core.UNIT,
                                          holder=short(holder))
-        self.app.safe_overlay(lambda: TxScreen(self.app, t, summary, S.STAKE_FN, rows,
+        self.app.open_overlay(TxScreen(self.app, t, summary, S.STAKE_FN, rows,
                                        S.STAKE_TIP, S.STAKE_WARN))
 
     def on_sweep(self):
@@ -133,7 +133,7 @@ class StakePage:
         t = tx.sweep_offer_tx(oid)
         summary = S.SWEEP_SUMMARY.format(id=oid, pos=1, total=len(self.sweep_ids))
         rows = [(S.SWEEP_ROWS["id"], str(oid), str(oid))]
-        self.app.safe_overlay(lambda: TxScreen(self.app, t, summary, S.SWEEP_FN, rows,
+        self.app.open_overlay(TxScreen(self.app, t, summary, S.SWEEP_FN, rows,
                                        S.SWEEP_TIP, S.SWEEP_WARN))
 
 

@@ -1,7 +1,6 @@
 """Reusable widgets and small UI helpers."""
 from kivy.graphics import Color, Ellipse, Line, Rectangle, RoundedRectangle
 from kivy.metrics import dp
-from kivy.clock import Clock
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
@@ -10,6 +9,7 @@ from kivy.uix.image import Image
 from kivy.uix.label import Label
 from kivy.uix.textinput import TextInput
 from kivy.uix.widget import Widget
+from kivy.clock import Clock
 
 import core
 import strings as S
@@ -44,88 +44,78 @@ class Overlay(FloatLayout):
         return self.collide_point(*touch.pos)
 
 
-class Splash(Overlay):
-    """Animated dSOS welcome screen; remains a root-level overlay."""
+class Splash(FloatLayout):
+    """v8 Welcome / splash: near-black with green/blue light streaks, logo, wordmark, spinner."""
+
     def __init__(self, **kw):
         super().__init__(**kw)
-        # Override the inherited green field with the v8 near-black canvas.
         with self.canvas.before:
-            Color(0.012, 0.018, 0.025, 1)
-            self._dark_bg = Rectangle(pos=self.pos, size=self.size)
-            Color(0.02, 0.55, 0.22, 0.24)
-            self._glow = Ellipse(pos=(0, 0), size=(dp(260), dp(260)))
-            Color(0.0, 0.35, 0.95, 0.48)
-            self._streak_blue = Line(points=[0, 0, 1, 1], width=dp(2.2))
-            Color(0.02, 0.75, 0.28, 0.65)
-            self._streak_green = Line(points=[0, 0, 1, 1], width=dp(2.8))
-        self.bind(pos=self._splash_canvas, size=self._splash_canvas)
+            Color(0.04, 0.05, 0.06, 1)
+            self._bg = Rectangle(pos=self.pos, size=self.size)
+            # green glow top-left
+            Color(0.02, 0.55, 0.18, 0.35)
+            self._glow = Ellipse(pos=(-dp(80), self.height * 0.55 if self.height else 400),
+                                 size=(dp(320), dp(320)))
+            # diagonal green streaks (left)
+            Color(0.05, 0.7, 0.25, 0.18)
+            self._g1 = Line(points=[], width=dp(3))
+            self._g2 = Line(points=[], width=dp(2))
+            # blue streaks (right / bottom)
+            Color(0.1, 0.25, 0.9, 0.16)
+            self._b1 = Line(points=[], width=dp(2.5))
+            self._b2 = Line(points=[], width=dp(2))
+        self.bind(pos=self._upd_splash, size=self._upd_splash)
 
-        mark = Widget(size_hint=(None, None), size=(dp(104), dp(104)),
-                      pos_hint={"center_x": 0.5, "center_y": 0.70})
-        with mark.canvas.before:
-            Color(1, 1, 1, 1)
-            mark._circle = Ellipse(pos=mark.pos, size=mark.size)
-        mark.bind(pos=lambda w, p: setattr(w._circle, "pos", p),
-                  size=lambda w, z: setattr(w._circle, "size", z))
-        self.add_widget(mark)
-        self.add_widget(Label(text="69069", color=(0.02, 0.05, 0.03, 1), bold=True,
-                              font_size="23sp", size_hint=(None, None), size=(dp(104), dp(104)),
-                              pos_hint={"center_x": 0.5, "center_y": 0.70}))
-        self.add_widget(Label(text="dSOS", color=WHITE, bold=True, font_size="42sp",
-                              size_hint=(1, None), height=dp(58),
-                              pos_hint={"center_x": 0.5, "center_y": 0.48}))
-        self.add_widget(Label(text="1 dSOS  =  1 slice  =  0.001 ETH", color=(0.82, 0.9, 0.86, 1),
-                              font_size="15sp", size_hint=(1, None), height=dp(30),
-                              pos_hint={"center_x": 0.5, "center_y": 0.39}))
-        self.add_widget(Label(text="Authority of One 69069 AIX", color=(0.35, 0.72, 1, 1),
-                              font_size="14sp", size_hint=(1, None), height=dp(26),
-                              pos_hint={"center_x": 0.5, "center_y": 0.34}))
-        self.add_widget(Label(text="A Ledger of Presence · No Assets to hold · No Wallet to drain",
-                              color=(0.62, 0.69, 0.72, 1), font_size="10sp",
-                              size_hint=(0.94, None), height=dp(24),
-                              pos_hint={"center_x": 0.5, "center_y": 0.29}))
-        self.status_lbl = Label(text="Connecting to Ethereum…", color=(0.75, 0.82, 0.82, 1),
-                                font_size="12sp", size_hint=(1, None), height=dp(24),
-                                pos_hint={"center_x": 0.5, "center_y": 0.20})
-        self.add_widget(self.status_lbl)
-        self._spin_angle = 0
-        self._spinner = Widget(size_hint=(None, None), size=(dp(36), dp(36)),
-                               pos_hint={"center_x": 0.5, "center_y": 0.25})
-        with self._spinner.canvas:
-            Color(0.05, 0.48, 1, 1)
-            self._spin_line = Line(circle=(0, 0, dp(14), 0, 270), width=dp(3))
-        self._spinner.bind(pos=self._spin_draw, size=self._spin_draw)
-        self.add_widget(self._spinner)
-        try:
-            from build_info import VERSION, BUILD, COMMIT
-        except Exception:
-            VERSION, BUILD, COMMIT = "0.2.0", "local", "unknown"
-        self.add_widget(Label(text=f"v{VERSION}  ·  Build {BUILD}  ·  {COMMIT[:8]}",
-                              color=(0.48, 0.55, 0.58, 1), font_size="10sp",
-                              size_hint=(1, None), height=dp(20),
-                              pos_hint={"center_x": 0.5, "y": 0.025}))
-        self._spin_event = Clock.schedule_interval(self._spin, 1 / 30)
+        col = BoxLayout(orientation="vertical", size_hint=(0.88, 0.78),
+                        pos_hint={"center_x": 0.5, "center_y": 0.52}, spacing=dp(8))
+        if HAS_LOGO:
+            col.add_widget(Image(source=LOGO, size_hint=(None, None),
+                                 size=(dp(96), dp(96)),
+                                 pos_hint={"center_x": 0.5}))
+        col.add_widget(Label(text="[b]dSOS[/b]", markup=True, font_size="42sp",
+                             color=WHITE, size_hint_y=None, height=dp(52),
+                             halign="center"))
+        col.add_widget(Label(text="1 dSOS = 1 slice = 0.001 ETH",
+                             font_size="15sp", color=(0.75, 0.9, 0.8, 1),
+                             size_hint_y=None, height=dp(28), halign="center"))
+        col.add_widget(Label(text="Decentralized. Trustless.\nYours.",
+                             markup=True, font_size="18sp", color=WHITE,
+                             size_hint_y=None, height=dp(52),
+                             halign="center", valign="middle"))
+        self._spin_lbl = Label(text="Connecting...", font_size="14sp",
+                               color=(0.55, 0.7, 1, 1), size_hint_y=None, height=dp(28))
+        col.add_widget(self._spin_lbl)
+        from theme import APP_VERSION, APP_BUILD, APP_COMMIT
+        col.add_widget(Label(
+            text=f"{APP_VERSION} · build {APP_BUILD} · {APP_COMMIT}",
+            font_size="12sp", color=(0.45, 0.5, 0.55, 1),
+            size_hint_y=None, height=dp(22)))
+        self.add_widget(col)
+        self._angle = 0
+        Clock.schedule_interval(self._tick_spin, 0.05)
 
-    def _splash_canvas(self, *_):
-        self._dark_bg.pos, self._dark_bg.size = self.pos, self.size
+    def _upd_splash(self, *_):
+        self._bg.pos = self.pos
+        self._bg.size = self.size
+        h, w = self.height or 1, self.width or 1
+        self._glow.pos = (-dp(60), h * 0.55)
         self._glow.size = (dp(300), dp(300))
-        self._glow.pos = (self.center_x - dp(150), self.center_y - dp(30))
-        self._streak_blue.points = [self.x - dp(30), self.y + self.height * .30,
-                                    self.x + self.width + dp(30), self.y + self.height * .82]
-        self._streak_green.points = [self.x - dp(20), self.y + self.height * .18,
-                                     self.x + self.width + dp(20), self.y + self.height * .63]
+        # green diagonals left
+        self._g1.points = [0, h * 0.85, w * 0.35, h * 0.55]
+        self._g2.points = [0, h * 0.65, w * 0.28, h * 0.40]
+        # blue diagonals right/bottom
+        self._b1.points = [w * 0.55, h * 0.25, w, h * 0.05]
+        self._b2.points = [w * 0.40, 0, w, h * 0.30]
 
-    def _spin_draw(self, *_):
-        self._spin_line.circle = (self._spinner.center_x, self._spinner.center_y,
-                                  dp(14), self._spin_angle, self._spin_angle + 270)
-
-    def _spin(self, dt):
-        self._spin_angle = (self._spin_angle + 6) % 360
-        self._spin_draw()
+    def _tick_spin(self, dt):
+        self._angle = (self._angle + 12) % 360
+        # simple text pulse instead of a real spinner widget
+        dots = "." * (1 + (self._angle // 90) % 3)
+        self._spin_lbl.text = "Connecting" + dots
         return True
 
-    def set_status(self, text):
-        self.status_lbl.text = str(text)
+    def on_touch_down(self, touch):
+        return True  # block everything while splash is up
 
 
 class Panel(BoxLayout):
@@ -140,10 +130,8 @@ class Panel(BoxLayout):
         self.bind(pos=self._upd, size=self._upd)
 
     def _upd(self, *_):
-        if not hasattr(self, "_r"):
-            return
         self._r.pos = self.pos
-        self._r.size = (max(self.width, 1), max(self.height, 1))
+        self._r.size = self.size
 
 
 class Card(Panel):
@@ -164,8 +152,6 @@ class Pill(Label):
     """Small rounded label, e.g. the 'Ethereum' chip."""
 
     def __init__(self, bg=BLACK, **kw):
-        kw.setdefault("size_hint", (None, None))
-        kw.setdefault("size", (dp(100), dp(30)))
         super().__init__(**kw)
         with self.canvas.before:
             Color(*bg)
@@ -173,10 +159,8 @@ class Pill(Label):
         self.bind(pos=self._upd, size=self._upd)
 
     def _upd(self, *_):
-        if not hasattr(self, "_r"):
-            return
         self._r.pos = self.pos
-        self._r.size = (max(self.width, 1), max(self.height, 1))
+        self._r.size = self.size
 
 
 class Ring(Widget):
@@ -231,7 +215,7 @@ class RoundBtn(Button):
         self.bind(pos=self._upd, size=self._upd)
 
     def _upd(self, *_):
-        d = max(min(self.width, self.height) - dp(6), 0)
+        d = min(self.width, self.height) - dp(6)
         self._e.size = (d, d)
         self._e.pos = (self.center_x - d / 2, self.center_y - d / 2)
 
@@ -247,17 +231,13 @@ class Choice(Button):
         self._en = True
         with self.canvas.before:
             self._c = Color(*base)
-            self._r = RoundedRectangle(pos=self.pos,
-                                       size=(max(self.width, 1), max(self.height, 1)),
-                                       radius=[dp(16)])
+            self._r = RoundedRectangle(radius=[dp(16)])
         self.bind(pos=self._upd, size=self._upd)
         self._paint()
 
     def _upd(self, *_):
-        if not hasattr(self, "_r"):
-            return
         self._r.pos = self.pos
-        self._r.size = (max(self.width, 1), max(self.height, 1))
+        self._r.size = self.size
 
     def _paint(self):
         c = self.sel if self._on else self.base
@@ -465,18 +445,18 @@ class Tappable(ButtonBehavior, Panel):
     """White card that can be tapped (on_release) and shows a blue border when selected."""
 
     def __init__(self, **kw):
-        kw.setdefault("size_hint_y", None)
-        kw.setdefault("height", dp(88))
         super().__init__(**kw)
         with self.canvas.after:
             self._bc = Color(0, 0, 0, 0)
-            self._ln = Line(rounded_rectangle=(self.x, self.y, max(self.width, 1), max(self.height, 1), dp(18)), width=dp(2))
+            # non-zero initial size so the first draw never sees a zero outline
+            self._ln = Line(rounded_rectangle=(0, 0, max(self.width, dp(1)), max(self.height, dp(1)), dp(18)),
+                            width=dp(2))
         self.bind(pos=self._upd_border, size=self._upd_border)
 
     def _upd_border(self, *_):
-        if not hasattr(self, "_ln"):
-            return
-        self._ln.rounded_rectangle = (self.x, self.y, max(self.width, 1), max(self.height, 1), dp(18))
+        w = max(float(self.width or 0), 1.0)
+        h = max(float(self.height or 0), 1.0)
+        self._ln.rounded_rectangle = (self.x, self.y, w, h, dp(18))
 
     def set_selected(self, on):
         self._bc.rgba = BLUE if on else (0, 0, 0, 0)
@@ -502,12 +482,12 @@ class Badge(Label):
         self.bind(pos=self._upd, size=self._upd)
 
     def _upd(self, *_):
-        if not hasattr(self, "_r"):
-            return
         self._r.pos = self.pos
-        self._r.size = (max(self.width, 1), max(self.height, 1))
+        self._r.size = self.size
         if self._ln is not None:
-            self._ln.rounded_rectangle = (self.x, self.y, max(self.width, 1), max(self.height, 1), dp(12))
+            w = max(float(self.width or 0), 1.0)
+            h = max(float(self.height or 0), 1.0)
+            self._ln.rounded_rectangle = (self.x, self.y, w, h, dp(12))
 
 
 class ProgressBar(Widget):
@@ -524,8 +504,6 @@ class ProgressBar(Widget):
 
     def redraw(self, *_):
         self.canvas.clear()
-        if self.width <= 0 or self.height <= 0:
-            return
         with self.canvas:
             Color(0.9, 0.91, 0.91, 1)
             RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(4)])

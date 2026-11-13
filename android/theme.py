@@ -23,7 +23,12 @@ BROWN = (0.45, 0.3, 0, 1)
 DARK_GREEN = (0.04, 0.48, 0.17, 1)
 DARK_GREEN_HEX = "0a7a2a"
 
-SPLASH_SECONDS = 1.8
+SPLASH_SECONDS = 2.5
+APP_VERSION = "v8"
+APP_BUILD = "1"
+APP_COMMIT = "dev"
+MIN_SPLASH = 2.0
+MAX_SPLASH = 8.0
 DSOS_ADDR = "0x7Bd7c427b3c69e2a09603573ac875987c61ECAB8"
 ETHERSCAN_WRITE = "https://etherscan.io/address/" + DSOS_ADDR + "#writeContract"
 DAPP_URL = "https://taru8899.github.io/SOS69069dSOS/dsos-dapp-v29.html"

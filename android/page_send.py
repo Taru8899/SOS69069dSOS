@@ -202,4 +202,4 @@ class SendScreen(Overlay):
         rows = [(S.SEND_ROWS["to"], to, short(to)),
                 (S.SEND_ROWS["n"], str(self.amount), str(self.amount))]
         tip = S.SEND_TIP.format(token=short(DSOS_ADDR), n=self.amount)
-        self.app.safe_overlay(lambda: TxScreen(self.app, t, summary, S.SEND_FN, rows, tip, S.SEND_WARN))
+        self.app.open_overlay(TxScreen(self.app, t, summary, S.SEND_FN, rows, tip, S.SEND_WARN))
