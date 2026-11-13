@@ -154,7 +154,7 @@ class CreditsPage:
         n = self.formable
         t = tx.sync_credits_tx()
         summary = S.SYNC_SUMMARY.format(n=n, word=word(n))
-        self.app.open_overlay(TxScreen(self.app, t, summary, S.SYNC_FN, [], S.SYNC_TIP,
+        self.app.safe_overlay(lambda: TxScreen(self.app, t, summary, S.SYNC_FN, [], S.SYNC_TIP,
                                        S.SYNC_WARN))
 
     def on_redeem(self):
@@ -174,7 +174,7 @@ class CreditsPage:
         rows = [(R["n"], p["creditsToSpend"], p["creditsToSpend"]),
                 (R["r"], p["r"], '["' + short(p["payloadHash"]) + '","0x",""]')]
         tip = S.REDEEM_TIP.format(nonce=d["redeem_nonce"], wallet=short(d["address"]))
-        self.app.open_overlay(TxScreen(self.app, t, summary, S.REDEEM_FN, rows, tip,
+        self.app.safe_overlay(lambda: TxScreen(self.app, t, summary, S.REDEEM_FN, rows, tip,
                                        S.REDEEM_WARN))
 
 

@@ -270,7 +270,7 @@ class CreateScreen(Overlay):
                 (R["delay"], p["delayBlocks"], p["delayBlocks"]),
                 (R["hash"], p["payloadHash"], short(p["payloadHash"])),
                 (R["sig"], "0x", "0x")]
-        self.app.open_overlay(TxScreen(self.app, t, summary, S.CREATE_FN, rows, S.CREATE_TIP))
+        self.app.safe_overlay(lambda: TxScreen(self.app, t, summary, S.CREATE_FN, rows, S.CREATE_TIP))
 
     def on_create_gated(self):
         donor = self.app.addr.text.strip()
@@ -291,5 +291,5 @@ class CreateScreen(Overlay):
                 (R["pin"], p["pinCommitment_"], short(p["pinCommitment_"])),
                 (R["hash"], p["payloadHash"], short(p["payloadHash"])),
                 (R["sig"], "0x", "0x")]
-        self.app.open_overlay(TxScreen(self.app, t, summary, S.CREATE_GATED_FN, rows,
+        self.app.safe_overlay(lambda: TxScreen(self.app, t, summary, S.CREATE_GATED_FN, rows,
                                        S.CREATE_GATED_TIP))

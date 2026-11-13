@@ -13,7 +13,7 @@ import tx
 from page_tx import TxScreen
 from theme import (BLACK, BLUE, BROWN, CREAM, DARK_GREEN, GREEN, LIGHT, PILL_BG,
                    RED, WHITE, left_text, set_visible, short)
-from widgets import (Badge, Choice, Panel, Pill, ProgressBar, RoundBtn, Tappable, label,
+from widgets import (Badge, Card, Choice, Panel, Pill, ProgressBar, RoundBtn, Tappable, label,
                      make_input)
 
 RED_BG = (1, 0.9, 0.9, 1)
@@ -27,15 +27,53 @@ class OffersPage:
     def __init__(self, app, b, d):
         self.app, self.b, self.d = app, b, d
         # newest first = the order the contract's wallet send uses
-        self.offers = sorted(d["offers"], key=lambda o: o["pos"], reverse=True)
-        self.filter = "all"
-        self.sel_id = self.offers[0]["id"] if self.offers else None
-        self.amount = self.offers[0]["count"] if self.offers else 0
-        self.transfer_mode = False
-        self.to_text = ""
-        self.pin_text = ""
-        self.pin_msg = ""
+        raw_offers = d.get("offers", []) or []
+        normalized = []
+        for i, source in enumerate(raw_offers):
+            o = dict(source or {})
+            o.setdefault("id", i)
+            o.setdefault("pos", i)
+            o.setdefault("kind", "?")
+            o.setdefault("donor", "")
+            o.setdefault("created_at", 0)
+            o.setdefault("count", 0)
+            o.setdefault("sweepable_at", 0)
+            o.setdefault("left", 0)
+            o.setdefault("status", "expired" if int(o.get("left", 0) or 0) <= 0 else "redeemable")
+            o.setdefault("sendable", o.get("kind") != "G" and int(o.get("left", 0) or 0) > core.WINDOW)
+            for numeric in ("id", "pos", "created_at", "count", "sweepable_at", "left"):
+                try:
+                    o[numeric] = int(o.get(numeric, 0) or 0)
+                except (TypeError, ValueError):
+                    o[numeric] = 0
+            o["kind"] = str(o.get("kind") or "?")
+            o["donor"] = str(o.get("donor") or "")
+            normalized.append(o)
+        self.offers = sorted(normalized, key=lambda o: int(o.get("pos", 0) or 0), reverse=True)
+        state = getattr(app, "offers_state", {}) or {}
+        self.filter = state.get("filter", "all")
+        default_id = self.offers[0]["id"] if self.offers else None
+        self.sel_id = state.get("sel_id", default_id)
+        if not any(o["id"] == self.sel_id for o in self.offers):
+            self.sel_id = default_id
+        selected = next((o for o in self.offers if o["id"] == self.sel_id), None)
+        self.amount = max(1, min(int((selected or {}).get("count", 1) or 1), int(state.get("amount", (selected or {}).get("count", 1)) or 1))) if selected else 0
+        self.transfer_mode = bool(state.get("transfer_mode", False))
+        self.to_text = state.get("to_text", "")
+        self.pin_text = state.get("pin_text", "")
+        self.pin_msg = state.get("pin_msg", "")
         self.rebuild()
+
+    def persist(self):
+        self.app.offers_state = {"filter": self.filter, "sel_id": self.sel_id,
+                                 "amount": self.amount, "transfer_mode": self.transfer_mode,
+                                 "to_text": self.to_text, "pin_text": self.pin_text,
+                                 "pin_msg": self.pin_msg}
+
+    def switch_mode(self, mode):
+        self.persist()
+        self.app.offers_mode = mode
+        self.app.render()
 
     # ---- helpers
     def visible(self):
@@ -54,6 +92,7 @@ class OffersPage:
         self.transfer_mode = False
         self.pin_text = ""
         self.pin_msg = ""
+        self.persist()
         self.rebuild()
 
     def set_filter(self, key):
@@ -66,13 +105,22 @@ class OffersPage:
             self.transfer_mode = False
             self.pin_text = ""
             self.pin_msg = ""
+        self.persist()
         self.rebuild()
 
     # ---- layout
     def rebuild(self):
+        self.persist()
         b = self.b
         b.clear_widgets()
         d = self.d
+        mode_row = BoxLayout(size_hint_y=None, height=dp(42), spacing=dp(8))
+        for mode, caption in (("offers", "Offers"), ("activity", "Activity")):
+            tab = Choice(base=WHITE, text=caption, bold=True, font_size="14sp")
+            tab.set_selected(mode == "offers")
+            tab.bind(on_release=lambda _w, m=mode: self.switch_mode(m))
+            mode_row.add_widget(tab)
+        b.add_widget(mode_row)
         head = BoxLayout(size_hint_y=None, height=dp(48))
         head.add_widget(label(S.OFFERS_TITLE, font_size="30sp"))
         head.add_widget(label(S.OFFERS_SUMMARY.format(
@@ -203,10 +251,12 @@ class OffersPage:
         o = self.selected()
         if o:
             self.amount = max(1, min(o["count"], n))
+            self.persist()
             self.refresh_detail()
 
     def on_to_text(self, v):
         self.to_text = v
+        self.persist()
         if self.transfer_mode:
             self.refresh_detail()
 
@@ -220,6 +270,7 @@ class OffersPage:
 
     def on_pin_text(self, v):
         self.pin_text = v
+        self.persist()
         if self.pin_msg:
             self.pin_msg = ""
             self.refresh_detail()
@@ -321,13 +372,14 @@ class OffersPage:
         summary = S.RO_SUMMARY.format(n=n, id=o["id"], kind=o["kind"], eth=t["payout_eth"])
         tip = (S.RO_TIP_PIN if pin is not None else S.RO_TIP).format(
             wallet=short(self.d["address"]), block=o["sweepable_at"])
-        self.app.open_overlay(TxScreen(self.app, t, summary, S.RO_FN, rows, tip, S.RO_WARN))
+        self.app.safe_overlay(lambda: TxScreen(self.app, t, summary, S.RO_FN, rows, tip, S.RO_WARN))
 
     def on_transfer(self, o):
         if o["kind"] == "G" or o["left"] <= 0:
             return
         if not self.transfer_mode:            # first tap: ask for the recipient
             self.transfer_mode = True
+            self.persist()
             self.refresh_detail()
             return
         if self.transfer_problem():
@@ -342,15 +394,166 @@ class OffersPage:
                 (R["r"], p["r"], '["' + short(p["payloadHash"]) + '","0x",""]')]
         summary = S.OT_SUMMARY.format(n=n, id=o["id"], kind=o["kind"], to=short(to))
         tip = S.OT_TIP.format(wallet=short(self.d["address"]))
-        self.app.open_overlay(TxScreen(self.app, t, summary, S.OT_FN, rows, tip, S.OT_WARN))
+        self.app.safe_overlay(lambda: TxScreen(self.app, t, summary, S.OT_FN, rows, tip, S.OT_WARN))
 
     def on_sweep(self, o):
         t = tx.sweep_offer_tx(o["id"])
         summary = S.OD_SWEEP_SUMMARY.format(id=o["id"])
         rows = [(S.SWEEP_ROWS["id"], str(o["id"]), str(o["id"]))]
-        self.app.open_overlay(TxScreen(self.app, t, summary, S.SWEEP_FN, rows,
+        self.app.safe_overlay(lambda: TxScreen(self.app, t, summary, S.SWEEP_FN, rows,
                                        S.SWEEP_TIP, S.SWEEP_WARN))
 
 
+class ActivityPage:
+    """Read-only transaction Activity, sharing the existing Chain and page container."""
+    def __init__(self, app, box, data):
+        self.app, self.box, self.data = app, box, data
+        app.activity_scope = getattr(app, "activity_scope", "mine")
+        app.activity_filter = getattr(app, "activity_filter", "all")
+        app.activity = getattr(app, "activity", [])
+        app.activity_loading = getattr(app, "activity_loading", False)
+        app.activity_error = getattr(app, "activity_error", None)
+        self.render()
+
+    def render(self):
+        b = self.box
+        b.clear_widgets()
+        mode_row = BoxLayout(size_hint_y=None, height=dp(42), spacing=dp(8))
+        for mode, caption in (("offers", "Offers"), ("activity", "Activity")):
+            tab = Choice(base=WHITE, text=caption, bold=True, font_size="14sp")
+            tab.set_selected(mode == "activity")
+            tab.bind(on_release=lambda _w, m=mode: self.switch_mode(m))
+            mode_row.add_widget(tab)
+        b.add_widget(mode_row)
+        head = BoxLayout(size_hint_y=None, height=dp(46))
+        head.add_widget(label("Activity", font_size="28sp"))
+        refresh = Choice(base=BLUE, fg=WHITE, text="Refresh", bold=True, size_hint_x=None, width=dp(100))
+        refresh.bind(on_release=lambda *_: self.load())
+        head.add_widget(refresh)
+        b.add_widget(head)
+
+        scopes = BoxLayout(size_hint_y=None, height=dp(42), spacing=dp(8))
+        for scope, caption in (("mine", "Mine"), ("contract", "Contract")):
+            ch = Choice(base=WHITE, text=caption, bold=True, font_size="13sp")
+            ch.set_selected(self.app.activity_scope == scope)
+            ch.bind(on_release=lambda _w, v=scope: self.set_scope(v))
+            scopes.add_widget(ch)
+        b.add_widget(scopes)
+        filters = BoxLayout(size_hint_y=None, height=dp(40), spacing=dp(6))
+        for key, caption in (("all", "All"), ("offers", "Offers"), ("ledger", "Ledger"), ("failed", "Failed")):
+            ch = Choice(base=WHITE, text=caption, bold=True, font_size="12sp")
+            ch.set_selected(self.app.activity_filter == key)
+            ch.bind(on_release=lambda _w, v=key: self.set_filter(v))
+            filters.add_widget(ch)
+        b.add_widget(filters)
+
+        if self.app.activity_loading:
+            b.add_widget(Card("Loading on-chain Activity…"))
+        if self.app.activity_error:
+            b.add_widget(Card("[color=bb001f]Activity error[/color]\n" + str(self.app.activity_error), fg=BLACK))
+        items = self.filtered()
+        if not items and not self.app.activity_loading and not self.app.activity_error:
+            b.add_widget(Card("No Activity found in the recent indexed block range."))
+        for item in items:
+            row = Tappable(orientation="vertical", size_hint_y=None, height=dp(92), padding=dp(10), spacing=dp(3))
+            with row.canvas.before:
+                from kivy.graphics import Color, RoundedRectangle
+                Color(1, 1, 1, 1)
+                bg = RoundedRectangle(pos=row.pos, size=row.size, radius=[dp(12)])
+            row.bind(pos=lambda w, p, r=bg: setattr(r, "pos", p), size=lambda w, z, r=bg: setattr(r, "size", z))
+            row.add_widget(label(item.get("title", "Contract activity"), font_size="16sp"))
+            stamp = item.get("timestamp") or 0
+            when = __import__("datetime").datetime.fromtimestamp(stamp).strftime("%Y-%m-%d %H:%M") if stamp else "Time unavailable"
+            amount = core.eth(item.get("amount_wei", 0)) if item.get("amount_wei", 0) else ""
+            sub = f"{when}  ·  Block {item.get('block', 0)}"
+            if amount:
+                sub += f"  ·  {amount} ETH"
+            row.add_widget(label(sub, font_size="12sp", color=(0.25, 0.28, 0.28, 1)))
+            short_hash = item.get("hash", "")
+            row.add_widget(label((short_hash[:10] + "…" + short_hash[-8:]) if len(short_hash) > 20 else short_hash,
+                                 font_size="11sp", color=BLUE))
+            row.bind(on_release=lambda _w, it=item: self.show_detail(it))
+            b.add_widget(row)
+
+        if self.app.activity and self.app.activity_scope == "mine":
+            b.add_widget(label("Mine includes indexed successful events. Failed transactions are included when Etherscan API access is available.",
+                               font_size="11sp", color=(0.25, 0.28, 0.28, 1), size_hint_y=None, height=dp(34)))
+        if not self.app.activity and not self.app.activity_loading and not self.app.activity_error:
+            self.load()
+
+    def filtered(self):
+        items = list(self.app.activity or [])
+        f = self.app.activity_filter
+        if f == "offers":
+            items = [x for x in items if any(e.get("contract") == "dsos" and e.get("event") != "Transfer"
+                                               for e in x.get("events", []))]
+        elif f == "ledger":
+            items = [x for x in items if any(e.get("contract") == "ledger" for e in x.get("events", []))]
+        elif f == "failed":
+            items = [x for x in items if x.get("failed")]
+        return items[:100]
+
+    def switch_mode(self, mode):
+        self.app.offers_mode = mode
+        self.app.render()
+
+    def set_scope(self, scope):
+        self.app.activity_scope = scope
+        self.load()
+
+    def set_filter(self, key):
+        self.app.activity_filter = key
+        self.render()
+
+    def load(self):
+        if self.app.activity_loading:
+            return
+        self.app.activity_loading = True
+        self.app.activity_error = None
+        self.render()
+        scope = self.app.activity_scope
+        address = self.data.get("address", "")
+        api_key = self.app.key.text.strip()
+        def worker():
+            try:
+                chain = core.Chain(api_key)
+                result = chain.activity_mine(address) if scope == "mine" else chain.activity_contract()
+                rows = result.get("items", [])
+                err = None
+            except Exception as exc:
+                rows, err = [], str(exc)
+            Clock.schedule_once(lambda _dt: self.done(rows, err, scope))
+        threading.Thread(target=worker, daemon=True).start()
+
+    def done(self, rows, err, loaded_scope):
+        self.app.activity = rows
+        self.app.activity_error = err
+        self.app.activity_loading = False
+        if self.app.page == "offers" and getattr(self.app, "offers_mode", "offers") == "activity":
+            if self.app.activity_scope != loaded_scope:
+                self.load()
+            else:
+                self.render()
+
+    def show_detail(self, item):
+        events = item.get("events", [])
+        detail = [f"[b]{item.get('title', 'Activity')}[/b]", item.get("hash", ""),
+                  f"Block: {item.get('block', 0)}", f"From: {item.get('from', '')}",
+                  f"To: {item.get('to', '')}"]
+        if item.get("offer_id") is not None:
+            detail.append(f"Offer ID: {item['offer_id']}")
+        if item.get("function"):
+            detail.append(f"Function: {item['function']}")
+        for key, value in (item.get("input_args") or {}).items():
+            detail.append(f"{key}: {value}")
+        for ev in events:
+            detail.append(f"• {ev.get('event')} ({ev.get('contract')})")
+        self.app.safe_overlay(lambda: Card("\n".join(detail), bg=WHITE, size_hint=(0.92, None),
+                                   pos_hint={"center_x": .5, "center_y": .5}))
+
+
 def build(app, b, d):
-    OffersPage(app, b, d)
+    if getattr(app, "offers_mode", "offers") == "activity":
+        ActivityPage(app, b, d)
+    else:
+        OffersPage(app, b, d)

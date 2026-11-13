@@ -183,11 +183,11 @@ class RedeemScreen(Overlay):
                 (R["r"], p["r"], '["' + short(p["payloadHash"]) + '","0x",""]')]
         summary = S.RO_SUMMARY.format(n=n, id=o["id"], kind=o["kind"], eth=t["payout_eth"])
         tip = S.RO_TIP.format(wallet=short(self.d["address"]), block=o["sweepable_at"])
-        self.app.open_overlay(TxScreen(self.app, t, summary, S.RO_FN, rows, tip, S.RO_WARN))
+        self.app.safe_overlay(lambda: TxScreen(self.app, t, summary, S.RO_FN, rows, tip, S.RO_WARN))
 
     def on_sweep(self, oid, pos, total):
         t = tx.sweep_offer_tx(oid)
         summary = S.SWEEP_SUMMARY.format(id=oid, pos=pos, total=total)
         rows = [(S.SWEEP_ROWS["id"], str(oid), str(oid))]
-        self.app.open_overlay(TxScreen(self.app, t, summary, S.SWEEP_FN, rows,
+        self.app.safe_overlay(lambda: TxScreen(self.app, t, summary, S.SWEEP_FN, rows,
                                        S.SWEEP_TIP, S.SWEEP_WARN))

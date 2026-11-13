@@ -1,6 +1,7 @@
 """Reusable widgets and small UI helpers."""
 from kivy.graphics import Color, Ellipse, Line, Rectangle, RoundedRectangle
 from kivy.metrics import dp
+from kivy.clock import Clock
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
@@ -44,16 +45,87 @@ class Overlay(FloatLayout):
 
 
 class Splash(Overlay):
-    """Logo on green, shown on top of the app for a moment."""
-
+    """Animated dSOS welcome screen; remains a root-level overlay."""
     def __init__(self, **kw):
         super().__init__(**kw)
-        if HAS_LOGO:
-            self.add_widget(Image(source=LOGO, size_hint=(0.6, 0.6),
-                                  pos_hint={"center_x": 0.5, "center_y": 0.5}))
-        else:
-            self.add_widget(Label(text=S.SPLASH_FALLBACK, markup=True, font_size="48sp",
-                                  color=WHITE, pos_hint={"center_x": 0.5, "center_y": 0.5}))
+        # Override the inherited green field with the v8 near-black canvas.
+        with self.canvas.before:
+            Color(0.012, 0.018, 0.025, 1)
+            self._dark_bg = Rectangle(pos=self.pos, size=self.size)
+            Color(0.02, 0.55, 0.22, 0.24)
+            self._glow = Ellipse(pos=(0, 0), size=(dp(260), dp(260)))
+            Color(0.0, 0.35, 0.95, 0.48)
+            self._streak_blue = Line(points=[0, 0, 1, 1], width=dp(2.2))
+            Color(0.02, 0.75, 0.28, 0.65)
+            self._streak_green = Line(points=[0, 0, 1, 1], width=dp(2.8))
+        self.bind(pos=self._splash_canvas, size=self._splash_canvas)
+
+        mark = Widget(size_hint=(None, None), size=(dp(104), dp(104)),
+                      pos_hint={"center_x": 0.5, "center_y": 0.70})
+        with mark.canvas.before:
+            Color(1, 1, 1, 1)
+            mark._circle = Ellipse(pos=mark.pos, size=mark.size)
+        mark.bind(pos=lambda w, p: setattr(w._circle, "pos", p),
+                  size=lambda w, z: setattr(w._circle, "size", z))
+        self.add_widget(mark)
+        self.add_widget(Label(text="69069", color=(0.02, 0.05, 0.03, 1), bold=True,
+                              font_size="23sp", size_hint=(None, None), size=(dp(104), dp(104)),
+                              pos_hint={"center_x": 0.5, "center_y": 0.70}))
+        self.add_widget(Label(text="dSOS", color=WHITE, bold=True, font_size="42sp",
+                              size_hint=(1, None), height=dp(58),
+                              pos_hint={"center_x": 0.5, "center_y": 0.48}))
+        self.add_widget(Label(text="1 dSOS  =  1 slice  =  0.001 ETH", color=(0.82, 0.9, 0.86, 1),
+                              font_size="15sp", size_hint=(1, None), height=dp(30),
+                              pos_hint={"center_x": 0.5, "center_y": 0.39}))
+        self.add_widget(Label(text="Authority of One 69069 AIX", color=(0.35, 0.72, 1, 1),
+                              font_size="14sp", size_hint=(1, None), height=dp(26),
+                              pos_hint={"center_x": 0.5, "center_y": 0.34}))
+        self.add_widget(Label(text="A Ledger of Presence · No Assets to hold · No Wallet to drain",
+                              color=(0.62, 0.69, 0.72, 1), font_size="10sp",
+                              size_hint=(0.94, None), height=dp(24),
+                              pos_hint={"center_x": 0.5, "center_y": 0.29}))
+        self.status_lbl = Label(text="Connecting to Ethereum…", color=(0.75, 0.82, 0.82, 1),
+                                font_size="12sp", size_hint=(1, None), height=dp(24),
+                                pos_hint={"center_x": 0.5, "center_y": 0.20})
+        self.add_widget(self.status_lbl)
+        self._spin_angle = 0
+        self._spinner = Widget(size_hint=(None, None), size=(dp(36), dp(36)),
+                               pos_hint={"center_x": 0.5, "center_y": 0.25})
+        with self._spinner.canvas:
+            Color(0.05, 0.48, 1, 1)
+            self._spin_line = Line(circle=(0, 0, dp(14), 0, 270), width=dp(3))
+        self._spinner.bind(pos=self._spin_draw, size=self._spin_draw)
+        self.add_widget(self._spinner)
+        try:
+            from build_info import VERSION, BUILD, COMMIT
+        except Exception:
+            VERSION, BUILD, COMMIT = "0.2.0", "local", "unknown"
+        self.add_widget(Label(text=f"v{VERSION}  ·  Build {BUILD}  ·  {COMMIT[:8]}",
+                              color=(0.48, 0.55, 0.58, 1), font_size="10sp",
+                              size_hint=(1, None), height=dp(20),
+                              pos_hint={"center_x": 0.5, "y": 0.025}))
+        self._spin_event = Clock.schedule_interval(self._spin, 1 / 30)
+
+    def _splash_canvas(self, *_):
+        self._dark_bg.pos, self._dark_bg.size = self.pos, self.size
+        self._glow.size = (dp(300), dp(300))
+        self._glow.pos = (self.center_x - dp(150), self.center_y - dp(30))
+        self._streak_blue.points = [self.x - dp(30), self.y + self.height * .30,
+                                    self.x + self.width + dp(30), self.y + self.height * .82]
+        self._streak_green.points = [self.x - dp(20), self.y + self.height * .18,
+                                     self.x + self.width + dp(20), self.y + self.height * .63]
+
+    def _spin_draw(self, *_):
+        self._spin_line.circle = (self._spinner.center_x, self._spinner.center_y,
+                                  dp(14), self._spin_angle, self._spin_angle + 270)
+
+    def _spin(self, dt):
+        self._spin_angle = (self._spin_angle + 6) % 360
+        self._spin_draw()
+        return True
+
+    def set_status(self, text):
+        self.status_lbl.text = str(text)
 
 
 class Panel(BoxLayout):
@@ -68,8 +140,10 @@ class Panel(BoxLayout):
         self.bind(pos=self._upd, size=self._upd)
 
     def _upd(self, *_):
+        if not hasattr(self, "_r"):
+            return
         self._r.pos = self.pos
-        self._r.size = self.size
+        self._r.size = (max(self.width, 1), max(self.height, 1))
 
 
 class Card(Panel):
@@ -90,6 +164,8 @@ class Pill(Label):
     """Small rounded label, e.g. the 'Ethereum' chip."""
 
     def __init__(self, bg=BLACK, **kw):
+        kw.setdefault("size_hint", (None, None))
+        kw.setdefault("size", (dp(100), dp(30)))
         super().__init__(**kw)
         with self.canvas.before:
             Color(*bg)
@@ -97,8 +173,10 @@ class Pill(Label):
         self.bind(pos=self._upd, size=self._upd)
 
     def _upd(self, *_):
+        if not hasattr(self, "_r"):
+            return
         self._r.pos = self.pos
-        self._r.size = self.size
+        self._r.size = (max(self.width, 1), max(self.height, 1))
 
 
 class Ring(Widget):
@@ -153,7 +231,7 @@ class RoundBtn(Button):
         self.bind(pos=self._upd, size=self._upd)
 
     def _upd(self, *_):
-        d = min(self.width, self.height) - dp(6)
+        d = max(min(self.width, self.height) - dp(6), 0)
         self._e.size = (d, d)
         self._e.pos = (self.center_x - d / 2, self.center_y - d / 2)
 
@@ -169,13 +247,17 @@ class Choice(Button):
         self._en = True
         with self.canvas.before:
             self._c = Color(*base)
-            self._r = RoundedRectangle(radius=[dp(16)])
+            self._r = RoundedRectangle(pos=self.pos,
+                                       size=(max(self.width, 1), max(self.height, 1)),
+                                       radius=[dp(16)])
         self.bind(pos=self._upd, size=self._upd)
         self._paint()
 
     def _upd(self, *_):
+        if not hasattr(self, "_r"):
+            return
         self._r.pos = self.pos
-        self._r.size = self.size
+        self._r.size = (max(self.width, 1), max(self.height, 1))
 
     def _paint(self):
         c = self.sel if self._on else self.base
@@ -383,14 +465,18 @@ class Tappable(ButtonBehavior, Panel):
     """White card that can be tapped (on_release) and shows a blue border when selected."""
 
     def __init__(self, **kw):
+        kw.setdefault("size_hint_y", None)
+        kw.setdefault("height", dp(88))
         super().__init__(**kw)
         with self.canvas.after:
             self._bc = Color(0, 0, 0, 0)
-            self._ln = Line(rounded_rectangle=(0, 0, 1, 1, dp(18)), width=dp(2))
+            self._ln = Line(rounded_rectangle=(self.x, self.y, max(self.width, 1), max(self.height, 1), dp(18)), width=dp(2))
         self.bind(pos=self._upd_border, size=self._upd_border)
 
     def _upd_border(self, *_):
-        self._ln.rounded_rectangle = (self.x, self.y, self.width, self.height, dp(18))
+        if not hasattr(self, "_ln"):
+            return
+        self._ln.rounded_rectangle = (self.x, self.y, max(self.width, 1), max(self.height, 1), dp(18))
 
     def set_selected(self, on):
         self._bc.rgba = BLUE if on else (0, 0, 0, 0)
@@ -416,10 +502,12 @@ class Badge(Label):
         self.bind(pos=self._upd, size=self._upd)
 
     def _upd(self, *_):
+        if not hasattr(self, "_r"):
+            return
         self._r.pos = self.pos
-        self._r.size = self.size
+        self._r.size = (max(self.width, 1), max(self.height, 1))
         if self._ln is not None:
-            self._ln.rounded_rectangle = (self.x, self.y, self.width, self.height, dp(12))
+            self._ln.rounded_rectangle = (self.x, self.y, max(self.width, 1), max(self.height, 1), dp(12))
 
 
 class ProgressBar(Widget):
@@ -436,6 +524,8 @@ class ProgressBar(Widget):
 
     def redraw(self, *_):
         self.canvas.clear()
+        if self.width <= 0 or self.height <= 0:
+            return
         with self.canvas:
             Color(0.9, 0.91, 0.91, 1)
             RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(4)])

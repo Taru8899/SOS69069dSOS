@@ -4,6 +4,7 @@ package.name = dsos
 package.domain = org.taru8899
 source.dir = .
 source.include_exts = py,png,jpg
+source.exclude_dirs = tests,__pycache__
 version = 0.2.0
 requirements = python3,kivy==2.3.0,requests,urllib3,chardet,idna,certifi,charset-normalizer,pycryptodome
 orientation = portrait
