@@ -565,3 +565,5 @@ ACT_BTN_OFFER = "Go to offer #{id}"
 ACT_OFFER_NOT_MINE = "Offer #{id} is not in your list (it may belong to someone else)."
 ACT_COPIED = "Transaction hash copied"
 BTN_RETRY = "Retry"
+SETTINGS_LAYOUT = ("[b]Layout report[/b]\nIf something looks misplaced, copy this and send it.")
+SETTINGS_LAYOUT_COPY = "Copy layout report"

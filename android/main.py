@@ -12,7 +12,6 @@ from kivy.core.window import Window
 from kivy.graphics import Color, Rectangle
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.label import Label
 from kivy.utils import escape_markup
@@ -32,8 +31,8 @@ from page_redeem import RedeemScreen
 from page_send import SendScreen
 from page_settings import SettingsScreen
 from wallet import Wallet
-from theme import BLACK, BLUE, GREEN, HAS_LOGO, LOGO, WHITE, set_visible, short
-from widgets import (Caret, Card, ErrorBanner, LogoBtn, NavBtn, PillBtn, PullScroll, RoundBtn,
+from theme import BLACK, BUILD, BLUE, GREEN, HAS_LOGO, LOGO, LIGHT, WHITE, short
+from widgets import (Caret, Card, Choice, ErrorBanner, LogoBtn, NavBtn, Panel, PillBtn, PullScroll, RoundBtn,
                      Tap, Welcome, label, make_input)
 
 Window.clearcolor = GREEN
@@ -99,12 +98,14 @@ class DsosApp(App):
 
         root = FloatLayout()
         self.root_box = root
-        main = BoxLayout(orientation="vertical", padding=[dp(10), dp(6), dp(10), 0],
-                         spacing=dp(4))
+        main = BoxLayout(orientation="vertical", spacing=0)     # full width: no outer margin
+        self.main = main
 
-        # ---- header: logo (+ tiny caret), "My wallet" text, Ethereum pill
-        head = BoxLayout(size_hint_y=None, height=dp(66), spacing=dp(10))
-        logo_col = BoxLayout(orientation="vertical", size_hint=(None, 1), width=dp(52))
+        # ---- header: logo (+ large caret), "My wallet" text, Ethereum pill
+        head = BoxLayout(size_hint_y=None, height=dp(82), spacing=dp(10),
+                         padding=[dp(14), dp(6), dp(14), dp(2)])
+        self.head = head
+        logo_col = BoxLayout(orientation="vertical", size_hint=(None, 1), width=dp(56))
         if HAS_LOGO:
             self.logo = LogoBtn(source=LOGO, size_hint=(1, 1))
             self.logo.bind(on_release=lambda *_: self.go_home())
@@ -119,39 +120,42 @@ class DsosApp(App):
         title.add_widget(self.sub)
         head.add_widget(title)
         pill = PillBtn(text=S.CHAIN_PILL, color=WHITE, bold=True, size_hint=(None, None),
-                       size=(dp(104), dp(34)), pos_hint={"center_y": 0.5})
+                       size=(dp(104), dp(38)), pos_hint={"center_y": 0.5})
         pill.bind(on_release=lambda *_: self.open_links())
         head.add_widget(pill)
         main.add_widget(head)
 
-        self.msg = Label(text="", size_hint_y=None, height=dp(20), color=BLACK, font_size="13sp")
+        self.msg = Label(text="", size_hint_y=None, height=dp(22), color=BLACK, font_size="13sp")
         main.add_widget(self.msg)
 
-        # ---- drawer: Etherscan key + wallet address + Load (created once, only hidden/shown)
+        # ---- drawer (Etherscan key + wallet address + Load): a panel that floats over the top
+        # of the body. It is added to the body only while open, so folded it takes no space.
         self.addr = make_input(S.HINT_ADDRESS, cfg.get("addr", ""))
         self.key = make_input(S.HINT_API_KEY, cfg.get("key", ""), password=True)
-        self.drawer = BoxLayout(orientation="vertical", size_hint_y=None, height=dp(148),
-                                spacing=dp(6))
+        self.drawer = Panel(orientation="vertical", size_hint=(None, None), spacing=dp(8),
+                            padding=dp(12), bg=LIGHT)
+        self.drawer.size = (dp(300), dp(12 * 2 + 3 * 50 + 2 * 8))
         self.drawer.add_widget(self._with_paste(self.key))
         self.drawer.add_widget(self._with_paste(self.addr))
-        load_btn = Button(text=S.BTN_LOAD, size_hint_y=None, height=dp(48),
-                          background_normal="", background_down="", background_color=BLUE,
-                          color=WHITE, bold=True)
+        load_btn = Choice(base=BLUE, fg=WHITE, text=S.BTN_LOAD, bold=True, size_hint_y=None,
+                          height=dp(50))
         load_btn.bind(on_release=self.load)
         self.drawer.add_widget(load_btn)
-        main.add_widget(self.drawer)
 
         # ---- body: the page (scrolls, pull to reload) and, on top of it, overlay pages
         self.body = FloatLayout()
+        self.body.bind(width=self._fit_drawer)
         self.sv = PullScroll(size_hint=(1, 1))
-        self.box = BoxLayout(orientation="vertical", spacing=dp(10), size_hint_y=None)
+        self.box = BoxLayout(orientation="vertical", spacing=dp(10), size_hint_y=None,
+                             padding=[dp(14), dp(4), dp(14), dp(16)])
         self.box.bind(minimum_height=self.box.setter("height"))
         self.sv.add_widget(self.box)
         self.body.add_widget(self.sv)
         main.add_widget(self.body)
 
-        # ---- bottom bar (always visible)
+        # ---- bottom bar (always visible, full width)
         nav = BoxLayout(size_hint_y=None, height=dp(66))
+        self.nav = nav
         with nav.canvas.before:
             Color(*BLACK)
             nav_bg = Rectangle()
@@ -180,10 +184,10 @@ class DsosApp(App):
 
     # ---------------------------------------------------------- header / drawer
     def _with_paste(self, field):
-        row = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(6))
+        row = BoxLayout(size_hint_y=None, height=dp(50), spacing=dp(6))
         row.add_widget(field)
-        pb = Button(text=S.BTN_PASTE, size_hint=(None, 1), width=dp(72), background_normal="",
-                    background_down="", background_color=BLUE, color=WHITE, bold=True)
+        pb = Choice(base=BLUE, fg=WHITE, text=S.BTN_PASTE, bold=True, size_hint=(None, 1),
+                    width=dp(72))
         pb.bind(on_release=lambda *_: self.paste_into(field))
         row.add_widget(pb)
         return row
@@ -196,10 +200,20 @@ class DsosApp(App):
         else:
             self.msg.text = S.MSG_CLIPBOARD_EMPTY
 
+    def _fit_drawer(self, *_):
+        w = max(dp(240), self.body.width - dp(28))
+        self.drawer.width = w
+        self.drawer.pos_hint = {"x": dp(14) / max(self.body.width, 1), "top": 1}
+
     def set_drawer(self, show, animate=True):
         self.drawer_open = bool(show)
         self.caret.set_open(self.drawer_open)
-        set_visible(self.drawer, self.drawer_open)
+        if self.drawer_open and self.drawer.parent is None:
+            self._fit_drawer()
+            self.drawer.pos_hint = {"x": dp(14) / max(self.body.width, 1), "top": 1}
+            self.body.add_widget(self.drawer)
+        elif not self.drawer_open and self.drawer.parent is not None:
+            self.drawer.parent.remove_widget(self.drawer)
 
     def toggle_drawer(self):
         self.set_drawer(not self.drawer_open)
@@ -300,6 +314,28 @@ class DsosApp(App):
 
     def on_resume(self):
         self.wallet.on_resume()
+
+    def layout_report(self):
+        """Positions and sizes of the shell parts: for pasting into a bug report."""
+        try:
+            from kivy.metrics import Metrics
+            dens = Metrics.density
+        except Exception:  # noqa: BLE001
+            dens = "?"
+        out = [f"window={tuple(Window.size)} density={dens} build={BUILD}"]
+        for n in ("head", "msg", "body", "sv", "box", "nav", "drawer"):
+            w = getattr(self, n, None)
+            if w is None:
+                continue
+            try:
+                out.append("%s pos=%s size=%s in_tree=%s" % (
+                    n, tuple(round(v) for v in w.pos), tuple(round(v) for v in w.size),
+                    w.parent is not None))
+            except Exception as e:  # noqa: BLE001
+                out.append(f"{n}: {e}")
+        out.append("overlays=%d page=%s drawer_open=%s" % (len(self.overlays), self.page,
+                                                            self.drawer_open))
+        return "\n".join(out)
 
     # ---------------------------------------------------------- errors
     def crumb(self, step):

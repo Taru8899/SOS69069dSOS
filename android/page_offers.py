@@ -13,7 +13,7 @@ import tx
 from page_tx import TxScreen
 from theme import (BLACK, BLUE, BROWN, CREAM, DARK_GREEN, GREEN, LIGHT, PILL_BG,
                    RED, WHITE, left_text, set_visible, short)
-from widgets import (Badge, Choice, Panel, Pill, ProgressBar, RoundBtn, Tappable, label,
+from widgets import (Badge, Choice, Panel, Pill, ThinBar, RoundBtn, Tappable, label,
                      make_input)
 
 RED_BG = (1, 0.9, 0.9, 1)
@@ -131,7 +131,7 @@ class OffersPage:
         c.add_widget(row)
         if not expired:
             window = max(o.get("sweepable_at", 0) - o.get("created_at", 0), 1)
-            c.add_widget(ProgressBar(o["left"] / window, bar))
+            c.add_widget(ThinBar(o["left"] / window, bar))
             c.add_widget(label(S.OC_LEFT.format(left=left_text(o["left"]), block=o["sweepable_at"]),
                                size_hint_y=None, height=dp(20), font_size="13sp"))
         return c

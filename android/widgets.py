@@ -25,6 +25,15 @@ def rad(w, h, r):
     return max(0.0, min(float(r), float(w) / 2.0, float(h) / 2.0))
 
 
+def settle(w, fn):
+    """Redraw on every pos/size change and once more after layout has finished: some Android
+    layout passes move a widget without the redraw seeing the final position."""
+    w.bind(pos=fn, size=fn)
+    trig = Clock.create_trigger(fn, 0)
+    w.bind(pos=trig, size=trig, parent=trig)
+    trig()
+
+
 def set_rr(line, x, y, w, h, r):
     """Set a rounded-rectangle outline only when the box has a real size."""
     if w >= 2 and h >= 2:
@@ -32,11 +41,24 @@ def set_rr(line, x, y, w, h, r):
 
 
 def make_input(hint, text="", password=False, filt=None):
-    return TextInput(text=text, hint_text=hint, multiline=False, password=password,
-                     size_hint_y=None, height=dp(44), write_tab=False,
-                     input_type="text", keyboard_suggestions=False,
-                     use_bubble=True, use_handles=True, input_filter=filt,
-                     padding=[dp(10), dp(12), dp(10), dp(8)])
+    ti = TextInput(text=text, hint_text=hint, multiline=False, password=password,
+                   size_hint_y=None, height=dp(48), write_tab=False,
+                   input_type="text", keyboard_suggestions=False,
+                   use_bubble=True, use_handles=True, input_filter=filt,
+                   background_normal="", background_active="", background_disabled_normal="",
+                   background_color=(0, 0, 0, 0), foreground_color=BLACK,
+                   hint_text_color=(0.45, 0.47, 0.47, 1), cursor_color=BLUE,
+                   selection_color=(0, 0.2, 1, 0.3),
+                   padding=[dp(14), dp(14), dp(14), dp(8)])
+    with ti.canvas.before:
+        Color(*WHITE)
+        bg = RoundedRectangle()
+
+    def fit(*_):
+        bg.pos, bg.size = ti.pos, ti.size
+        bg.radius = [rad(ti.width, ti.height, dp(14))]
+    settle(ti, fit)
+    return ti
 
 
 class Overlay(FloatLayout):
@@ -47,7 +69,7 @@ class Overlay(FloatLayout):
         with self.canvas.before:
             Color(*GREEN)
             self._bg = Rectangle(pos=self.pos, size=self.size)
-        self.bind(pos=self._upd, size=self._upd)
+        settle(self, self._upd)
 
     def _upd(self, *_):
         self._bg.pos = self.pos
@@ -68,7 +90,7 @@ class Panel(BoxLayout):
         with self.canvas.before:
             Color(*bg)
             self._r = RoundedRectangle(radius=[dp(18)])
-        self.bind(pos=self._upd, size=self._upd)
+        settle(self, self._upd)
 
     def _upd(self, *_):
         self._r.pos = self.pos
@@ -98,7 +120,7 @@ class Pill(Label):
         with self.canvas.before:
             Color(*bg)
             self._r = RoundedRectangle(radius=[dp(16)])
-        self.bind(pos=self._upd, size=self._upd)
+        settle(self, self._upd)
 
     def _upd(self, *_):
         self._r.pos = self.pos
@@ -116,7 +138,7 @@ class Ring(Widget):
     def __init__(self, **kw):
         super().__init__(**kw)
         self.parts = []
-        self.bind(pos=self.redraw, size=self.redraw)
+        settle(self, self.redraw)
 
     def set_parts(self, parts):
         self.parts = parts
@@ -159,7 +181,7 @@ class RoundBtn(Button):
         with self.canvas.before:
             Color(*bg)
             self._e = Ellipse()
-        self.bind(pos=self._upd, size=self._upd)
+        settle(self, self._upd)
 
     def _upd(self, *_):
         d = min(self.width, self.height) - dp(6)
@@ -179,7 +201,7 @@ class Choice(Button):
         with self.canvas.before:
             self._c = Color(*base)
             self._r = RoundedRectangle(radius=[dp(16)])
-        self.bind(pos=self._upd, size=self._upd)
+        settle(self, self._upd)
         self._paint()
 
     def _upd(self, *_):
@@ -218,7 +240,7 @@ class TypeCard(Button):
         with self.canvas.after:
             self._bc = Color(0, 0, 0, 0)
             self._ln = Line(rounded_rectangle=(0, 0, 40, 40, dp(16)), width=dp(2))
-        self.bind(pos=self._upd, size=self._upd)
+        settle(self, self._upd)
 
     def _upd(self, *_):
         self._r.pos = self.pos
@@ -239,7 +261,7 @@ class DashedBox(BoxLayout):
             Color(*BLACK)
             self._ln = Line(rounded_rectangle=(0, 0, 40, 40, dp(16)), width=dp(1.4),
                             dash_length=dp(5), dash_offset=dp(4))
-        self.bind(pos=self._upd, size=self._upd)
+        settle(self, self._upd)
 
     def _upd(self, *_):
         set_rr(self._ln, self.x, self.y, self.width, self.height, dp(16))
@@ -286,7 +308,7 @@ class Divider(Widget):
         with self.canvas:
             Color(*color)
             self._r = Rectangle()
-        self.bind(pos=self._upd, size=self._upd)
+        settle(self, self._upd)
 
     def _upd(self, *_):
         self._r.pos = self.pos
@@ -302,7 +324,7 @@ class Check(Widget):
         super().__init__(**kw)
         self.active = False
         self.on_change = on_change
-        self.bind(pos=self.redraw, size=self.redraw)
+        settle(self, self.redraw)
         self.redraw()
 
     def redraw(self, *_):
@@ -337,7 +359,7 @@ class LockIcon(Widget):
         kw.setdefault("size_hint", (None, None))
         kw.setdefault("size", (dp(54), dp(60)))
         super().__init__(**kw)
-        self.bind(pos=self.redraw, size=self.redraw)
+        settle(self, self.redraw)
         self.redraw()
 
     def redraw(self, *_):
@@ -367,7 +389,7 @@ class Dot(Label):
         with self.canvas.before:
             self._c = Color(*bg)
             self._e = Ellipse()
-        self.bind(pos=self._upd, size=self._upd)
+        settle(self, self._upd)
 
     def _upd(self, *_):
         self._e.pos = self.pos
@@ -383,7 +405,7 @@ class Steps(BoxLayout):
         with self.canvas.before:
             Color(0.78, 0.8, 0.8, 1)
             self._ln = Line(points=[0, 0, 0, 0], width=dp(3))
-        self.bind(pos=self.update_line, size=self.update_line)
+        settle(self, self.update_line)
 
     def update_line(self, *_):
         n = max(len(self.children), 1)
@@ -400,7 +422,7 @@ class Tappable(ButtonBehavior, Panel):
         with self.canvas.after:
             self._bc = Color(0, 0, 0, 0)
             self._ln = Line(rounded_rectangle=(0, 0, 40, 40, dp(18)), width=dp(2))
-        self.bind(pos=self._upd_border, size=self._upd_border)
+        settle(self, self._upd_border)
 
     def _upd_border(self, *_):
         set_rr(self._ln, self.x, self.y, self.width, self.height, dp(18))
@@ -426,7 +448,7 @@ class Badge(Label):
                 self._ln = Line(rounded_rectangle=(0, 0, 40, 40, dp(12)), width=dp(2))
             else:
                 self._ln = None
-        self.bind(pos=self._upd, size=self._upd)
+        settle(self, self._upd)
 
     def _upd(self, *_):
         self._r.pos = self.pos
@@ -436,7 +458,7 @@ class Badge(Label):
             set_rr(self._ln, self.x, self.y, self.width, self.height, dp(12))
 
 
-class ProgressBar(Widget):
+class ThinBar(Widget):
     """Thin rounded bar: frac = share of the window still left (0..1)."""
 
     def __init__(self, frac=0.0, color=GREEN, **kw):
@@ -445,7 +467,7 @@ class ProgressBar(Widget):
         super().__init__(**kw)
         self.frac = max(0.0, min(1.0, frac))
         self.color = color
-        self.bind(pos=self.redraw, size=self.redraw)
+        settle(self, self.redraw)
         self.redraw()
 
     def redraw(self, *_):
@@ -505,15 +527,14 @@ class LogoBtn(ButtonBehavior, Image):
 
 
 class Caret(ButtonBehavior, Widget):
-    """Tiny down-arrow under the logo. `open` flips it up."""
+    """Down-arrow chip under the logo (large tap area). `open` flips the arrow up."""
 
     def __init__(self, **kw):
         kw.setdefault("size_hint", (None, None))
-        kw.setdefault("size", (dp(52), dp(22)))
+        kw.setdefault("size", (dp(56), dp(34)))
         super().__init__(**kw)
         self.open = False
-        self.bind(pos=self.redraw, size=self.redraw)
-        self.redraw()
+        settle(self, self.redraw)
 
     def set_open(self, on):
         self.open = on
@@ -521,12 +542,15 @@ class Caret(ButtonBehavior, Widget):
 
     def redraw(self, *_):
         self.canvas.clear()
-        if self.width < 4 or self.height < 4:
+        if self.width < 8 or self.height < 8:
             return
         cx, cy = self.center
-        a = dp(6)
+        a = dp(7)
+        w, h = min(self.width, dp(48)), min(self.height, dp(28))
         with self.canvas:
-            Color(*BLACK)
+            Color(0, 0, 0, 0.18)
+            RoundedRectangle(pos=(cx - w / 2, cy - h / 2), size=(w, h), radius=[rad(w, h, dp(14))])
+            Color(*WHITE)
             if self.open:
                 Triangle(points=[cx - a, cy - a / 2, cx + a, cy - a / 2, cx, cy + a / 2])
             else:
@@ -546,7 +570,7 @@ class ErrorBanner(BoxLayout):
         with self.canvas.before:
             Color(*RED)
             self._bg = Rectangle()
-        self.bind(pos=self._upd, size=self._upd)
+        settle(self, self._upd)
         lab = Label(text=short_text, color=WHITE, font_size="13sp", halign="left",
                     valign="middle", shorten=True, shorten_from="right", max_lines=5)
         lab.bind(size=lambda i, s: setattr(i, "text_size", s))
@@ -578,7 +602,7 @@ class Tile(ButtonBehavior, BoxLayout):
         with self.disc.canvas.before:
             Color(*col)
             self._e = Ellipse()
-        self.disc.bind(pos=self._upd, size=self._upd)
+        settle(self.disc, self._upd)
         self.add_widget(self.disc)
         cap = Label(text=caption, color=BLACK if enabled else (0.5, 0.52, 0.52, 1),
                     font_size="12sp", halign="center", valign="top")
@@ -616,7 +640,7 @@ class Welcome(FloatLayout):
         with self.logo_bg.canvas:
             Color(1, 1, 1, 1)
             self._disc = Ellipse()
-        self.logo_bg.bind(pos=self._upd_disc, size=self._upd_disc)
+        settle(self.logo_bg, self._upd_disc)
         self.add_widget(self.logo_bg)
         if HAS_LOGO:
             self.logo = Image(source=LOGO, size_hint=(None, None))
@@ -645,7 +669,7 @@ class Welcome(FloatLayout):
             self._ring = Line(circle=(0, 0, 10), width=dp(2.2))
             Color(0.1, 0.5, 1, 1)
             self._arc = Line(circle=(0, 0, 10, 0, 100), width=dp(2.2))
-        self.bind(pos=self.layout, size=self.layout)
+        settle(self, self.layout)
         self.layout()
 
     def _upd_disc(self, *_):

@@ -34,6 +34,7 @@ class SettingsScreen(Overlay):
         box.add_widget(self.address_row(S.SETTINGS_DSOS, DSOS_ADDR))
         box.add_widget(self.address_row(S.SETTINGS_LEDGER, LEDGER_ADDR))
         box.add_widget(Card(S.SETTINGS_VERSION.format(build=escape_markup(BUILD))))
+        box.add_widget(self.layout_row())
         sv.add_widget(box)
         col.add_widget(sv)
         self.add_widget(col)
@@ -50,6 +51,16 @@ class SettingsScreen(Overlay):
             b.bind(on_release=lambda *_, f=fn: f())
             btns.add_widget(b)
         p.add_widget(btns)
+        return p
+
+    def layout_row(self):
+        p = Panel(orientation="vertical", size_hint_y=None, height=dp(112), spacing=dp(6))
+        p.add_widget(label(S.SETTINGS_LAYOUT, size_hint_y=None, height=dp(44), font_size="13sp"))
+        b = Button(text=S.SETTINGS_LAYOUT_COPY, size_hint_y=None, height=dp(44),
+                   background_normal="", background_down="", background_color=BLUE,
+                   color=WHITE, bold=True)
+        b.bind(on_release=lambda *_: self.copy(S.SETTINGS_LAYOUT_COPY, self.app.layout_report()))
+        p.add_widget(b)
         return p
 
     def copy(self, title, value):
