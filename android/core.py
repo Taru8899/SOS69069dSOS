@@ -100,6 +100,10 @@ def dur(blocks):
             (S.DUR_HOURS.format(h=h, m=m) if h else S.DUR_MINUTES.format(m=m)))
 
 
+class NeedWindow(Exception):
+    """A wide log query cannot be served without an Etherscan key: ask for a block window."""
+
+
 class Chain:
     def __init__(self, api_key=""):
         self.api_key = (api_key or "").strip()
@@ -136,6 +140,82 @@ class Chain:
             except Exception as e:  # noqa: BLE001
                 last = e
         raise RuntimeError(S.ERR_ALL_RPC.format(error=last))
+
+    # ------------------------------------------------------------ logs (Activity)
+    def _es_api(self, module, action, **kw):
+        """Etherscan call that returns a list (logs, txlist). [] when there is nothing."""
+        q = {"chainid": 1, "module": module, "action": action, "apikey": self.api_key, **kw}
+        wait = 0.25 - (time.time() - self._last)
+        if wait > 0:
+            time.sleep(wait)
+        self._last = time.time()
+        j = self.s.get(ES_URL, params=q, timeout=25).json()
+        r = j.get("result")
+        if isinstance(r, list):
+            return r
+        msg = str(j.get("message") or "")
+        if "no records" in msg.lower() or "no transactions" in msg.lower():
+            return []
+        raise RuntimeError(str(r or msg))
+
+    def get_logs(self, address, topics, frm, to):
+        """Logs of `address` between two blocks. topics: [] or a list of None / 0x-hash.
+        Returns (list of normalised logs, truncated). Etherscan first (with a key), then the
+        public RPC (block windows only: a wide range raises NeedWindow)."""
+        from activity import MAX_PAGES, norm_log
+        topics = list(topics)
+        while topics and topics[-1] is None:
+            topics.pop()
+        if self.api_key:
+            try:
+                q = {"address": address, "fromBlock": frm, "toBlock": to,
+                     "offset": 1000}
+                given = [i for i, t in enumerate(topics) if t]
+                for i in given:
+                    q["topic%d" % i] = topics[i]
+                for a, b in zip(given, given[1:]):
+                    q["topic%d_%d_opr" % (a, b)] = "and"
+                for a in given:
+                    for b in given:
+                        if a < b and "topic%d_%d_opr" % (a, b) not in q:
+                            q["topic%d_%d_opr" % (a, b)] = "and"
+                out = []
+                for page in range(1, MAX_PAGES + 1):
+                    rows = self._es_api("logs", "getLogs", page=page, **q)
+                    out.extend(norm_log(r) for r in rows)
+                    if len(rows) < 1000:
+                        return out, False
+                return out, True
+            except Exception:  # noqa: BLE001
+                pass
+        if to - frm > 2 * 50400:
+            raise NeedWindow()
+        return self._logs_rpc(address, topics, frm, to), False
+
+    def _logs_rpc(self, address, topics, frm, to, depth=0):
+        from activity import norm_log
+        flt = {"address": address, "fromBlock": hex(frm), "toBlock": hex(to),
+               "topics": [t for t in topics]}
+        try:
+            res = self._pub("eth_getLogs", [flt])
+        except RuntimeError:
+            if depth >= 4 or to - frm < 2:
+                raise
+            mid = (frm + to) // 2          # node refused: ask for two smaller windows
+            return (self._logs_rpc(address, topics, frm, mid, depth + 1)
+                    + self._logs_rpc(address, topics, mid + 1, to, depth + 1))
+        return [norm_log(r) for r in res]
+
+    def failed_txs(self, address):
+        """The address's failed transactions to the dSOS contract (needs an Etherscan key)."""
+        rows = self._es_api("account", "txlist", address=address, startblock=0,
+                            endblock=99999999, page=1, offset=1000, sort="desc")
+        return [r for r in rows if r.get("isError") == "1"
+                and (r.get("to") or "").lower() == DSOS]
+
+    def block_time(self, number):
+        r = self._pub("eth_getBlockByNumber", [hex(number), False])
+        return int(r["timestamp"], 16) if r else 0
 
     def block(self):
         if self.api_key:
@@ -248,41 +328,3 @@ class Chain:
             "min_reserve_wei": reserve, "cooldown": cooldown,
             "push": u(st[0]), "trust": u(st[1]), "effective": s(st[2]),
         }
-
-    def activity_mine(self, address, limit=1000):
-        """Read-only activity for one address on the dSOS contract.
-        Uses Etherscan when a key is present (full history, capped per type),
-        otherwise public RPC for the last ~7 days. Failed txs come from the
-        address txlist filtered to the contract.
-        Returns a list of dicts: title, sub, kind, tx, from, to, offer_id, ts, block.
-        """
-        # Placeholder structure matching the plan. Real log decoding will be
-        # verified on device against live network (plan note: never run yet).
-        a = address.strip().lower()
-        rows = []
-        # Minimal safe implementation: return empty list with a note when no key
-        # and a short synthetic entry so the UI path is testable.
-        if not self.api_key:
-            rows.append({
-                "title": "Add Etherscan key for full history",
-                "sub": "Without a key only the last ~7 days can be queried",
-                "kind": "all", "tx": "", "from": a, "to": DSOS,
-                "offer_id": None, "ts": 0, "block": 0,
-            })
-        return rows
-
-    def activity_contract(self, days=7):
-        """Latest activity of all addresses on the dSOS contract (newest first).
-        Window starts at 7 days; Load older extends it. Public RPC nodes do not
-        give timestamps, so the app adds them block by block when needed.
-        """
-        rows = []
-        if not self.api_key:
-            rows.append({
-                "title": "Contract activity (limited)",
-                "sub": f"Last {days} days · add Etherscan key for deeper history",
-                "kind": "all", "tx": "", "from": "", "to": DSOS,
-                "offer_id": None, "ts": 0, "block": 0,
-            })
-        return rows
-

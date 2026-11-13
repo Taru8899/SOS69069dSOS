@@ -4,7 +4,6 @@ from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
-from kivy.uix.scrollview import ScrollView
 
 import core
 import strings as S
@@ -12,7 +11,7 @@ import tx
 import util
 from page_tx import TxScreen
 from theme import BLACK, BLUE, DSOS_ADDR, LIGHT, WHITE, left_text, short
-from widgets import Card, Choice, Overlay, Panel, RoundBtn, label, make_input
+from widgets import PullScroll, Card, Choice, Overlay, Panel, RoundBtn, label, make_input
 
 
 class SendScreen(Overlay):
@@ -37,7 +36,7 @@ class SendScreen(Overlay):
         head.add_widget(label(S.SEND_TITLE, font_size="24sp"))
         col.add_widget(head)
 
-        sv = ScrollView()
+        sv = PullScroll()
         form = BoxLayout(orientation="vertical", spacing=dp(10), size_hint_y=None,
                          padding=[dp(14), 0, dp(14), dp(14)])
         form.bind(minimum_height=form.setter("height"))

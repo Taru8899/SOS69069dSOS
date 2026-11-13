@@ -462,3 +462,106 @@ RO_TIP_PIN = ("The pin value is the 32-byte form of your PIN that matches this o
 # ------------------------------------------------------------------ wallet link metadata (shown in the wallet)
 WC_APP_NAME = "dSOS"
 WC_APP_DESC = "dSOS companion app. It never holds keys: your wallet signs and sends."
+
+# ------------------------------------------------------------------ v8: shell, drawer, settings, links
+BTN_CLOSE = "Close"
+BTN_OPEN = "Open"
+BTN_BACK_HOME = "Wallet"
+DRAWER_SAVED_HINT = "Add your wallet address, then tap Load."
+MSG_RELOADING = "Reloading..."
+MSG_NEED_ADDRESS = "Add your wallet address first."
+MSG_PULL = "Pull down to reload"
+SETTINGS_TITLE = "Settings"
+SETTINGS_INTRO = ("[b]Contracts[/b]\nBoth are on Ethereum mainnet. Copy an address or open it on "
+                  "Etherscan.")
+SETTINGS_DSOS = "dSOS contract"
+SETTINGS_LEDGER = "SOS69069 ledger"
+SETTINGS_VERSION = "[b]App version[/b]\n{build}"
+SETTINGS_COPIED = "{title} copied"
+SETTINGS_OPEN_FAILED = "Could not open the link. Copy it instead."
+LINKS_TITLE = "Ethereum links"
+LINKS_NEED_ADDRESS = "Load your wallet first to open it on Etherscan."
+LINK_TILES = [
+    # key, caption, glyph, colour
+    ("wallet", "Etherscan\nmy wallet", "W", (0.0, 0.2, 1, 1)),
+    ("read", "dSOS contract\nRead", "R", (0.02, 0.66, 0.21, 1)),
+    ("write", "dSOS contract\nWrite", "Wr", (0.9, 0.55, 0.0, 1)),
+    ("ledger", "SOS69069\nledger", "L", (0.45, 0.2, 0.85, 1)),
+    ("dapp", "dSOS dApp", "d", (0.04, 0.04, 0.04, 1)),
+    ("github", "GitHub\nrepo", "G", (0.35, 0.37, 0.4, 1)),
+]
+
+# ------------------------------------------------------------------ v8: welcome
+WELCOME_RATE = "1 dSOS = 1 slice = 0.001 ETH"
+WELCOME_SLOGAN = "Decentralized.\nTrustless. Yours."
+WELCOME_CONNECTING = "Connecting..."
+
+# ------------------------------------------------------------------ v8: errors
+ERR_BANNER = "Something went wrong:\n{text}"
+ERR_LAST_RUN = "The app stopped last time. Last step: {step}"
+ERR_PAGE = "[b]This page could not be built[/b]\n{error}"
+CREATE_ERR_DRY = "The chain refused this transaction: {reason}"
+CREATE_ERR_TEXT = "[b]Cannot create:[/b] {text}"
+CREATE_CHECKING = "Checking with the chain..."
+PIN_SHOW = "Show"
+PIN_HIDE = "Hide"
+
+# ------------------------------------------------------------------ v8: Offers | Activity
+OFFERS_SWITCH = [("offers", "Offers"), ("activity", "Activity")]
+ACT_SCOPES = [("mine", "Mine"), ("contract", "Contract")]
+ACT_FILTERS = [("all", "All"), ("created", "Created"), ("received", "Received"),
+               ("sent", "Sent"), ("redeemed", "Redeemed"), ("swept", "Swept"),
+               ("stake", "Stake & Credits"), ("donation", "Donations"),
+               ("ledger", "Ledger"), ("failed", "Failed")]
+ACT_LOADING = "Loading activity..."
+ACT_EMPTY = "No activity found in this range."
+ACT_NEED_ADDRESS = "Load your wallet first to see your activity."
+ACT_ERROR = "[b]Could not load activity[/b]\n{error}"
+ACT_NO_KEY = ("Showing about the last 7 days from public nodes. Add an Etherscan key for the full "
+              "history and for failed transactions.")
+ACT_WINDOW = "Covers blocks {lo:,} to {hi:,}."
+ACT_COMPLETE = "Full history loaded."
+ACT_TRUNCATED = "More than 10,000 events: the oldest are not shown."
+ACT_LOAD_OLDER = "Load older"
+ACT_TX_NOTE = "Failed transactions could not be read: {error}"
+ACT_COUNT = "{n} items"
+ACT_ICONS = {"created": ("+", (0.02, 0.66, 0.21, 1)), "received": ("<", (0.0, 0.2, 1, 1)),
+             "sent": (">", (0.04, 0.04, 0.04, 1)), "redeemed": ("$", (0.02, 0.66, 0.21, 1)),
+             "redeemed_by": ("$", (0.04, 0.04, 0.04, 1)), "swept": ("S", (0.45, 0.3, 0.0, 1)),
+             "staked": ("o", (0.0, 0.2, 1, 1)), "formed": ("c", (0.0, 0.2, 1, 1)),
+             "credit_redeemed": ("$", (0.02, 0.66, 0.21, 1)),
+             "donation": ("d", (0.45, 0.2, 0.85, 1)), "ledger": ("L", (0.45, 0.2, 0.85, 1)),
+             "failed": ("!", (0.69, 0, 0.13, 1))}
+ACT_TITLE = {
+    "created": "Created {amt} · #{id}",
+    "received": "Received {amt}{idpart}",
+    "sent": "Sent {amt}{idpart}",
+    "redeemed": "Redeemed {amt} · #{id}",
+    "redeemed_by": "Your offer was redeemed · #{id}",
+    "swept": "Swept {amt} · #{id}",
+    "staked": "Staked",
+    "formed": "Credits formed · {amt}",
+    "credit_redeemed": "Credits redeemed · {amt}",
+    "donation": "Donation",
+    "ledger": "Ledger record",
+    "failed": "Failed · {fn}",
+}
+ACT_AMT_DSOS = "{n} dSOS"
+ACT_AMT_UNKNOWN = "dSOS"
+ACT_AMT_CREDITS = "{n} credits"
+ACT_IDPART = " · #{id}"
+ACT_SUB = "{eth}{when}block {block:,}"
+ACT_SUB_ETH = "{eth} ETH · "
+ACT_SUB_WHEN = "{ago} · "
+ACT_SUB_WHEN_APPROX = "~{ago} · "
+ACT_NOW_STAKED = "you are now staked"
+ACT_FAILED_SUB = "reverted"
+ACT_DETAIL_TX = "Transaction"
+ACT_DETAIL_FROM = "From"
+ACT_DETAIL_TO = "To"
+ACT_DETAIL_BLOCK = "Block {block:,}"
+ACT_BTN_ETHERSCAN = "Open on Etherscan"
+ACT_BTN_OFFER = "Go to offer #{id}"
+ACT_OFFER_NOT_MINE = "Offer #{id} is not in your list (it may belong to someone else)."
+ACT_COPIED = "Transaction hash copied"
+BTN_RETRY = "Retry"

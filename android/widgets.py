@@ -1,5 +1,7 @@
 """Reusable widgets and small UI helpers."""
-from kivy.graphics import Color, Ellipse, Line, Rectangle, RoundedRectangle
+from kivy.app import App
+from kivy.clock import Clock
+from kivy.graphics import Color, Ellipse, Line, Quad, Rectangle, RoundedRectangle, Triangle
 from kivy.metrics import dp
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.boxlayout import BoxLayout
@@ -7,13 +9,26 @@ from kivy.uix.button import Button
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.image import Image
 from kivy.uix.label import Label
+from kivy.uix.scrollview import ScrollView
 from kivy.uix.textinput import TextInput
 from kivy.uix.widget import Widget
-from kivy.clock import Clock
 
 import core
 import strings as S
-from theme import (BLACK, BLUE, GREEN, HAS_LOGO, LOGO, WHITE, left_text)
+import util
+from theme import (BLACK, BLUE, BUILD, GREEN, HAS_LOGO, LOGO, RED, WHITE, WORDMARK,
+                   HAS_WORDMARK, left_text)
+
+
+def rad(w, h, r):
+    """Corner radius that always fits the box (a radius bigger than half the box breaks drawing)."""
+    return max(0.0, min(float(r), float(w) / 2.0, float(h) / 2.0))
+
+
+def set_rr(line, x, y, w, h, r):
+    """Set a rounded-rectangle outline only when the box has a real size."""
+    if w >= 2 and h >= 2:
+        line.rounded_rectangle = (x, y, w, h, rad(w, h, r))
 
 
 def make_input(hint, text="", password=False, filt=None):
@@ -44,80 +59,6 @@ class Overlay(FloatLayout):
         return self.collide_point(*touch.pos)
 
 
-class Splash(FloatLayout):
-    """v8 Welcome / splash: near-black with green/blue light streaks, logo, wordmark, spinner."""
-
-    def __init__(self, **kw):
-        super().__init__(**kw)
-        with self.canvas.before:
-            Color(0.04, 0.05, 0.06, 1)
-            self._bg = Rectangle(pos=self.pos, size=self.size)
-            # green glow top-left
-            Color(0.02, 0.55, 0.18, 0.35)
-            self._glow = Ellipse(pos=(-dp(80), self.height * 0.55 if self.height else 400),
-                                 size=(dp(320), dp(320)))
-            # diagonal green streaks (left)
-            Color(0.05, 0.7, 0.25, 0.18)
-            self._g1 = Line(points=[], width=dp(3))
-            self._g2 = Line(points=[], width=dp(2))
-            # blue streaks (right / bottom)
-            Color(0.1, 0.25, 0.9, 0.16)
-            self._b1 = Line(points=[], width=dp(2.5))
-            self._b2 = Line(points=[], width=dp(2))
-        self.bind(pos=self._upd_splash, size=self._upd_splash)
-
-        col = BoxLayout(orientation="vertical", size_hint=(0.88, 0.78),
-                        pos_hint={"center_x": 0.5, "center_y": 0.52}, spacing=dp(8))
-        if HAS_LOGO:
-            col.add_widget(Image(source=LOGO, size_hint=(None, None),
-                                 size=(dp(96), dp(96)),
-                                 pos_hint={"center_x": 0.5}))
-        col.add_widget(Label(text="[b]dSOS[/b]", markup=True, font_size="42sp",
-                             color=WHITE, size_hint_y=None, height=dp(52),
-                             halign="center"))
-        col.add_widget(Label(text="1 dSOS = 1 slice = 0.001 ETH",
-                             font_size="15sp", color=(0.75, 0.9, 0.8, 1),
-                             size_hint_y=None, height=dp(28), halign="center"))
-        col.add_widget(Label(text="Decentralized. Trustless.\nYours.",
-                             markup=True, font_size="18sp", color=WHITE,
-                             size_hint_y=None, height=dp(52),
-                             halign="center", valign="middle"))
-        self._spin_lbl = Label(text="Connecting...", font_size="14sp",
-                               color=(0.55, 0.7, 1, 1), size_hint_y=None, height=dp(28))
-        col.add_widget(self._spin_lbl)
-        from theme import APP_VERSION, APP_BUILD, APP_COMMIT
-        col.add_widget(Label(
-            text=f"{APP_VERSION} · build {APP_BUILD} · {APP_COMMIT}",
-            font_size="12sp", color=(0.45, 0.5, 0.55, 1),
-            size_hint_y=None, height=dp(22)))
-        self.add_widget(col)
-        self._angle = 0
-        Clock.schedule_interval(self._tick_spin, 0.05)
-
-    def _upd_splash(self, *_):
-        self._bg.pos = self.pos
-        self._bg.size = self.size
-        h, w = self.height or 1, self.width or 1
-        self._glow.pos = (-dp(60), h * 0.55)
-        self._glow.size = (dp(300), dp(300))
-        # green diagonals left
-        self._g1.points = [0, h * 0.85, w * 0.35, h * 0.55]
-        self._g2.points = [0, h * 0.65, w * 0.28, h * 0.40]
-        # blue diagonals right/bottom
-        self._b1.points = [w * 0.55, h * 0.25, w, h * 0.05]
-        self._b2.points = [w * 0.40, 0, w, h * 0.30]
-
-    def _tick_spin(self, dt):
-        self._angle = (self._angle + 12) % 360
-        # simple text pulse instead of a real spinner widget
-        dots = "." * (1 + (self._angle // 90) % 3)
-        self._spin_lbl.text = "Connecting" + dots
-        return True
-
-    def on_touch_down(self, touch):
-        return True  # block everything while splash is up
-
-
 class Panel(BoxLayout):
     """White rounded card."""
 
@@ -132,6 +73,7 @@ class Panel(BoxLayout):
     def _upd(self, *_):
         self._r.pos = self.pos
         self._r.size = self.size
+        self._r.radius = [rad(self.width, self.height, dp(18))]
 
 
 class Card(Panel):
@@ -161,6 +103,11 @@ class Pill(Label):
     def _upd(self, *_):
         self._r.pos = self.pos
         self._r.size = self.size
+        self._r.radius = [rad(self.width, self.height, dp(16))]
+
+
+class PillBtn(ButtonBehavior, Pill):
+    """The 'Ethereum' chip as a tap target."""
 
 
 class Ring(Widget):
@@ -238,6 +185,7 @@ class Choice(Button):
     def _upd(self, *_):
         self._r.pos = self.pos
         self._r.size = self.size
+        self._r.radius = [rad(self.width, self.height, dp(16))]
 
     def _paint(self):
         c = self.sel if self._on else self.base
@@ -269,13 +217,14 @@ class TypeCard(Button):
             self._r = RoundedRectangle(radius=[dp(16)])
         with self.canvas.after:
             self._bc = Color(0, 0, 0, 0)
-            self._ln = Line(rounded_rectangle=(0, 0, 1, 1, dp(16)), width=dp(2))
+            self._ln = Line(rounded_rectangle=(0, 0, 40, 40, dp(16)), width=dp(2))
         self.bind(pos=self._upd, size=self._upd)
 
     def _upd(self, *_):
         self._r.pos = self.pos
         self._r.size = self.size
-        self._ln.rounded_rectangle = (self.x, self.y, self.width, self.height, dp(16))
+        self._r.radius = [rad(self.width, self.height, dp(16))]
+        set_rr(self._ln, self.x, self.y, self.width, self.height, dp(16))
 
     def set_selected(self, on):
         self._bc.rgba = BLUE if on else (0, 0, 0, 0)
@@ -288,12 +237,12 @@ class DashedBox(BoxLayout):
         super().__init__(**kw)
         with self.canvas.after:
             Color(*BLACK)
-            self._ln = Line(rounded_rectangle=(0, 0, 1, 1, dp(16)), width=dp(1.4),
+            self._ln = Line(rounded_rectangle=(0, 0, 40, 40, dp(16)), width=dp(1.4),
                             dash_length=dp(5), dash_offset=dp(4))
         self.bind(pos=self._upd, size=self._upd)
 
     def _upd(self, *_):
-        self._ln.rounded_rectangle = (self.x, self.y, self.width, self.height, dp(16))
+        set_rr(self._ln, self.x, self.y, self.width, self.height, dp(16))
 
 
 def label(text, **kw):
@@ -362,7 +311,7 @@ class Check(Widget):
         w, h = self.size
         with self.canvas:
             Color(*(BLUE if self.active else WHITE))
-            RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(6)])
+            RoundedRectangle(pos=self.pos, size=self.size, radius=[rad(self.width, self.height, dp(6))])
             if self.active:
                 Color(*WHITE)
                 Line(points=[x + w * .22, y + h * .52, x + w * .42, y + h * .30,
@@ -395,6 +344,8 @@ class LockIcon(Widget):
         self.canvas.clear()
         x, y = self.pos
         w, h = self.size
+        if w < 20 or h < 20:
+            return
         with self.canvas:
             Color(0.87, 0.9, 1, 1)
             RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(16)])
@@ -448,15 +399,11 @@ class Tappable(ButtonBehavior, Panel):
         super().__init__(**kw)
         with self.canvas.after:
             self._bc = Color(0, 0, 0, 0)
-            # non-zero initial size so the first draw never sees a zero outline
-            self._ln = Line(rounded_rectangle=(0, 0, max(self.width, dp(1)), max(self.height, dp(1)), dp(18)),
-                            width=dp(2))
+            self._ln = Line(rounded_rectangle=(0, 0, 40, 40, dp(18)), width=dp(2))
         self.bind(pos=self._upd_border, size=self._upd_border)
 
     def _upd_border(self, *_):
-        w = max(float(self.width or 0), 1.0)
-        h = max(float(self.height or 0), 1.0)
-        self._ln.rounded_rectangle = (self.x, self.y, w, h, dp(18))
+        set_rr(self._ln, self.x, self.y, self.width, self.height, dp(18))
 
     def set_selected(self, on):
         self._bc.rgba = BLUE if on else (0, 0, 0, 0)
@@ -476,7 +423,7 @@ class Badge(Label):
             self._r = RoundedRectangle(radius=[dp(12)])
             if kind == "G":
                 Color(*BLACK)
-                self._ln = Line(rounded_rectangle=(0, 0, 1, 1, dp(12)), width=dp(2))
+                self._ln = Line(rounded_rectangle=(0, 0, 40, 40, dp(12)), width=dp(2))
             else:
                 self._ln = None
         self.bind(pos=self._upd, size=self._upd)
@@ -484,10 +431,9 @@ class Badge(Label):
     def _upd(self, *_):
         self._r.pos = self.pos
         self._r.size = self.size
+        self._r.radius = [rad(self.width, self.height, dp(12))]
         if self._ln is not None:
-            w = max(float(self.width or 0), 1.0)
-            h = max(float(self.height or 0), 1.0)
-            self._ln.rounded_rectangle = (self.x, self.y, w, h, dp(12))
+            set_rr(self._ln, self.x, self.y, self.width, self.height, dp(12))
 
 
 class ProgressBar(Widget):
@@ -504,10 +450,277 @@ class ProgressBar(Widget):
 
     def redraw(self, *_):
         self.canvas.clear()
+        if self.width < 2 or self.height < 2:
+            return
+        r = rad(self.width, self.height, dp(4))
         with self.canvas:
             Color(0.9, 0.91, 0.91, 1)
-            RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(4)])
+            RoundedRectangle(pos=self.pos, size=self.size, radius=[r])
             if self.frac > 0:
                 Color(*self.color)
-                RoundedRectangle(pos=self.pos, size=(max(self.width * self.frac, dp(8)), self.height),
-                                 radius=[dp(4)])
+                w = min(self.width, max(self.width * self.frac, dp(8)))
+                RoundedRectangle(pos=self.pos, size=(w, self.height),
+                                 radius=[rad(w, self.height, dp(4))])
+
+
+# ---------------------------------------------------------------- shell widgets
+class PullScroll(ScrollView):
+    """ScrollView that calls `on_pull()` when the person pulls down past the top.
+
+    The pull is measured by touch: the touch must start while the list is at the top, travel
+    down by PULL_DP and still be at the top when the finger lifts."""
+    PULL_DP = 110
+
+    def __init__(self, on_pull=None, **kw):
+        super().__init__(**kw)
+        self.on_pull = on_pull
+        self._pt = None
+
+    def on_touch_down(self, touch):
+        self._pt = touch if (self.collide_point(*touch.pos) and self.scroll_y >= 0.999) else None
+        return super().on_touch_down(touch)
+
+    def on_touch_up(self, touch):
+        pt, self._pt = self._pt, None
+        res = super().on_touch_up(touch)
+        if pt is touch and (touch.oy - touch.y) > dp(self.PULL_DP) and self.scroll_y >= 0.98:
+            self.pulled()
+        return res
+
+    def pulled(self):
+        if self.on_pull:
+            self.on_pull()
+            return
+        app = App.get_running_app()
+        if app is not None and hasattr(app, "reload"):
+            app.reload()
+
+
+class Tap(ButtonBehavior, BoxLayout):
+    """Any layout that can be tapped."""
+
+
+class LogoBtn(ButtonBehavior, Image):
+    """The logo in the header: tap = back to the Wallet page."""
+
+
+class Caret(ButtonBehavior, Widget):
+    """Tiny down-arrow under the logo. `open` flips it up."""
+
+    def __init__(self, **kw):
+        kw.setdefault("size_hint", (None, None))
+        kw.setdefault("size", (dp(52), dp(22)))
+        super().__init__(**kw)
+        self.open = False
+        self.bind(pos=self.redraw, size=self.redraw)
+        self.redraw()
+
+    def set_open(self, on):
+        self.open = on
+        self.redraw()
+
+    def redraw(self, *_):
+        self.canvas.clear()
+        if self.width < 4 or self.height < 4:
+            return
+        cx, cy = self.center
+        a = dp(6)
+        with self.canvas:
+            Color(*BLACK)
+            if self.open:
+                Triangle(points=[cx - a, cy - a / 2, cx + a, cy - a / 2, cx, cy + a / 2])
+            else:
+                Triangle(points=[cx - a, cy + a / 2, cx + a, cy + a / 2, cx, cy - a / 2])
+
+
+class ErrorBanner(BoxLayout):
+    """Red strip with the error text, a Copy button (full text) and a Close button."""
+
+    def __init__(self, short_text, full_text, on_close, **kw):
+        kw.setdefault("size_hint", (1, None))
+        kw.setdefault("height", dp(108))
+        kw.setdefault("padding", [dp(12), dp(8)])
+        kw.setdefault("spacing", dp(8))
+        super().__init__(**kw)
+        self.full = full_text
+        with self.canvas.before:
+            Color(*RED)
+            self._bg = Rectangle()
+        self.bind(pos=self._upd, size=self._upd)
+        lab = Label(text=short_text, color=WHITE, font_size="13sp", halign="left",
+                    valign="middle", shorten=True, shorten_from="right", max_lines=5)
+        lab.bind(size=lambda i, s: setattr(i, "text_size", s))
+        self.add_widget(lab)
+        col = BoxLayout(orientation="vertical", size_hint_x=None, width=dp(84), spacing=dp(6))
+        cp = Choice(base=WHITE, text=S.BTN_COPY, bold=True, font_size="13sp")
+        cp.bind(on_release=lambda *_: util.copy_text(self.full))
+        cl = Choice(base=BLACK, fg=WHITE, text=S.BTN_CLOSE, bold=True, font_size="13sp")
+        cl.bind(on_release=lambda *_: on_close(self))
+        col.add_widget(cp)
+        col.add_widget(cl)
+        self.add_widget(col)
+
+    def _upd(self, *_):
+        self._bg.pos = self.pos
+        self._bg.size = self.size
+
+
+class Tile(ButtonBehavior, BoxLayout):
+    """Round launcher tile: coloured circle with a glyph, caption below."""
+
+    def __init__(self, glyph, caption, color, enabled=True, **kw):
+        kw.setdefault("orientation", "vertical")
+        kw.setdefault("spacing", dp(6))
+        super().__init__(**kw)
+        col = tuple(color[:3]) + ((1,) if enabled else (0.35,))
+        self.disc = Label(text=glyph, bold=True, font_size="26sp", color=WHITE,
+                          size_hint=(1, None), height=dp(68))
+        with self.disc.canvas.before:
+            Color(*col)
+            self._e = Ellipse()
+        self.disc.bind(pos=self._upd, size=self._upd)
+        self.add_widget(self.disc)
+        cap = Label(text=caption, color=BLACK if enabled else (0.5, 0.52, 0.52, 1),
+                    font_size="12sp", halign="center", valign="top")
+        cap.bind(size=lambda i, s: setattr(i, "text_size", s))
+        self.add_widget(cap)
+
+    def _upd(self, *_):
+        d = max(2.0, min(self.disc.width, self.disc.height) - dp(4))
+        self._e.size = (d, d)
+        self._e.pos = (self.disc.center_x - d / 2, self.disc.center_y - d / 2)
+
+
+class Welcome(FloatLayout):
+    """Start screen drawn from shapes: dark background, green glow and streaks on the left,
+    blue streaks on the right, logo, wordmark, slogan, spinner and the version line."""
+
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        self._angle = 0.0
+        self._ev = None
+        with self.canvas.before:
+            Color(0.02, 0.04, 0.05, 1)
+            self._bg = Rectangle()
+            self._glow = []
+            for k in range(7):
+                Color(0.02, 0.75, 0.25, 0.07)
+                self._glow.append(Ellipse())
+            self._streaks = []
+            for col in ((0.03, 0.8, 0.28, 0.55), (0.03, 0.8, 0.28, 0.30), (0.03, 0.8, 0.28, 0.22),
+                        (0.05, 0.25, 1, 0.65), (0.05, 0.25, 1, 0.45)):
+                Color(*col)
+                self._streaks.append(Quad())
+        # content
+        self.logo_bg = Widget(size_hint=(None, None))
+        with self.logo_bg.canvas:
+            Color(1, 1, 1, 1)
+            self._disc = Ellipse()
+        self.logo_bg.bind(pos=self._upd_disc, size=self._upd_disc)
+        self.add_widget(self.logo_bg)
+        if HAS_LOGO:
+            self.logo = Image(source=LOGO, size_hint=(None, None))
+            self.add_widget(self.logo)
+        else:
+            self.logo = None
+        if HAS_WORDMARK:
+            self.word = Image(source=WORDMARK, size_hint=(None, None))
+        else:
+            self.word = Label(text="dSOS", bold=True, font_size="56sp", color=WHITE,
+                              size_hint=(None, None))
+        self.add_widget(self.word)
+        self.tag1 = Label(text=S.WELCOME_RATE, color=WHITE, font_size="16sp",
+                          size_hint=(1, None), height=dp(28))
+        self.tag2 = Label(text=S.WELCOME_SLOGAN, color=WHITE, font_size="20sp", halign="center",
+                          valign="middle", size_hint=(1, None), height=dp(64))
+        self.tag2.bind(size=lambda i, s: setattr(i, "text_size", s))
+        self.status = Label(text=S.WELCOME_CONNECTING, color=WHITE, font_size="17sp",
+                            size_hint=(1, None), height=dp(28))
+        self.ver = Label(text=BUILD, color=(0.7, 0.78, 0.8, 1), font_size="12sp",
+                         size_hint=(1, None), height=dp(22))
+        for w in (self.tag1, self.tag2, self.status, self.ver):
+            self.add_widget(w)
+        with self.canvas:
+            Color(1, 1, 1, 0.15)
+            self._ring = Line(circle=(0, 0, 10), width=dp(2.2))
+            Color(0.1, 0.5, 1, 1)
+            self._arc = Line(circle=(0, 0, 10, 0, 100), width=dp(2.2))
+        self.bind(pos=self.layout, size=self.layout)
+        self.layout()
+
+    def _upd_disc(self, *_):
+        w = self.logo_bg
+        self._disc.pos = w.pos
+        self._disc.size = w.size
+
+    def layout(self, *_):
+        x, y = self.pos
+        w, h = self.size
+        if w < 10 or h < 10:
+            return
+        self._bg.pos, self._bg.size = (x, y), (w, h)
+        for k, e in enumerate(self._glow):          # soft glow, top-left
+            r = (0.30 + 0.09 * k) * max(w, h)
+            e.size = (r * 2, r * 2)
+            e.pos = (x + 0.12 * w - r, y + 0.90 * h - r)
+        s = self._streaks                            # (x, y of the 4 corners as fractions)
+        def quad(q, pts):
+            q.points = [c for fx, fy in pts for c in (x + fx * w, y + fy * h)]
+        quad(s[0], [(0.0, 0.93), (0.30, 1.0), (0.38, 1.0), (0.0, 0.84)])
+        quad(s[1], [(0.0, 0.40), (0.0, 0.55), (0.30, 0.74), (0.22, 0.68)])
+        quad(s[2], [(0.0, 0.12), (0.0, 0.30), (0.32, 0.20), (0.18, 0.16)])
+        quad(s[3], [(1.0, 0.70), (1.0, 0.57), (0.62, 0.28), (0.80, 0.52)])
+        quad(s[4], [(1.0, 0.44), (1.0, 0.30), (0.55, 0.10), (0.78, 0.26)])
+        lg = min(w * 0.46, h * 0.28)
+        cy = y + 0.72 * h
+        self.logo_bg.size = (lg * 0.62, lg * 0.62)
+        self.logo_bg.pos = (x + w / 2 - lg * 0.31, cy - lg * 0.31 + lg * 0.04)
+        if self.logo is not None:
+            self.logo.size = (lg, lg)
+            self.logo.pos = (x + w / 2 - lg / 2, cy - lg / 2)
+        ww = min(w * 0.62, dp(300))
+        if HAS_WORDMARK:
+            self.word.size = (ww, ww * 111.0 / 371.0)
+        else:
+            self.word.size = (ww, dp(70))
+        self.word.pos = (x + w / 2 - ww / 2, y + 0.55 * h - self.word.height / 2)
+        self.tag1.pos = (x, y + 0.49 * h)
+        self.tag2.pos = (x, y + 0.38 * h)
+        sr = dp(17)
+        scx, scy = x + w / 2, y + 0.19 * h
+        self._ring.circle = (scx, scy, sr)
+        self._spin_c = (scx, scy, sr)
+        self._draw_arc()
+        self.status.pos = (x, y + 0.115 * h)
+        self.ver.pos = (x, y + 0.075 * h)
+
+    def _draw_arc(self):
+        cx, cy, r = getattr(self, "_spin_c", (0, 0, 10))
+        self._arc.circle = (cx, cy, r, self._angle, self._angle + 100)
+
+    def _tick(self, dt):
+        self._angle = (self._angle + 300 * dt) % 360
+        self._draw_arc()
+
+    def start(self):
+        if self._ev is None:
+            self._ev = Clock.schedule_interval(self._tick, 1 / 30.0)
+
+    def stop(self):
+        if self._ev is not None:
+            self._ev.cancel()
+            self._ev = None
+
+    def on_touch_down(self, touch):
+        return self.collide_point(*touch.pos)
+
+
+def page_head(app, title):
+    """Back button + title row used by every overlay page."""
+    head = BoxLayout(size_hint_y=None, height=dp(64), padding=[dp(14), dp(8)], spacing=dp(14))
+    back = RoundBtn(text=S.ICON_BACK, font_size="26sp", bold=True, bg=WHITE, color=BLACK,
+                    size_hint=(None, 1), width=dp(52))
+    back.bind(on_release=lambda *_: app.close_top())
+    head.add_widget(back)
+    head.add_widget(label(title, font_size="24sp"))
+    return head

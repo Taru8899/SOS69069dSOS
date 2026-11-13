@@ -3,13 +3,12 @@ from kivy.graphics import Color, Rectangle
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
-from kivy.uix.scrollview import ScrollView
 
 import strings as S
 import tx
 from page_tx import TxScreen
 from theme import BLACK, BLUE, LIGHT, WHITE
-from widgets import Card, Choice, Overlay, RoundBtn, label, make_input
+from widgets import PullScroll, Card, Choice, Overlay, RoundBtn, label, make_input
 
 
 class DonateScreen(Overlay):
@@ -28,7 +27,7 @@ class DonateScreen(Overlay):
         head.add_widget(label(S.DONATE_TITLE, font_size="24sp"))
         col.add_widget(head)
 
-        sv = ScrollView()
+        sv = PullScroll()
         form = BoxLayout(orientation="vertical", spacing=dp(10), size_hint_y=None,
                          padding=[dp(14), 0, dp(14), dp(14)])
         form.bind(minimum_height=form.setter("height"))

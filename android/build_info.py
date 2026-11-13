@@ -1,4 +1,3 @@
-# Replaced by .github/workflows/android.yml during CI builds.
-VERSION = "0.2.0"
-BUILD = "source"
-COMMIT = "unknown"
+# Overwritten by the CI workflow on every build.
+NUMBER = "dev"
+SHA = "local"

@@ -30,18 +30,15 @@ class OffersPage:
         self.offers = sorted(d["offers"], key=lambda o: o["pos"], reverse=True)
         self.filter = "all"
         self.sel_id = self.offers[0]["id"] if self.offers else None
-        self.amount = self.offers[0]["count"] if self.offers else 0
+        want = app.ui.pop("offer_sel", None)
+        if want is not None and any(o["id"] == want for o in self.offers):
+            self.sel_id = want
+        sel = self.selected()
+        self.amount = sel["count"] if sel else 0
         self.transfer_mode = False
         self.to_text = ""
         self.pin_text = ""
         self.pin_msg = ""
-        # v8 Activity tab
-        self.mode = "offers"          # "offers" | "activity"
-        self.act_scope = "mine"       # "mine" | "contract"
-        self.act_filter = "all"
-        self.act_rows = []
-        self.act_loading = False
-        self.act_err = ""
         self.rebuild()
 
     # ---- helpers
@@ -75,68 +72,11 @@ class OffersPage:
             self.pin_msg = ""
         self.rebuild()
 
-    def set_mode(self, mode):
-        self.mode = mode
-        if mode == "activity" and not self.act_rows and not self.act_loading:
-            self.load_activity()
-        self.rebuild()
-
-    def set_act_scope(self, scope):
-        self.act_scope = scope
-        self.act_rows = []
-        self.load_activity()
-        self.rebuild()
-
-    def set_act_filter(self, key):
-        self.act_filter = key
-        self.rebuild()
-
-    def load_activity(self):
-        self.act_loading = True
-        self.act_err = ""
-        self.rebuild()
-        addr = self.d["address"]
-        key = getattr(self.app, "key", None)
-        key_text = key.text if key is not None else ""
-        def work():
-            try:
-                ch = core.Chain(key_text)
-                if self.act_scope == "mine":
-                    rows = ch.activity_mine(addr)
-                else:
-                    rows = ch.activity_contract(days=7)
-                def done(dt):
-                    self.act_rows = rows
-                    self.act_loading = False
-                    self.rebuild()
-                Clock.schedule_once(done)
-            except Exception as e:
-                def fail(dt):
-                    self.act_err = str(e)
-                    self.act_loading = False
-                    self.rebuild()
-                Clock.schedule_once(fail)
-        threading.Thread(target=work, daemon=True).start()
-
     # ---- layout
     def rebuild(self):
         b = self.b
         b.clear_widgets()
         d = self.d
-
-        # Offers | Activity switch
-        switch = BoxLayout(size_hint_y=None, height=dp(40), spacing=dp(8))
-        for m, title in (("offers", "Offers"), ("activity", "Activity")):
-            ch = Choice(base=WHITE, text=title, font_size="15sp", bold=True)
-            ch.set_selected(m == self.mode)
-            ch.bind(on_release=lambda _w, mm=m: self.set_mode(mm))
-            switch.add_widget(ch)
-        b.add_widget(switch)
-
-        if self.mode == "activity":
-            self._rebuild_activity(b)
-            return
-
         head = BoxLayout(size_hint_y=None, height=dp(48))
         head.add_widget(label(S.OFFERS_TITLE, font_size="30sp"))
         head.add_widget(label(S.OFFERS_SUMMARY.format(
@@ -156,83 +96,10 @@ class OffersPage:
         if not vis:
             b.add_widget(label(S.OFFERS_EMPTY, size_hint_y=None, height=dp(40)))
         for o in vis:
+            self.app.crumb("offers card #%s" % o["id"])
             b.add_widget(self.card(o))
             if o["id"] == self.sel_id:
                 b.add_widget(self.detail(o))
-
-    def _rebuild_activity(self, b):
-        # Mine | Contract
-        scope = BoxLayout(size_hint_y=None, height=dp(36), spacing=dp(8))
-        for s, title in (("mine", "Mine"), ("contract", "Contract")):
-            ch = Choice(base=WHITE, text=title, font_size="13sp", bold=True)
-            ch.set_selected(s == self.act_scope)
-            ch.bind(on_release=lambda _w, ss=s: self.set_act_scope(ss))
-            scope.add_widget(ch)
-        b.add_widget(scope)
-
-        # filter chips
-        filters = [
-            ("all", "All"), ("created", "Created"), ("received", "Received"),
-            ("sent", "Sent"), ("redeemed", "Redeemed"), ("swept", "Swept"),
-            ("stake", "Stake & Credits"), ("donation", "Donations"),
-            ("ledger", "Ledger"), ("failed", "Failed"),
-        ]
-        chips = BoxLayout(size_hint_y=None, height=dp(40), spacing=dp(6))
-        for key, text in filters:
-            ch = Choice(base=WHITE, text=text, font_size="12sp", bold=True)
-            ch.set_selected(key == self.act_filter)
-            ch.bind(on_release=lambda _w, k=key: self.set_act_filter(k))
-            chips.add_widget(ch)
-        b.add_widget(chips)
-
-        if self.act_loading:
-            b.add_widget(label("Loading activity…", size_hint_y=None, height=dp(40)))
-            return
-        if self.act_err:
-            b.add_widget(Card("[b]Activity error[/b]\n" + self.act_err))
-            return
-        rows = self.act_rows
-        if self.act_filter != "all":
-            rows = [r for r in rows if r.get("kind") == self.act_filter]
-        if not rows:
-            b.add_widget(label("No activity yet in this window.", size_hint_y=None, height=dp(40)))
-            return
-        for r in rows[:80]:
-            b.add_widget(self._act_row(r))
-
-    def _act_row(self, r):
-        title = r.get("title", r.get("kind", "?"))
-        sub = r.get("sub", "")
-        failed = r.get("kind") == "failed"
-        fg = RED if failed else BLACK
-        c = Tappable(orientation="vertical", padding=dp(12), spacing=dp(4),
-                     size_hint_y=None, height=dp(72))
-        c.add_widget(label(f"[b]{title}[/b]", font_size="15sp", color=fg))
-        c.add_widget(label(sub, font_size="13sp", color=(0.4, 0.42, 0.45, 1)))
-        if r.get("tx"):
-            c.bind(on_release=lambda *_, tx=r["tx"]: self._open_act_detail(r))
-        return c
-
-    def _open_act_detail(self, r):
-        from theme import ETHERSCAN_TX
-        lines = [
-            f"[b]{r.get('title', '')}[/b]",
-            r.get("sub", ""),
-            "",
-            f"Tx  {r.get('tx', '')[:18]}…",
-            f"From  {short(r.get('from', ''))}",
-            f"To    {short(r.get('to', ''))}",
-        ]
-        if r.get("offer_id"):
-            lines.append(f"Offer #{r['offer_id']}")
-        self.app.open_overlay(Panel())  # placeholder; full detail later
-        # for now just show a card on the page
-        self.b.clear_widgets()
-        self.b.add_widget(Card("\n".join(lines)))
-        back = Button(text="Back", size_hint_y=None, height=dp(48),
-                      background_normal="", background_color=BLUE, color=WHITE, bold=True)
-        back.bind(on_release=lambda *_: self.rebuild())
-        self.b.add_widget(back)
 
     def card(self, o):
         expired = o["left"] <= 0
@@ -491,4 +358,20 @@ class OffersPage:
 
 
 def build(app, b, d):
-    OffersPage(app, b, d)
+    """Offers page with an Offers | Activity switch on top."""
+    import page_activity
+    tab = app.ui["offers_tab"]
+    sw = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(8))
+    for key, text in S.OFFERS_SWITCH:
+        ch = Choice(base=WHITE, text=text, bold=True, font_size="16sp")
+        ch.set_selected(key == tab)
+        ch.bind(on_release=lambda _w, k=key: app.set_offers_tab(k))
+        sw.add_widget(ch)
+    b.add_widget(sw)
+    body = BoxLayout(orientation="vertical", spacing=dp(10), size_hint_y=None)
+    body.bind(minimum_height=body.setter("height"))
+    b.add_widget(body)
+    if tab == "activity":
+        page_activity.build(app, body, d)
+    else:
+        OffersPage(app, body, d)

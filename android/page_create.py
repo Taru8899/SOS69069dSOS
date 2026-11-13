@@ -5,16 +5,19 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.label import Label
-from kivy.uix.scrollview import ScrollView
+
+import threading
+
+from kivy.clock import Clock
 
 import core
 import strings as S
 import tx
 import util
 from page_tx import TxScreen
-from theme import BLACK, BLUE, LIGHT, WHITE, WINDOWS, short, set_visible
-from widgets import (Choice, DashedBox, Overlay, Panel, RoundBtn, TypeCard, label,
-                     make_input)
+from theme import BLACK, BLUE, DSOS_ADDR, LIGHT, RED, WHITE, WINDOWS, short, set_visible
+from widgets import (Card, Choice, DashedBox, Overlay, Panel, PullScroll, RoundBtn, TypeCard,
+                     label, make_input, page_head)
 
 
 class CreateScreen(Overlay):
@@ -30,20 +33,18 @@ class CreateScreen(Overlay):
 
         col = BoxLayout(orientation="vertical")
 
-        # header
-        head = BoxLayout(size_hint_y=None, height=dp(72), padding=[dp(14), dp(10)], spacing=dp(14))
-        back = RoundBtn(text=S.ICON_BACK, font_size="26sp", bold=True, bg=WHITE, color=BLACK,
-                        size_hint=(None, 1), width=dp(56))
-        back.bind(on_release=lambda *_: app.close_top())
-        head.add_widget(back)
-        head.add_widget(label(S.CREATE_TITLE, font_size="24sp"))
-        col.add_widget(head)
+        col.add_widget(page_head(app, S.CREATE_TITLE))
 
         # scrolling form
-        sv = ScrollView()
+        sv = PullScroll()
+        self.sv = sv
         form = BoxLayout(orientation="vertical", spacing=dp(10), size_hint_y=None,
                          padding=[dp(14), 0, dp(14), dp(14)])
         form.bind(minimum_height=form.setter("height"))
+
+        # red error card (empty and 0 high until there is something to say)
+        self.err_box = BoxLayout(orientation="vertical", size_hint_y=None, height=0)
+        form.add_widget(self.err_box)
 
         form.add_widget(label(S.CREATE_TYPE, size_hint_y=None, height=dp(26)))
         grid = GridLayout(cols=2, spacing=dp(10), size_hint_y=None, height=dp(2 * 64 + 10))
@@ -103,7 +104,14 @@ class CreateScreen(Overlay):
         # PIN (gated offers only)
         self.pin_in = make_input(S.CREATE_PIN_HINT, password=True)
         self.pin_in.bind(text=lambda *_: self.refresh())
-        form.add_widget(self.pin_in)
+        self.pin_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(6))
+        self.pin_row.add_widget(self.pin_in)
+        self.pin_eye = Button(text=S.PIN_SHOW, size_hint=(None, 1), width=dp(72),
+                              background_normal="", background_color=BLUE, color=WHITE,
+                              bold=True)
+        self.pin_eye.bind(on_release=lambda *_: self.toggle_pin())
+        self.pin_row.add_widget(self.pin_eye)
+        form.add_widget(self.pin_row)
         self.pin_note = label(S.CREATE_PIN_NOTE, size_hint_y=None, height=dp(96), valign="top",
                               font_size="13sp")
         form.add_widget(self.pin_note)
@@ -234,7 +242,7 @@ class CreateScreen(Overlay):
             note += "\n" + S.CREATE_GATE_WARN.format(eth=core.eth(data["stake_need_wei"]))
         self.win_note.text = note
         self.win_note.height = dp(150 if gate_risk else 60)
-        set_visible(self.pin_in, gated)
+        set_visible(self.pin_row, gated)
         set_visible(self.pin_note, gated)
 
         me = self.holder_mode == "me"
@@ -246,50 +254,85 @@ class CreateScreen(Overlay):
 
         p = self.problem()
         self.btn.text = S.CREATE_BUTTON.format(eth=eth)
-        self.btn.set_enabled(not p)
+        self.btn.set_enabled(True)      # stays tappable: a tap shows the reason in red
         self.note.text = p or S.CREATE_NOTE
 
-    def on_create(self):
-        if self.problem():
-            return
-        if self.kind == "G":
-            self.on_create_gated()
-            return
-        try:
-            t = tx.create_offer_tx(self.kind, self.holder_addr(), self.slices, self.blocks())
-        except Exception as e:  # noqa: BLE001
-            self.note.text = str(e)
-            return
-        summary = S.CREATE_SUMMARY.format(kind=self.kind, slices=self.slices, eth=t["value_eth"],
-                                          blocks=self.blocks(), holder=short(self.holder_addr()))
-        p = t["params"]
-        R = S.CREATE_ROWS
-        rows = [(R["payable"], t["value_eth"], t["value_eth"]),
-                (R["kind"], p["kind"], p["kind"]),
-                (R["to"], p["to"], short(p["to"])),
-                (R["delay"], p["delayBlocks"], p["delayBlocks"]),
-                (R["hash"], p["payloadHash"], short(p["payloadHash"])),
-                (R["sig"], "0x", "0x")]
-        self.app.open_overlay(TxScreen(self.app, t, summary, S.CREATE_FN, rows, S.CREATE_TIP))
+    def toggle_pin(self):
+        self.pin_in.password = not self.pin_in.password
+        self.pin_eye.text = S.PIN_SHOW if self.pin_in.password else S.PIN_HIDE
 
-    def on_create_gated(self):
-        donor = self.app.addr.text.strip()
-        try:
-            t = tx.create_gated_tx(donor, self.holder_addr(), self.slices, self.blocks(),
-                                   self.pin_in.text)
-        except Exception as e:  # noqa: BLE001
-            self.note.text = str(e)
+    def show_error(self, text):
+        """Red card at the top of the form, scrolled into view. '' clears it."""
+        self.err_box.clear_widgets()
+        if not text:
+            self.err_box.height = 0
             return
-        summary = S.CREATE_GATED_SUMMARY.format(
-            slices=self.slices, eth=t["value_eth"], blocks=self.blocks(),
-            holder=short(self.holder_addr()))
-        p = t["params"]
-        R = S.CREATE_GATED_ROWS
-        rows = [(R["payable"], t["value_eth"], t["value_eth"]),
-                (R["to"], p["to"], short(p["to"])),
-                (R["delay"], p["delayBlocks"], p["delayBlocks"]),
-                (R["pin"], p["pinCommitment_"], short(p["pinCommitment_"])),
-                (R["hash"], p["payloadHash"], short(p["payloadHash"])),
-                (R["sig"], "0x", "0x")]
-        self.app.open_overlay(TxScreen(self.app, t, summary, S.CREATE_GATED_FN, rows,
-                                       S.CREATE_GATED_TIP))
+        c = Card(S.CREATE_ERR_TEXT.format(text=text), bg=RED, fg=WHITE)
+        self.err_box.add_widget(c)
+        self.err_box.height = dp(80)
+        c.bind(height=lambda i, h: setattr(self.err_box, "height", h))
+        self.note.text = text
+        Clock.schedule_once(lambda dt: setattr(self.sv, "scroll_y", 1), 0)
+
+    def on_create(self):
+        self.show_error("")
+        p = self.problem()
+        if p:
+            self.show_error(p)
+            return
+        try:
+            if self.kind == "G":
+                donor = self.app.addr.text.strip()
+                t = tx.create_gated_tx(donor, self.holder_addr(), self.slices, self.blocks(),
+                                       self.pin_in.text)
+                summary = S.CREATE_GATED_SUMMARY.format(
+                    slices=self.slices, eth=t["value_eth"], blocks=self.blocks(),
+                    holder=short(self.holder_addr()))
+                pp, R = t["params"], S.CREATE_GATED_ROWS
+                rows = [(R["payable"], t["value_eth"], t["value_eth"]),
+                        (R["to"], pp["to"], short(pp["to"])),
+                        (R["delay"], pp["delayBlocks"], pp["delayBlocks"]),
+                        (R["pin"], pp["pinCommitment_"], short(pp["pinCommitment_"])),
+                        (R["hash"], pp["payloadHash"], short(pp["payloadHash"])),
+                        (R["sig"], "0x", "0x")]
+                shown = (summary, S.CREATE_GATED_FN, rows, S.CREATE_GATED_TIP)
+            else:
+                t = tx.create_offer_tx(self.kind, self.holder_addr(), self.slices, self.blocks())
+                summary = S.CREATE_SUMMARY.format(
+                    kind=self.kind, slices=self.slices, eth=t["value_eth"],
+                    blocks=self.blocks(), holder=short(self.holder_addr()))
+                pp, R = t["params"], S.CREATE_ROWS
+                rows = [(R["payable"], t["value_eth"], t["value_eth"]),
+                        (R["kind"], pp["kind"], pp["kind"]),
+                        (R["to"], pp["to"], short(pp["to"])),
+                        (R["delay"], pp["delayBlocks"], pp["delayBlocks"]),
+                        (R["hash"], pp["payloadHash"], short(pp["payloadHash"])),
+                        (R["sig"], "0x", "0x")]
+                shown = (summary, S.CREATE_FN, rows, S.CREATE_TIP)
+        except Exception as e:  # noqa: BLE001
+            self.show_error(str(e) or e.__class__.__name__)
+            return
+        # ask the chain first: a refusal is shown here, in red, with its reason
+        self.btn.set_enabled(False)
+        self.note.text = S.CREATE_CHECKING
+        frm, key = self.app.addr.text.strip(), self.app.key.text
+        threading.Thread(target=self._dry, args=(t, shown, frm, key), daemon=True).start()
+
+    def _dry(self, t, shown, frm, key):
+        ok, reason, err = True, "", ""
+        try:
+            ok, reason = core.Chain(key).simulate(frm, DSOS_ADDR, t["data"], t["value_wei"])
+        except Exception as e:  # noqa: BLE001
+            err = str(e)                 # no node answered: go on, the wallet checks again
+
+        def done(dt):
+            self.btn.set_enabled(True)
+            self.refresh()
+            if not ok:
+                self.show_error(S.CREATE_ERR_DRY.format(reason=reason))
+                return
+            if err:
+                self.note.text = err
+            summary, fn, rows, tip = shown
+            self.app.open_overlay(TxScreen(self.app, t, summary, fn, rows, tip))
+        Clock.schedule_once(done, 0)

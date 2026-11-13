@@ -5,7 +5,6 @@ from kivy.clock import Clock
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
-from kivy.uix.scrollview import ScrollView
 from kivy.utils import escape_markup
 
 import core
@@ -14,7 +13,7 @@ import tx
 import util
 from theme import (BLACK, BLUE, DAPP_URL, DSOS_ADDR, ETHERSCAN_TX, ETHERSCAN_WRITE, LIGHT,
                    WHITE, short)
-from widgets import Card, Choice, Overlay, Panel, RoundBtn, label
+from widgets import PullScroll, Card, Choice, Overlay, Panel, RoundBtn, label
 
 REJECT_CODES = (4001, 5000)
 
@@ -47,7 +46,7 @@ class TxScreen(Overlay):
                             padding=(dp(14), 0))
         col.add_widget(self.status)
 
-        sv = ScrollView()
+        sv = PullScroll()
         box = BoxLayout(orientation="vertical", spacing=dp(10), size_hint_y=None,
                         padding=[dp(14), 0, dp(14), dp(20)])
         box.bind(minimum_height=box.setter("height"))
