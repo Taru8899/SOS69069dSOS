@@ -16,7 +16,7 @@ import tx
 import util
 from page_tx import TxScreen
 from theme import BLACK, BLUE, DSOS_ADDR, LIGHT, RED, WHITE, WINDOWS, short, set_visible
-from widgets import (Card, Choice, DashedBox, Overlay, Panel, PullScroll, RoundBtn, TypeCard,
+from widgets import (Card, Choice, DashedBox, Overlay, Panel, PullScroll, IconBtn, TypeCard,
                      label, make_input, page_head)
 
 
@@ -63,10 +63,10 @@ class CreateScreen(Overlay):
         top.add_widget(label(S.CREATE_EACH, halign="right"))
         sl.add_widget(top)
         mid = BoxLayout(size_hint_y=None, height=dp(84))
-        minus = RoundBtn(text=S.ICON_MINUS, font_size="34sp", bg=BLACK, color=WHITE,
+        minus = IconBtn(icon="minus", bg=BLACK, color=WHITE,
                          size_hint=(None, 1), width=dp(72))
         minus.bind(on_release=lambda *_: self.set_slices(self.slices - 1))
-        plus = RoundBtn(text=S.ICON_PLUS, font_size="30sp", bg=BLACK, color=WHITE,
+        plus = IconBtn(icon="plus", bg=BLACK, color=WHITE,
                         size_hint=(None, 1), width=dp(72))
         plus.bind(on_release=lambda *_: self.set_slices(self.slices + 1))
         self.num = Label(text="", markup=True, color=BLACK, halign="center", valign="middle")

@@ -9,7 +9,7 @@ import tx
 from page_tx import TxScreen
 from theme import (BLACK, BLUE, DARK_GREEN, DARK_GREEN_HEX, LIGHT_BLUE, LIGHT_GREEN, PILL_BG,
                    RED, WHITE, short)
-from widgets import Choice, Divider, Panel, Pill, RoundBtn, label
+from widgets import Choice, Divider, Panel, Pill, IconBtn, label
 
 
 def word(n):
@@ -88,10 +88,10 @@ class CreditsPage:
         hd.add_widget(label(S.CREDITS_RATE, halign="right"))
         c3.add_widget(hd)
         mid = BoxLayout(size_hint_y=None, height=dp(104))
-        minus = RoundBtn(text=S.ICON_MINUS, font_size="34sp", bg=LIGHT_GREEN, color=BLACK,
+        minus = IconBtn(icon="minus", bg=LIGHT_GREEN, color=BLACK,
                          size_hint=(None, 1), width=dp(70))
         minus.bind(on_release=lambda *_: self.set_amount(self.amount - 1))
-        plus = RoundBtn(text=S.ICON_PLUS, font_size="30sp", bg=LIGHT_GREEN, color=BLACK,
+        plus = IconBtn(icon="plus", bg=LIGHT_GREEN, color=BLACK,
                         size_hint=(None, 1), width=dp(70))
         plus.bind(on_release=lambda *_: self.set_amount(self.amount + 1))
         self.num = Label(markup=True, color=BLACK, halign="center", valign="middle")

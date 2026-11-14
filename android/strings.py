@@ -567,3 +567,15 @@ ACT_COPIED = "Transaction hash copied"
 BTN_RETRY = "Retry"
 SETTINGS_LAYOUT = ("[b]Layout report[/b]\nIf something looks misplaced, copy this and send it.")
 SETTINGS_LAYOUT_COPY = "Copy layout report"
+
+# ------------------------------------------------------------------ v9 step 2: wallet page (mockup)
+WALLET_BAL_TITLE = "dSOS balance"
+WALLET_BAL_BIG = "[size=46sp][b]{n}[/b][/size]  [size=18sp]dSOS[/size]"
+WALLET_ETH = "\u2248 {eth} ETH redeemable"
+WALLET_CHIP_SENDABLE = "Sendable"
+WALLET_CHIP_EXPIRING = "Expiring < 1 day"
+WALLET_CHIP_EXPIRED = "Expired, unswept"
+WALLET_CHIP_VALUE = "[b]{n} dSOS[/b]"
+WALLET_NEXT = "[b]{n} dSOS expire in ~{time}[/b]\nRedeem before block {block:,}"
+WROW_SUB = "{eth} ETH \u00b7 {left}"
+WROW_EXPIRED = "Expired \u00b7 anyone can sweep"

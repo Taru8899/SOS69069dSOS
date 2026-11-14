@@ -129,7 +129,19 @@ class Pill(Label):
 
 
 class PillBtn(ButtonBehavior, Pill):
-    """The 'Ethereum' chip as a tap target."""
+    """The 'Ethereum' chip as a tap target, with a small green status dot."""
+
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        with self.canvas.after:
+            Color(*GREEN)
+            self._dot = Ellipse()
+        settle(self, self._upd_dot)
+
+    def _upd_dot(self, *_):
+        d = dp(9)
+        self._dot.size = (d, d)
+        self._dot.pos = (self.x + dp(14), self.center_y - d / 2)
 
 
 class Ring(Widget):
@@ -222,34 +234,6 @@ class Choice(Button):
         self._en = en
         self.disabled = not en
         self._paint()
-
-
-class TypeCard(Button):
-    """Offer type tile with a blue border when selected."""
-
-    def __init__(self, code, title, sub, color_hex, **kw):
-        super().__init__(background_normal="", background_down="",
-                         background_color=(0, 0, 0, 0), markup=True, halign="left",
-                         valign="middle", color=BLACK, padding_x=dp(14),
-                         text=(f"[color={color_hex}][b]{code}[/b][/color]   [b]{title}[/b]\n"
-                               f"[size=12sp]{sub}[/size]"), **kw)
-        self.bind(size=lambda i, s: setattr(i, "text_size", (s[0] - dp(28), s[1])))
-        with self.canvas.before:
-            Color(*WHITE)
-            self._r = RoundedRectangle(radius=[dp(16)])
-        with self.canvas.after:
-            self._bc = Color(0, 0, 0, 0)
-            self._ln = Line(rounded_rectangle=(0, 0, 40, 40, dp(16)), width=dp(2))
-        settle(self, self._upd)
-
-    def _upd(self, *_):
-        self._r.pos = self.pos
-        self._r.size = self.size
-        self._r.radius = [rad(self.width, self.height, dp(16))]
-        set_rr(self._ln, self.x, self.y, self.width, self.height, dp(16))
-
-    def set_selected(self, on):
-        self._bc.rgba = BLUE if on else (0, 0, 0, 0)
 
 
 class DashedBox(BoxLayout):
@@ -742,9 +726,164 @@ class Welcome(FloatLayout):
 def page_head(app, title):
     """Back button + title row used by every overlay page."""
     head = BoxLayout(size_hint_y=None, height=dp(64), padding=[dp(14), dp(8)], spacing=dp(14))
-    back = RoundBtn(text=S.ICON_BACK, font_size="26sp", bold=True, bg=WHITE, color=BLACK,
+    back = IconBtn(icon="back", bg=WHITE, color=BLACK,
                     size_hint=(None, 1), width=dp(52))
     back.bind(on_release=lambda *_: app.close_top())
     head.add_widget(back)
     head.add_widget(label(title, font_size="24sp"))
     return head
+
+
+# ---------------------------------------------------------------- icons (drawn, no font needed)
+class Icon(Widget):
+    """Simple line icon drawn on a unit square. name: plus minus back chevron send recv lock
+    wallet list credits clock user."""
+
+    def __init__(self, name, color=WHITE, **kw):
+        kw.setdefault("size_hint", (None, None))
+        kw.setdefault("size", (dp(26), dp(26)))
+        super().__init__(**kw)
+        self.name = name
+        self.color = color
+        settle(self, self.redraw)
+
+    def set_color(self, c):
+        self.color = c
+        self.redraw()
+
+    def redraw(self, *_):
+        self.canvas.clear()
+        s = min(self.width, self.height)
+        if s < 6:
+            return
+        ox, oy = self.center_x - s / 2, self.center_y - s / 2
+
+        def P(*pts):
+            return [v for i in range(0, len(pts), 2)
+                    for v in (ox + pts[i] * s, oy + pts[i + 1] * s)]
+        lw = max(dp(1.8), s * 0.085)
+        n = self.name
+        with self.canvas:
+            Color(*self.color)
+            if n in ("plus", "minus"):
+                Line(points=P(0.2, 0.5, 0.8, 0.5), width=lw, cap="round")
+                if n == "plus":
+                    Line(points=P(0.5, 0.2, 0.5, 0.8), width=lw, cap="round")
+            elif n == "back":
+                Line(points=P(0.62, 0.2, 0.34, 0.5, 0.62, 0.8), width=lw, cap="round", joint="round")
+            elif n == "chevron":
+                Line(points=P(0.38, 0.2, 0.66, 0.5, 0.38, 0.8), width=lw, cap="round", joint="round")
+            elif n == "send":
+                Line(points=P(0.25, 0.25, 0.75, 0.75), width=lw, cap="round")
+                Line(points=P(0.38, 0.75, 0.75, 0.75, 0.75, 0.38), width=lw, cap="round", joint="round")
+            elif n == "recv":
+                Line(points=P(0.75, 0.75, 0.25, 0.25), width=lw, cap="round")
+                Line(points=P(0.25, 0.62, 0.25, 0.25, 0.62, 0.25), width=lw, cap="round", joint="round")
+            elif n == "lock":
+                Line(rounded_rectangle=(ox + 0.2 * s, oy + 0.14 * s, 0.6 * s, 0.44 * s, 0.08 * s),
+                     width=lw)
+                Line(circle=(ox + 0.5 * s, oy + 0.58 * s, 0.17 * s, -90, 90), width=lw)
+            elif n == "wallet":
+                Line(rounded_rectangle=(ox + 0.12 * s, oy + 0.22 * s, 0.76 * s, 0.52 * s, 0.1 * s),
+                     width=lw)
+                Line(points=P(0.62, 0.48, 0.78, 0.48), width=lw, cap="round")
+            elif n == "list":
+                for y in (0.3, 0.5, 0.7):
+                    Line(points=P(0.4, y, 0.86, y), width=lw, cap="round")
+                    Ellipse(pos=(ox + 0.16 * s, oy + (y - 0.05) * s), size=(0.1 * s, 0.1 * s))
+            elif n == "credits":
+                Line(circle=(ox + 0.5 * s, oy + 0.5 * s, 0.38 * s), width=lw)
+                Line(points=P(0.6, 0.64, 0.42, 0.64, 0.42, 0.5, 0.58, 0.5, 0.58, 0.36, 0.4, 0.36),
+                     width=lw * 0.8, joint="round")
+            elif n == "clock":
+                Line(circle=(ox + 0.5 * s, oy + 0.5 * s, 0.38 * s), width=lw)
+                Line(points=P(0.5, 0.5, 0.5, 0.74), width=lw, cap="round")
+                Line(points=P(0.5, 0.5, 0.67, 0.4), width=lw, cap="round")
+            elif n == "user":
+                Line(circle=(ox + 0.5 * s, oy + 0.64 * s, 0.14 * s), width=lw)
+                Line(circle=(ox + 0.5 * s, oy + 0.18 * s, 0.3 * s, -90, 90), width=lw)
+
+
+class IconBtn(ButtonBehavior, FloatLayout):
+    """Round button with a drawn icon on it."""
+
+    def __init__(self, icon, bg=BLUE, color=WHITE, icon_size=26, **kw):
+        super().__init__(**kw)
+        self._bg = bg
+        with self.canvas.before:
+            self._c = Color(*bg)
+            self._e = Ellipse()
+        self.icon = Icon(icon, color=color, size=(dp(icon_size), dp(icon_size)),
+                         pos_hint={"center_x": 0.5, "center_y": 0.5})
+        self.add_widget(self.icon)
+        settle(self, self._upd)
+
+    def _upd(self, *_):
+        d = max(2.0, min(self.width, self.height) - dp(6))
+        self._e.size = (d, d)
+        self._e.pos = (self.center_x - d / 2, self.center_y - d / 2)
+
+
+class NavTab(ButtonBehavior, BoxLayout):
+    """Bottom bar tab: drawn icon above a label."""
+
+    def __init__(self, icon, text, **kw):
+        super().__init__(orientation="vertical", padding=[0, dp(8), 0, dp(4)], spacing=dp(2), **kw)
+        holder = FloatLayout(size_hint_y=None, height=dp(28))
+        self.icon = Icon(icon, color=(0.6, 0.62, 0.62, 1), pos_hint={"center_x": 0.5, "center_y": 0.5})
+        holder.add_widget(self.icon)
+        self.add_widget(holder)
+        self.lab = Label(text=text, font_size="12sp", color=(0.6, 0.62, 0.62, 1))
+        self.add_widget(self.lab)
+
+    def set_active(self, on):
+        c = WHITE if on else (0.6, 0.62, 0.62, 1)
+        self.icon.set_color(c)
+        self.lab.color = c
+        self.lab.bold = on
+
+
+STATUS_PILL = {}   # filled lazily from page styles: status -> (bg, fg)
+
+
+def status_pill(text, bg, fg):
+    return Pill(text=text, bg=bg, color=fg, bold=True, font_size="13sp", size_hint=(None, None),
+                size=(dp(108), dp(30)), pos_hint={"center_y": 0.5})
+
+
+OFFER_STATUS_STYLE = {"redeemable": ((0.88, 0.97, 0.90, 1), (0.04, 0.48, 0.17, 1)),
+                      "expiring": (BLACK, WHITE),
+                      "expired": ((1, 0.9, 0.9, 1), RED)}
+
+
+def offer_row(o, on_tap=None):
+    """Compact offer row as in the mockup: badge, '5 dSOS · #482', second line, status pill."""
+    bg, fg = OFFER_STATUS_STYLE.get(o["status"], OFFER_STATUS_STYLE["redeemable"])
+    c = Tappable(padding=[dp(12), dp(10)], spacing=dp(12), size_hint_y=None, height=dp(78))
+    if on_tap:
+        c.bind(on_release=lambda *_: on_tap())
+    c.add_widget(Badge(o["kind"], pos_hint={"center_y": 0.5}))
+    mid = BoxLayout(orientation="vertical")
+    mid.add_widget(label(S.OC_TITLE.format(
+        count=o["count"], id=o["id"], pin=S.OFFER_PIN_TAG if o["kind"] == "G" else ""),
+        font_size="16sp"))
+    eth = core.eth(o["count"] * core.UNIT)
+    sub = S.WROW_EXPIRED if o["left"] <= 0 else S.WROW_SUB.format(eth=eth, left=left_text(o["left"]))
+    mid.add_widget(label(sub, font_size="13sp"))
+    c.add_widget(mid)
+    c.add_widget(status_pill(S.STATUS.get(o["status"], o["status"]), bg, fg))
+    return c
+
+
+class TypeCard(Tappable):
+    """Offer type tile as in the mockup: badge, title, one-line subtitle, blue border if chosen."""
+
+    def __init__(self, code, title, sub, color_hex, **kw):
+        kw.setdefault("padding", [dp(12), dp(8)])
+        kw.setdefault("spacing", dp(12))
+        super().__init__(**kw)
+        self.add_widget(Badge(code, size=(dp(44), dp(44)), pos_hint={"center_y": 0.5}))
+        mid = BoxLayout(orientation="vertical")
+        mid.add_widget(label(f"[b]{title}[/b]", font_size="16sp"))
+        mid.add_widget(label(sub, font_size="13sp"))
+        self.add_widget(mid)

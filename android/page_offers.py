@@ -13,7 +13,7 @@ import tx
 from page_tx import TxScreen
 from theme import (BLACK, BLUE, BROWN, CREAM, DARK_GREEN, GREEN, LIGHT, PILL_BG,
                    RED, WHITE, left_text, set_visible, short)
-from widgets import (Badge, Choice, Panel, Pill, ThinBar, RoundBtn, Tappable, label,
+from widgets import (Badge, Choice, Panel, Pill, ThinBar, IconBtn, Tappable, label,
                      make_input)
 
 RED_BG = (1, 0.9, 0.9, 1)
@@ -158,10 +158,10 @@ class OffersPage:
 
         p.add_widget(label(S.OD_SLICES, size_hint_y=None, height=dp(30)))
         mid = BoxLayout(size_hint_y=None, height=dp(64))
-        minus = RoundBtn(text=S.ICON_MINUS, font_size="30sp", bg=BLACK, color=WHITE,
+        minus = IconBtn(icon="minus", bg=BLACK, color=WHITE,
                          size_hint=(None, 1), width=dp(64))
         minus.bind(on_release=lambda *_: self.set_amount(self.amount - 1))
-        plus = RoundBtn(text=S.ICON_PLUS, font_size="28sp", bg=BLACK, color=WHITE,
+        plus = IconBtn(icon="plus", bg=BLACK, color=WHITE,
                         size_hint=(None, 1), width=dp(64))
         plus.bind(on_release=lambda *_: self.set_amount(self.amount + 1))
         self.of_mid = label("", halign="center")

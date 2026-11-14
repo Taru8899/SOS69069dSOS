@@ -13,7 +13,7 @@ import tx
 import util
 from theme import (BLACK, BLUE, DAPP_URL, DSOS_ADDR, ETHERSCAN_TX, ETHERSCAN_WRITE, LIGHT,
                    WHITE, short)
-from widgets import PullScroll, Card, Choice, Overlay, Panel, RoundBtn, label
+from widgets import PullScroll, Card, Choice, Overlay, Panel, IconBtn, label
 
 REJECT_CODES = (4001, 5000)
 
@@ -35,7 +35,7 @@ class TxScreen(Overlay):
 
         col = BoxLayout(orientation="vertical")
         head = BoxLayout(size_hint_y=None, height=dp(72), padding=[dp(14), dp(10)], spacing=dp(14))
-        back = RoundBtn(text=S.ICON_BACK, font_size="26sp", bold=True, bg=WHITE, color=BLACK,
+        back = IconBtn(icon="back", bg=WHITE, color=BLACK,
                         size_hint=(None, 1), width=dp(56))
         back.bind(on_release=lambda *_: self.close())
         head.add_widget(back)

@@ -6,7 +6,7 @@ from kivy.uix.gridlayout import GridLayout
 import strings as S
 import util
 from theme import (BLACK, DAPP_URL, DSOS_ADDR, ETHERSCAN_ADDR, GITHUB_URL, LEDGER_ADDR, WHITE)
-from widgets import Overlay, Panel, RoundBtn, Tile, label
+from widgets import Overlay, Panel, IconBtn, Tile, label
 
 
 def link_url(key, address):
@@ -26,7 +26,7 @@ class LinksScreen(Overlay):
         self.app = app
         col = BoxLayout(orientation="vertical")
         head = BoxLayout(size_hint_y=None, height=dp(64), padding=[dp(14), dp(6)], spacing=dp(14))
-        back = RoundBtn(text=S.ICON_BACK, font_size="26sp", bold=True, bg=WHITE, color=BLACK,
+        back = IconBtn(icon="back", bg=WHITE, color=BLACK,
                         size_hint=(None, 1), width=dp(56))
         back.bind(on_release=lambda *_: app.close_top())
         head.add_widget(back)

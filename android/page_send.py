@@ -11,7 +11,7 @@ import tx
 import util
 from page_tx import TxScreen
 from theme import BLACK, BLUE, DSOS_ADDR, LIGHT, WHITE, left_text, short
-from widgets import PullScroll, Card, Choice, Overlay, Panel, RoundBtn, label, make_input
+from widgets import PullScroll, Card, Choice, Overlay, Panel, IconBtn, label, make_input
 
 
 class SendScreen(Overlay):
@@ -29,7 +29,7 @@ class SendScreen(Overlay):
         col = BoxLayout(orientation="vertical")
 
         head = BoxLayout(size_hint_y=None, height=dp(72), padding=[dp(14), dp(10)], spacing=dp(14))
-        back = RoundBtn(text=S.ICON_BACK, font_size="26sp", bold=True, bg=WHITE, color=BLACK,
+        back = IconBtn(icon="back", bg=WHITE, color=BLACK,
                         size_hint=(None, 1), width=dp(56))
         back.bind(on_release=lambda *_: app.close_top())
         head.add_widget(back)
@@ -63,10 +63,10 @@ class SendScreen(Overlay):
         # amount
         am = Panel(orientation="vertical", size_hint_y=None, height=dp(190), spacing=dp(6))
         mid = BoxLayout(size_hint_y=None, height=dp(94))
-        minus = RoundBtn(text=S.ICON_MINUS, font_size="34sp", bg=BLACK, color=WHITE,
+        minus = IconBtn(icon="minus", bg=BLACK, color=WHITE,
                          size_hint=(None, 1), width=dp(64))
         minus.bind(on_release=lambda *_: self.set_amount(self.amount - 1))
-        plus = RoundBtn(text=S.ICON_PLUS, font_size="30sp", bg=BLACK, color=WHITE,
+        plus = IconBtn(icon="plus", bg=BLACK, color=WHITE,
                         size_hint=(None, 1), width=dp(64))
         plus.bind(on_release=lambda *_: self.set_amount(self.amount + 1))
         self.num = Label(text="", markup=True, color=BLACK, halign="center", valign="middle")

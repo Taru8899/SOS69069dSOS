@@ -7,7 +7,7 @@ from kivy.utils import escape_markup
 import strings as S
 import util
 from theme import BLACK, BLUE, BUILD, DSOS_ADDR, ETHERSCAN_ADDR, LEDGER_ADDR, WHITE, short
-from widgets import Card, Overlay, Panel, PullScroll, RoundBtn, label
+from widgets import Card, Overlay, Panel, PullScroll, IconBtn, label
 
 
 class SettingsScreen(Overlay):
@@ -16,7 +16,7 @@ class SettingsScreen(Overlay):
         self.app = app
         col = BoxLayout(orientation="vertical")
         head = BoxLayout(size_hint_y=None, height=dp(64), padding=[dp(14), dp(6)], spacing=dp(14))
-        back = RoundBtn(text=S.ICON_BACK, font_size="26sp", bold=True, bg=WHITE, color=BLACK,
+        back = IconBtn(icon="back", bg=WHITE, color=BLACK,
                         size_hint=(None, 1), width=dp(56))
         back.bind(on_release=lambda *_: app.close_top())
         head.add_widget(back)

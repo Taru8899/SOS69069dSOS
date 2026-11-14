@@ -32,7 +32,7 @@ from page_send import SendScreen
 from page_settings import SettingsScreen
 from wallet import Wallet
 from theme import BLACK, BUILD, BLUE, GREEN, HAS_LOGO, LOGO, LIGHT, WHITE, short
-from widgets import (Caret, Card, Choice, ErrorBanner, LogoBtn, NavBtn, Panel, PillBtn, PullScroll, RoundBtn,
+from widgets import (Caret, Card, Choice, ErrorBanner, IconBtn, LogoBtn, NavTab, Panel, PillBtn, PullScroll,
                      Tap, Welcome, label, make_input)
 
 Window.clearcolor = GREEN
@@ -162,13 +162,13 @@ class DsosApp(App):
         nav.bind(pos=lambda i, p: setattr(nav_bg, "pos", p),
                  size=lambda i, s: setattr(nav_bg, "size", s))
         self.nav_btns = {}
-        for name, lab in (("wallet", S.TAB_WALLET), ("offers", S.TAB_OFFERS)):
-            nav.add_widget(self._tab(name, lab))
-        plus = RoundBtn(text=S.TAB_PLUS, font_size="34sp", color=WHITE, bold=True, size_hint_x=0.9)
+        for name, lab, ic in (("wallet", S.TAB_WALLET, "wallet"), ("offers", S.TAB_OFFERS, "list")):
+            nav.add_widget(self._tab(name, lab, ic))
+        plus = IconBtn(icon="plus", bg=BLUE, color=WHITE, icon_size=30, size_hint_x=0.9)
         plus.bind(on_release=lambda *_: self.open_create())
         nav.add_widget(plus)
-        for name, lab in (("stake", S.TAB_STAKE), ("credits", S.TAB_CREDITS)):
-            nav.add_widget(self._tab(name, lab))
+        for name, lab, ic in (("stake", S.TAB_STAKE, "lock"), ("credits", S.TAB_CREDITS, "credits")):
+            nav.add_widget(self._tab(name, lab, ic))
         main.add_widget(nav)
         root.add_widget(main)
 
@@ -235,17 +235,15 @@ class DsosApp(App):
         self.open_overlay(LinksScreen(self))
 
     # ---------------------------------------------------------- tabs
-    def _tab(self, name, text):
-        b = NavBtn(text=text)
+    def _tab(self, name, text, icon):
+        b = NavTab(icon, text)
         b.bind(on_release=lambda *_: self.tab_tap(name))
         self.nav_btns[name] = b
         return b
 
     def _mark_tabs(self):
         for name, b in self.nav_btns.items():
-            on = name == self.page
-            b.color = WHITE if on else (0.6, 0.62, 0.62, 1)
-            b.bold = on
+            b.set_active(name == self.page)
 
     def tab_tap(self, name):
         self.close_all()

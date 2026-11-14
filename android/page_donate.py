@@ -8,7 +8,7 @@ import strings as S
 import tx
 from page_tx import TxScreen
 from theme import BLACK, BLUE, LIGHT, WHITE
-from widgets import PullScroll, Card, Choice, Overlay, RoundBtn, label, make_input
+from widgets import PullScroll, Card, Choice, Overlay, IconBtn, label, make_input
 
 
 class DonateScreen(Overlay):
@@ -20,7 +20,7 @@ class DonateScreen(Overlay):
         col = BoxLayout(orientation="vertical")
 
         head = BoxLayout(size_hint_y=None, height=dp(72), padding=[dp(14), dp(10)], spacing=dp(14))
-        back = RoundBtn(text=S.ICON_BACK, font_size="26sp", bold=True, bg=WHITE, color=BLACK,
+        back = IconBtn(icon="back", bg=WHITE, color=BLACK,
                         size_hint=(None, 1), width=dp(56))
         back.bind(on_release=lambda *_: app.close_top())
         head.add_widget(back)
