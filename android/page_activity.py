@@ -16,6 +16,9 @@ from theme import BLACK, BLUE, ETHERSCAN_TX, GREEN, RED, WHITE, short
 from widgets import Card, Choice, Dot, Panel, Tappable, label
 
 
+MINE_LIMIT = 20            # Mine shows only the newest 20 entries
+
+
 class Slot:
     """State of one view (Mine / Contract): the store, a busy flag and the last error."""
 
@@ -131,6 +134,9 @@ class ActivityPage:
         st = slot.store
         self.notes(st, slot)
         rows = [r for r in st.rows() if matches(r, self.ui["act_filter"])]
+        capped = st.scope == "mine" and len(rows) > MINE_LIMIT      # Mine: newest 20 only
+        if capped:
+            rows = rows[:MINE_LIMIT]
         if not rows:
             b.add_widget(Card(S.ACT_EMPTY))
         for r in rows:
@@ -138,7 +144,10 @@ class ActivityPage:
             b.add_widget(self.row(r))
             if self.ui.get("act_sel") == r["tx"]:
                 b.add_widget(self.detail(r))
-        if not st.complete:
+        if capped:
+            b.add_widget(label(S.ACT_MINE_LIMIT.format(n=MINE_LIMIT), font_size="12sp",
+                               size_hint_y=None, height=dp(24)))
+        if not st.complete and not capped and not (st.scope == "mine" and len(rows) >= MINE_LIMIT):
             more = Choice(base=BLACK, fg=WHITE, text=S.ACT_LOADING if slot.busy else S.ACT_LOAD_OLDER,
                           bold=True, size_hint_y=None, height=dp(48))
             more.bind(on_release=lambda *_: self.start(older=True))

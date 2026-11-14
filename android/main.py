@@ -195,9 +195,9 @@ class DsosApp(App):
         t = util.paste_text()
         if t:
             field.text = t
-            self.msg.text = S.MSG_PASTED
+            self.say(S.MSG_PASTED)
         else:
-            self.msg.text = S.MSG_CLIPBOARD_EMPTY
+            self.say(S.MSG_CLIPBOARD_EMPTY)
 
     def _fit_drawer(self, *_):
         w = max(dp(240), self.body.width - dp(28))
@@ -225,6 +225,28 @@ class DsosApp(App):
         self.close_all()
         self.set_page("wallet")
 
+    def say(self, text, secs=6):
+        """Short message under the header; it goes away after `secs` seconds and when the page
+        changes, and the 'Block ... via ...' line comes back."""
+        self.msg.text = text
+        if getattr(self, "_say_ev", None) is not None:
+            self._say_ev.cancel()
+        self._say_ev = Clock.schedule_once(lambda dt: self.restore_msg(), secs)
+
+    def restore_msg(self):
+        d = self.data
+        self.msg.text = S.MSG_BLOCK_VIA.format(block=d["block"], source=d["source"]) if d else ""
+
+    def notify_tx(self, h, ok, block, reason):
+        """Result of a transaction whose screen was closed meanwhile."""
+        if ok:
+            self.say(S.TX_OK_SHORT.format(hash=short(h), block=block), 10)
+            self.reload()
+        else:
+            why = reason or S.TX_FAILED_UNKNOWN
+            self.show_banner(S.TX_FAILED_SHORT.format(hash=short(h), reason=why),
+                             "%s\n%s" % (why, h))
+
     def _head_text(self, addr):
         return S.HEADER_WALLET.format(addr="[u]" + addr + "[/u]  [b]\u203a[/b]")
 
@@ -244,7 +266,7 @@ class DsosApp(App):
 
     def open_economics(self):
         if not self.data:
-            self.msg.text = S.ECON_NEED_DATA
+            self.say(S.ECON_NEED_DATA)
             return
         self._toggle_overlay(EconomicsScreen)
 
@@ -271,6 +293,8 @@ class DsosApp(App):
         self.set_page(name)
 
     def set_page(self, name):
+        if self.msg.text and self.data:
+            self.restore_msg()
         self.page = name
         self._mark_tabs()
         self.render()
@@ -287,13 +311,13 @@ class DsosApp(App):
 
     def open_send(self):
         if not self.data:
-            self.msg.text = S.MSG_LOAD_FIRST
+            self.say(S.MSG_LOAD_FIRST)
             return
         self.open_overlay(SendScreen(self))
 
     def open_redeem(self):
         if not self.data:
-            self.msg.text = S.MSG_LOAD_FIRST_REDEEM
+            self.say(S.MSG_LOAD_FIRST_REDEEM)
             return
         self.open_overlay(RedeemScreen(self))
 
@@ -301,7 +325,7 @@ class DsosApp(App):
         self.open_overlay(DonateScreen(self))
 
     def coming(self, name):
-        self.msg.text = S.MSG_COMING.format(name=name)
+        self.say(S.MSG_COMING.format(name=name))
 
     def close_top(self):
         if self.overlays:
@@ -319,7 +343,7 @@ class DsosApp(App):
             self.ui["offer_sel"] = oid
             self.set_page("offers")
             return True
-        self.msg.text = S.ACT_OFFER_NOT_MINE.format(id=oid)
+        self.say(S.ACT_OFFER_NOT_MINE.format(id=oid))
         return False
 
     def on_back(self, window, key, *args):

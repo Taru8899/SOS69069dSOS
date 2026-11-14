@@ -16,7 +16,7 @@ from kivy.uix.widget import Widget
 import core
 import strings as S
 import util
-from theme import (BLACK, BLUE, BUILD, GREEN, HAS_LOGO, HAS_START, LOGO, RED, START, WHITE,
+from theme import (BLACK, BLUE, BUILD, FIELD, FIELD_FOCUS, GREEN, HAS_FIELD, HAS_LOGO, HAS_START, LOGO, RED, START, WHITE,
                    WORDMARK, HAS_WORDMARK, left_text)
 
 
@@ -41,27 +41,23 @@ def set_rr(line, x, y, w, h, r):
 
 
 def make_input(hint, text="", password=False, filt=None):
-    ti = TextInput(text=text, hint_text=hint, multiline=False, password=password,
-                   size_hint_y=None, height=dp(48), write_tab=False,
-                   input_type="text", keyboard_suggestions=False,
-                   use_bubble=True, use_handles=True, input_filter=filt,
-                   background_normal="", background_active="", background_disabled_normal="",
-                   background_color=(0, 0, 0, 0), foreground_color=BLACK,
-                   hint_text_color=(0.45, 0.47, 0.47, 1), cursor_color=BLUE,
-                   selection_color=(0, 0.2, 1, 0.3),
-                   padding=[dp(14), dp(14), dp(14), dp(8)])
-    # the white background must be the FIRST thing drawn: added after the TextInput's own
-    # graphics it is painted over the text and the text looks invisible.
-    bg = RoundedRectangle()
-    ti.canvas.before.insert(0, bg)
-    ti.canvas.before.insert(0, Color(*WHITE))
-    ti.foreground_color = BLACK
-
-    def fit(*_):
-        bg.pos, bg.size = ti.pos, ti.size
-        bg.radius = [rad(ti.width, ti.height, dp(14))]
-    settle(ti, fit)
-    return ti
+    """Text field: white rounded background with a thin blue outline, drawn by the TextInput's own
+    background image (no custom canvas instructions: those leaked textures and colours)."""
+    if HAS_FIELD:
+        bgk = dict(background_normal=FIELD, background_active=FIELD_FOCUS,
+                   background_disabled_normal=FIELD, background_color=(1, 1, 1, 1),
+                   border=(24, 24, 24, 24))
+    else:
+        bgk = dict(background_normal="", background_active="", background_disabled_normal="",
+                   background_color=(1, 1, 1, 1))
+    return TextInput(text=text, hint_text=hint, multiline=False, password=password,
+                     size_hint_y=None, height=dp(48), write_tab=False,
+                     input_type="text", keyboard_suggestions=False,
+                     use_bubble=True, use_handles=True, input_filter=filt,
+                     foreground_color=BLACK, disabled_foreground_color=BLACK,
+                     hint_text_color=(0.45, 0.47, 0.47, 1), cursor_color=BLUE,
+                     selection_color=(0, 0.2, 1, 0.3),
+                     padding=[dp(14), dp(14), dp(14), dp(8)], **bgk)
 
 
 class Overlay(FloatLayout):
@@ -79,6 +75,13 @@ class Overlay(FloatLayout):
     def _upd(self, *_):
         self._bg.pos = self.pos
         self._bg.size = self.size
+
+    def add_widget(self, widget, *args, **kwargs):
+        # a FloatLayout child without pos_hint keeps its absolute position (window coordinates),
+        # which shifted every page by the height of the nav bar.
+        if not getattr(widget, "pos_hint", None):
+            widget.pos_hint = {"x": 0, "y": 0}
+        return super().add_widget(widget, *args, **kwargs)
 
     def on_touch_down(self, touch):
         if super().on_touch_down(touch):
@@ -226,7 +229,8 @@ class Choice(Button):
         kw.setdefault("valign", "middle")
         super().__init__(background_normal="", background_down="",
                          background_color=(0, 0, 0, 0), color=fg,
-                         disabled_color=(0.35, 0.4, 0.4, 1), **kw)
+                         disabled_color=((1, 1, 1, 0.8) if sum(base[:3]) < 1.8
+                                         else (0.35, 0.4, 0.4, 1)), **kw)
         self.bind(size=lambda i, sz: setattr(i, "text_size", (sz[0], sz[1]) if i.halign == "left" else (None, sz[1])))
         self.base, self.sel, self.fg, self.sel_fg = base, sel, fg, sel_fg
         self._on = False
@@ -661,11 +665,11 @@ class Welcome(FloatLayout):
                          size_hint=(1, None), height=dp(22))
         for w in (self.tag1, self.tag2, self.status, self.ver):
             self.add_widget(w)
+        self._arcs = []
         with self.canvas:
-            Color(1, 1, 1, 0.25)
-            self._ring = Line(circle=(0, 0, 10), width=dp(2.2))
-            Color(0.1, 0.35, 1, 1)
-            self._arc = Line(circle=(0, 0, 10, 0, 100), width=dp(2.2))
+            for col in (RED, BLUE, BLACK):          # red, blue, black arcs turning together
+                Color(*col)
+                self._arcs.append(Line(circle=(0, 0, 10, 0, 90), width=dp(3)))
         settle(self, self.layout)
         self.layout()
 
@@ -689,7 +693,6 @@ class Welcome(FloatLayout):
         self.tag2.pos = (x, y + 0.21 * h - self.tag2.height / 2)
         sr = dp(17)
         scx, scy = x + w / 2, y + 0.14 * h
-        self._ring.circle = (scx, scy, sr)
         self._spin_c = (scx, scy, sr)
         self._draw_arc()
         self.status.pos = (x, y + 0.09 * h - self.status.height / 2)
@@ -697,7 +700,9 @@ class Welcome(FloatLayout):
 
     def _draw_arc(self):
         cx, cy, r = getattr(self, "_spin_c", (0, 0, 10))
-        self._arc.circle = (cx, cy, r, self._angle, self._angle + 100)
+        for i, ln in enumerate(self._arcs):
+            a0 = self._angle + 120 * i
+            ln.circle = (cx, cy, r, a0, a0 + 90)
 
     def _tick(self, dt):
         self._angle = (self._angle + 300 * dt) % 360

@@ -628,3 +628,16 @@ ECON_ETH = "{eth} ETH"
 ECON_ETH_DSOS = "{eth} ETH · {n:,} dSOS"
 ECON_BLOCKS_DAYS = "{n:,} blocks (about {days} days)"
 ECON_IN = "block {block:,} (in {time})"
+
+# ------------------------------------------------------------------ v9.3
+TX_LOG_HEAD = "[b]Details[/b]"
+TX_LOG_COPY = "Copy details"
+TX_TIMEOUT = ("The wallet has not answered the {step} request after 2 minutes.\n"
+              "Open {wallet} and check for a waiting request, or try again.")
+TX_STEP_SIGN = "signature"
+TX_STEP_SEND = "send"
+TX_BTN_OPEN_WALLET = "Open wallet"
+TX_BTN_TRY_AGAIN = "Try again"
+TX_OK_SHORT = "Transaction {hash} succeeded (block {block:,})."
+TX_FAILED_SHORT = "Transaction {hash} failed: {reason}"
+ACT_MINE_LIMIT = "Showing the newest {n} entries."

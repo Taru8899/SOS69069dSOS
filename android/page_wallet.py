@@ -42,9 +42,12 @@ class BalanceCard(Panel):
                               font_size="15sp", size_hint_y=None, height=dp(28)))
         top.add_widget(left)
         self.ring = Ring(size_hint=(None, 1), width=dp(112))
+        self.ring_tap = Tap(size_hint=(None, 1), width=dp(112))
+        self.ring_tap.add_widget(self.ring)
+        self.ring_tap.bind(on_release=lambda *_: app.open_economics() if app is not None else None)
         self.ring.set_parts([(d["sendable"] / total, BLUE), (d["expiring"] / total, BLACK),
                              (d["expired"] / total, RED), (rest / total, GRAY)])
-        top.add_widget(self.ring)
+        top.add_widget(self.ring_tap)
         self.add_widget(top)
         chips = BoxLayout(size_hint_y=None, height=dp(76), spacing=dp(10))
         def go(f):

@@ -7,12 +7,15 @@ import strings as S
 HERE = os.path.dirname(os.path.abspath(__file__))
 LOGO = os.path.join(HERE, "logo.png")
 HAS_LOGO = os.path.exists(LOGO)
+FIELD = os.path.join(HERE, "field.png")              # rounded white input with thin blue outline
+FIELD_FOCUS = os.path.join(HERE, "field_focus.png")
+HAS_FIELD = os.path.exists(FIELD) and os.path.exists(FIELD_FOCUS)
 START = os.path.join(HERE, "start.jpg")            # big start image (flat green + logo)
 HAS_START = os.path.exists(START)
 WORDMARK = os.path.join(HERE, "wordmark.png")
 HAS_WORDMARK = os.path.exists(WORDMARK)
 
-APP_VERSION = "v9.2"
+APP_VERSION = "v9.3"
 try:                                   # build_info.py is written by the CI workflow
     import build_info
     if build_info.NUMBER == "dev":

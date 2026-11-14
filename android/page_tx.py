@@ -18,8 +18,11 @@ from widgets import PullScroll, Card, Choice, Overlay, Panel, IconBtn, Tap, labe
 
 POLL_SECONDS = 4
 POLL_TRIES = 45          # 45 x 4 s = 3 minutes
+REQUEST_TIMEOUT = 120    # seconds to wait for the wallet to answer one request
 
 REJECT_CODES = (4001, 5000)
+REJECT_WORDS = ("user rejected", "rejected by user", "user denied", "denied by user",
+                "request rejected", "user cancel", "cancelled by user", "canceled by user")
 
 
 class TxScreen(Overlay):
@@ -34,6 +37,9 @@ class TxScreen(Overlay):
         self.sent = False
         self.sign_on = False
         self.sim_ok = None                 # None = unknown, True = passes, False = would fail
+        self.log = []                      # step log: what was asked, what the wallet answered
+        self._open_reqs = set()
+        self._req_no = 0
         self.frm = self._from_address()
         self.wallet = getattr(app, "wallet", None)
 
@@ -75,6 +81,9 @@ class TxScreen(Overlay):
         self.out_box = BoxLayout(orientation="vertical", spacing=dp(8), size_hint_y=None)
         self.out_box.bind(minimum_height=self.out_box.setter("height"))
         box.add_widget(self.out_box)
+        self.log_box = BoxLayout(orientation="vertical", spacing=dp(8), size_hint_y=None)
+        self.log_box.bind(minimum_height=self.log_box.setter("height"))
+        box.add_widget(self.log_box)
         self.disc_btn = Choice(base=LIGHT, fg=BLACK, text=S.TX_DISCONNECT, size_hint_y=None,
                                height=dp(40))
         self.disc_btn.bind(on_release=lambda *_: self.on_disconnect())
@@ -169,7 +178,7 @@ class TxScreen(Overlay):
         self.sign_on = not self.sign_on
         self.refresh_buttons()
 
-    def show(self, text, view_hash=None, bg=WHITE, fg=BLACK, copy_text=None):
+    def show(self, text, view_hash=None, bg=WHITE, fg=BLACK, copy_text=None, actions=()):
         """Replace the wallet message area. `view_hash` adds a tappable hash and a button;
         `copy_text` adds a Copy button for an error text."""
         self.out_box.clear_widgets()
@@ -185,6 +194,10 @@ class TxScreen(Overlay):
                         bold=True)
             cb.bind(on_release=lambda *_: self.copy(S.TX_ERR_COPY, copy_text))
             self.out_box.add_widget(cb)
+        for label_text, fn in actions:
+            ab = Choice(base=BLACK, fg=WHITE, text=label_text, size_hint_y=None, height=dp(46), bold=True)
+            ab.bind(on_release=lambda *_w, f=fn: f())
+            self.out_box.add_widget(ab)
         if view_hash:
             b = Choice(base=BLACK, fg=WHITE, text=S.TX_BTN_VIEW, size_hint_y=None, height=dp(48),
                        bold=True)
@@ -229,6 +242,7 @@ class TxScreen(Overlay):
 
     # ------------------------------------------------------------ send with wallet
     def on_wallet_send(self):
+        self.note("send pressed")
         if self.busy or self.sent or self.sim_ok is False:
             return
         w = self.wallet
@@ -262,12 +276,58 @@ class TxScreen(Overlay):
         else:
             self.ask_send(self.t0)
 
+    # ------------------------------------------------------------ step log and requests
+    def note(self, text):
+        """Add a line to the Details card (shown under the buttons, with a Copy button)."""
+        self.log.append("%s %s" % (time.strftime("%H:%M:%S"), text))
+        if not self.alive:
+            return
+        self.log_box.clear_widgets()
+        self.log_box.add_widget(Card(S.TX_LOG_HEAD + "\n" + escape_markup("\n".join(self.log[-16:]))))
+        cb = Choice(base=LIGHT, fg=BLACK, text=S.TX_LOG_COPY, size_hint_y=None, height=dp(44), bold=True)
+        cb.bind(on_release=lambda *_: self.copy(S.TX_LOG_COPY, "\n".join(self.log)))
+        self.log_box.add_widget(cb)
+
+    def request(self, method, params, on_ok, step):
+        """Ask the wallet. Every reply (also a late one) is handled; after REQUEST_TIMEOUT seconds
+        without an answer the screen says which step is waiting and offers Open wallet / Try again."""
+        self._req_no += 1
+        rid = self._req_no
+        self._open_reqs.add(rid)
+        self.note("ask %s" % method)
+
+        def ok(result):
+            late = rid not in self._open_reqs
+            self._open_reqs.discard(rid)
+            self.note("%sreply %s" % ("late " if late else "", str(result)[:80]))
+            on_ok(result)
+
+        def err(text, code=None):
+            late = rid not in self._open_reqs
+            self._open_reqs.discard(rid)
+            self.note("%serror code=%s text=%s" % ("late " if late else "", code, str(text)[:160]))
+            self.fail(text, code)
+
+        self.wallet.request(method, params, ok, err)
+        Clock.schedule_once(lambda dt: self._timeout(rid, step), REQUEST_TIMEOUT)
+
+    def _timeout(self, rid, step):
+        if rid not in self._open_reqs or not self.alive:
+            return
+        self._open_reqs.discard(rid)
+        self.busy = False
+        self.note("no answer after %d s (%s)" % (REQUEST_TIMEOUT, step))
+        self.show(S.TX_TIMEOUT.format(step=step, wallet=self.wallet.label()), bg=RED, fg=WHITE,
+                  actions=[(S.TX_BTN_OPEN_WALLET, lambda: self.wallet.open_wallet()),
+                           (S.TX_BTN_TRY_AGAIN, lambda: self.on_wallet_send())])
+        self.refresh_buttons()
+
     def ask_signature(self):
         rec = self.t0["rec"]
         w = self.wallet
         typed = tx.ledger_typed_data(self.frm, rec["intended_to"], rec["payload_hash"], "")
         self.show(S.TX_SIGNING.format(wallet=w.label()))
-        w.request("eth_signTypedData_v4", [self.frm, typed], self.got_signature, self.fail)
+        self.request("eth_signTypedData_v4", [self.frm, typed], self.got_signature, S.TX_STEP_SIGN)
 
     def got_signature(self, result):
         if not self.alive:
@@ -303,12 +363,13 @@ class TxScreen(Overlay):
         params = [{"from": self.frm, "to": t["to"], "value": hex(int(t["value_wei"])),
                    "data": t["data"]}]
         self.show(S.TX_SENDING.format(wallet=w.label()))
-        w.request("eth_sendTransaction", params, self.sent_ok, self.fail)
+        self.request("eth_sendTransaction", params, self.sent_ok, S.TX_STEP_SEND)
 
     def sent_ok(self, result):
-        if not self.alive:
-            return
         h = str(result)
+        if not self.alive:                     # screen closed meanwhile: still report the outcome
+            threading.Thread(target=self._watch, args=(h,), daemon=True).start()
+            return
         self.busy = False
         self.sent = True
         self.show(S.TX_WAITING.format(hash=short(h)), view_hash=h)
@@ -320,8 +381,6 @@ class TxScreen(Overlay):
         chain = core.Chain(self.app.key.text)
         err = None
         for i in range(POLL_TRIES):
-            if not self.alive:
-                return
             try:
                 rc = chain.receipt(h)
             except Exception as e:  # noqa: BLE001
@@ -336,7 +395,11 @@ class TxScreen(Overlay):
         Clock.schedule_once(lambda dt: self.confirmed(h, None, 0, err or ""))
 
     def confirmed(self, h, ok, block, reason):
+        self.note("result %s block=%s reason=%s" % ({True: "ok", False: "reverted", None: "pending"}[ok],
+                                                    block, reason))
         if not self.alive:
+            if ok is not None:
+                self.app.notify_tx(h, ok, block, reason)
             return
         if ok is None:
             self.show(S.TX_PENDING.format(hash=short(h)), view_hash=h)
@@ -352,13 +415,14 @@ class TxScreen(Overlay):
 
     def is_rejection(self, text, code):
         low = str(text).lower()
-        return code in REJECT_CODES or "reject" in low or "denied" in low or "cancel" in low
+        return code in REJECT_CODES or any(w in low for w in REJECT_WORDS)
 
     def fail(self, text, code=None):
         """A raw error from the wallet (request failed or was declined)."""
         if not self.alive:
             return
         self.busy = False
+        self.note("failed: code=%s text=%s" % (code, str(text)[:160]))
         if self.is_rejection(text, code):
             self.show(S.TX_REJECTED)
         else:
