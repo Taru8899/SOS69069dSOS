@@ -26,6 +26,7 @@ import strings as S
 import util
 from page_create import CreateScreen
 from page_donate import DonateScreen
+from page_economics import EconomicsScreen
 from page_links import LinksScreen
 from page_redeem import RedeemScreen
 from page_send import SendScreen
@@ -240,6 +241,12 @@ class DsosApp(App):
 
     def open_links(self):
         self._toggle_overlay(LinksScreen)
+
+    def open_economics(self):
+        if not self.data:
+            self.msg.text = S.ECON_NEED_DATA
+            return
+        self._toggle_overlay(EconomicsScreen)
 
     def open_offers(self, flt=None):
         """Offers tab (not Activity) with a filter: used by the Wallet chips."""

@@ -262,7 +262,7 @@ class Chain:
             raise RuntimeError(S.ERR_EMPTY_RESULT.format(sig=sig))
         return ws
 
-    def simulate(self, frm, to, data, value_wei=0):
+    def simulate(self, frm, to, data, value_wei=0, block="latest"):
         """Dry-run a transaction with eth_call as `frm`. Returns (ok, reason). `reason` is the
         name of the contract error (e.g. 'NotStaked') or a short node message. Raises
         RuntimeError only when no node answered at all."""
@@ -273,7 +273,7 @@ class Chain:
         for url in PUBLIC_RPCS:
             try:
                 r = self.s.post(url, json={"jsonrpc": "2.0", "id": 1, "method": "eth_call",
-                                           "params": [call, "latest"]}, timeout=15)
+                                           "params": [call, block]}, timeout=15)
                 j = r.json()
             except Exception as e:  # noqa: BLE001
                 last = e
@@ -287,6 +287,33 @@ class Chain:
                 return ok, reason
             last = j["error"]          # node-side trouble: try the next RPC
         raise RuntimeError(S.ERR_ALL_RPC.format(error=last))
+
+    def receipt(self, txhash):
+        """Receipt dict of a mined transaction, or None while it is still pending."""
+        if self.api_key:
+            try:
+                q = {"chainid": 1, "module": "proxy", "action": "eth_getTransactionReceipt",
+                     "txhash": txhash, "apikey": self.api_key}
+                r = self.s.get(ES_URL, params=q, timeout=15).json().get("result")
+                if isinstance(r, dict):
+                    return r
+                if r is None:
+                    return None
+            except Exception:  # noqa: BLE001
+                pass
+        return self._pub("eth_getTransactionReceipt", [txhash]) or None
+
+    def failure_reason(self, txhash, rc):
+        """Why a mined transaction reverted: replay it one block earlier with eth_call.
+        Returns a contract error name / node text, or '' when it cannot be found out."""
+        try:
+            t = self._pub("eth_getTransactionByHash", [txhash])
+            blk = int(rc.get("blockNumber") or t.get("blockNumber"), 16)
+            ok, reason = self.simulate(t["from"], t["to"], t.get("input") or t.get("data") or "0x",
+                                       int(t.get("value") or "0x0", 16), block=hex(max(blk - 1, 0)))
+            return "" if ok else reason
+        except Exception:  # noqa: BLE001
+            return ""
 
     def pin_commitment(self, offer_id):
         """offerPinCommitment(id) as 32 raw bytes."""
@@ -331,6 +358,7 @@ class Chain:
         nonce = u(c(DSOS, "redeemNonce(address)", [a])[0])
         earmarked = u(c(DSOS, "totalEarmarked()")[0])
         reserve = u(c(DSOS, "MIN_RESERVE()")[0])
+        unalloc = u(c(DSOS, "unallocatedBalance()")[0])
         cooldown = u(c(DSOS, "STAKE_COOLDOWN()")[0])
 
         return {
@@ -343,7 +371,7 @@ class Chain:
             "offers": offers, "staked": staked, "can_redeem": can,
             "credits": credits, "formable": formable,
             "pool_wei": pool, "supply": supply, "stake_need_wei": need,
-            "sweepable_ids": sweepable_ids, "staked_at": staked_at, "redeem_nonce": nonce, "earmarked_wei": earmarked,
+            "sweepable_ids": sweepable_ids, "staked_at": staked_at, "redeem_nonce": nonce, "earmarked_wei": earmarked, "unalloc_wei": unalloc,
             "min_reserve_wei": reserve, "cooldown": cooldown,
             "push": u(st[0]), "trust": u(st[1]), "effective": s(st[2]),
         }

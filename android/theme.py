@@ -12,7 +12,7 @@ HAS_START = os.path.exists(START)
 WORDMARK = os.path.join(HERE, "wordmark.png")
 HAS_WORDMARK = os.path.exists(WORDMARK)
 
-APP_VERSION = "v9.1"
+APP_VERSION = "v9.2"
 try:                                   # build_info.py is written by the CI workflow
     import build_info
     if build_info.NUMBER == "dev":

@@ -16,8 +16,8 @@ from kivy.uix.widget import Widget
 import core
 import strings as S
 import util
-from theme import (BLACK, BLUE, BUILD, GREEN, HAS_LOGO, LOGO, RED, WHITE, WORDMARK,
-                   HAS_WORDMARK, left_text)
+from theme import (BLACK, BLUE, BUILD, GREEN, HAS_LOGO, HAS_START, LOGO, RED, START, WHITE,
+                   WORDMARK, HAS_WORDMARK, left_text)
 
 
 def rad(w, h, r):
@@ -50,9 +50,12 @@ def make_input(hint, text="", password=False, filt=None):
                    hint_text_color=(0.45, 0.47, 0.47, 1), cursor_color=BLUE,
                    selection_color=(0, 0.2, 1, 0.3),
                    padding=[dp(14), dp(14), dp(14), dp(8)])
-    with ti.canvas.before:
-        Color(*WHITE)
-        bg = RoundedRectangle()
+    # the white background must be the FIRST thing drawn: added after the TextInput's own
+    # graphics it is painted over the text and the text looks invisible.
+    bg = RoundedRectangle()
+    ti.canvas.before.insert(0, bg)
+    ti.canvas.before.insert(0, Color(*WHITE))
+    ti.foreground_color = BLACK
 
     def fit(*_):
         bg.pos, bg.size = ti.pos, ti.size
@@ -65,6 +68,8 @@ class Overlay(FloatLayout):
     """Full-screen green layer that sits on top of the app and blocks taps."""
 
     def __init__(self, **kw):
+        kw.setdefault("size_hint", (1, 1))
+        kw.setdefault("pos_hint", {"x": 0, "y": 0})   # a FloatLayout child without pos_hint keeps its absolute pos
         super().__init__(**kw)
         with self.canvas.before:
             Color(*GREEN)
@@ -129,19 +134,32 @@ class Pill(Label):
 
 
 class PillBtn(ButtonBehavior, Pill):
-    """The 'Ethereum' chip as a tap target, with a small green status dot."""
+    """The 'Ethereum' chip as a tap target: green status dot, thin white border and a 3x3 grid
+    icon so that it looks like something to press."""
 
     def __init__(self, **kw):
+        kw.setdefault("padding", [dp(24), 0, dp(26), 0])
         super().__init__(**kw)
         with self.canvas.after:
             Color(*GREEN)
             self._dot = Ellipse()
+            Color(1, 1, 1, 0.85)
+            self._ln = Line(rounded_rectangle=(0, 0, 40, 40, dp(16)), width=dp(1.1))
+            self._grid = [Rectangle() for _ in range(9)]
         settle(self, self._upd_dot)
 
     def _upd_dot(self, *_):
         d = dp(9)
         self._dot.size = (d, d)
-        self._dot.pos = (self.x + dp(14), self.center_y - d / 2)
+        self._dot.pos = (self.x + dp(12), self.center_y - d / 2)
+        set_rr(self._ln, self.x, self.y, self.width, self.height, dp(16))
+        c = dp(3)
+        gap = dp(2.5)
+        x0 = self.right - dp(14) - (3 * c + 2 * gap)
+        y0 = self.center_y - (3 * c + 2 * gap) / 2
+        for k, r in enumerate(self._grid):
+            r.size = (c, c)
+            r.pos = (x0 + (k % 3) * (c + gap), y0 + (k // 3) * (c + gap))
 
 
 class Ring(Widget):
@@ -205,8 +223,11 @@ class Choice(Button):
     """Rounded button that can be 'selected' (chips, big buttons)."""
 
     def __init__(self, base=WHITE, sel=BLUE, fg=BLACK, sel_fg=WHITE, **kw):
+        kw.setdefault("valign", "middle")
         super().__init__(background_normal="", background_down="",
-                         background_color=(0, 0, 0, 0), color=fg, **kw)
+                         background_color=(0, 0, 0, 0), color=fg,
+                         disabled_color=(0.35, 0.4, 0.4, 1), **kw)
+        self.bind(size=lambda i, sz: setattr(i, "text_size", (sz[0], sz[1]) if i.halign == "left" else (None, sz[1])))
         self.base, self.sel, self.fg, self.sel_fg = base, sel, fg, sel_fg
         self._on = False
         self._en = True
@@ -600,37 +621,29 @@ class Tile(ButtonBehavior, BoxLayout):
 
 
 class Welcome(FloatLayout):
-    """Start screen drawn from shapes: dark background, green glow and streaks on the left,
-    blue streaks on the right, logo, wordmark, slogan, spinner and the version line."""
+    """Start screen: the big start image (flat green with the logo) as background, and below the
+    logo the wordmark, the rate line, the slogan, a blue spinner, 'Connecting...' and the version.
+    Without the image: flat green with a small logo."""
 
     def __init__(self, **kw):
+        kw.setdefault("size_hint", (1, 1))
+        kw.setdefault("pos_hint", {"x": 0, "y": 0})
         super().__init__(**kw)
         self._angle = 0.0
         self._ev = None
         with self.canvas.before:
-            Color(0.02, 0.04, 0.05, 1)
+            Color(*GREEN)
             self._bg = Rectangle()
-            self._glow = []
-            for k in range(7):
-                Color(0.02, 0.75, 0.25, 0.07)
-                self._glow.append(Ellipse())
-            self._streaks = []
-            for col in ((0.03, 0.8, 0.28, 0.55), (0.03, 0.8, 0.28, 0.30), (0.03, 0.8, 0.28, 0.22),
-                        (0.05, 0.25, 1, 0.65), (0.05, 0.25, 1, 0.45)):
-                Color(*col)
-                self._streaks.append(Quad())
-        # content
-        self.logo_bg = Widget(size_hint=(None, None))
-        with self.logo_bg.canvas:
-            Color(1, 1, 1, 1)
-            self._disc = Ellipse()
-        settle(self.logo_bg, self._upd_disc)
-        self.add_widget(self.logo_bg)
-        if HAS_LOGO:
-            self.logo = Image(source=LOGO, size_hint=(None, None))
-            self.add_widget(self.logo)
-        else:
+        if HAS_START:
+            self.bgimg = Image(source=START, size_hint=(1, 1), pos_hint={"x": 0, "y": 0},
+                               fit_mode="cover")
+            self.add_widget(self.bgimg)
             self.logo = None
+        else:
+            self.bgimg = None
+            self.logo = Image(source=LOGO, size_hint=(None, None)) if HAS_LOGO else None
+            if self.logo is not None:
+                self.add_widget(self.logo)
         if HAS_WORDMARK:
             self.word = Image(source=WORDMARK, size_hint=(None, None))
         else:
@@ -644,22 +657,17 @@ class Welcome(FloatLayout):
         self.tag2.bind(size=lambda i, s: setattr(i, "text_size", s))
         self.status = Label(text=S.WELCOME_CONNECTING, color=WHITE, font_size="17sp",
                             size_hint=(1, None), height=dp(28))
-        self.ver = Label(text=BUILD, color=(0.7, 0.78, 0.8, 1), font_size="12sp",
+        self.ver = Label(text=BUILD, color=(1, 1, 1, 0.7), font_size="12sp",
                          size_hint=(1, None), height=dp(22))
         for w in (self.tag1, self.tag2, self.status, self.ver):
             self.add_widget(w)
         with self.canvas:
-            Color(1, 1, 1, 0.15)
+            Color(1, 1, 1, 0.25)
             self._ring = Line(circle=(0, 0, 10), width=dp(2.2))
-            Color(0.1, 0.5, 1, 1)
+            Color(0.1, 0.35, 1, 1)
             self._arc = Line(circle=(0, 0, 10, 0, 100), width=dp(2.2))
         settle(self, self.layout)
         self.layout()
-
-    def _upd_disc(self, *_):
-        w = self.logo_bg
-        self._disc.pos = w.pos
-        self._disc.size = w.size
 
     def layout(self, *_):
         x, y = self.pos
@@ -667,40 +675,25 @@ class Welcome(FloatLayout):
         if w < 10 or h < 10:
             return
         self._bg.pos, self._bg.size = (x, y), (w, h)
-        for k, e in enumerate(self._glow):          # soft glow, top-left
-            r = (0.30 + 0.09 * k) * max(w, h)
-            e.size = (r * 2, r * 2)
-            e.pos = (x + 0.12 * w - r, y + 0.90 * h - r)
-        s = self._streaks                            # (x, y of the 4 corners as fractions)
-        def quad(q, pts):
-            q.points = [c for fx, fy in pts for c in (x + fx * w, y + fy * h)]
-        quad(s[0], [(0.0, 0.93), (0.30, 1.0), (0.38, 1.0), (0.0, 0.84)])
-        quad(s[1], [(0.0, 0.40), (0.0, 0.55), (0.30, 0.74), (0.22, 0.68)])
-        quad(s[2], [(0.0, 0.12), (0.0, 0.30), (0.32, 0.20), (0.18, 0.16)])
-        quad(s[3], [(1.0, 0.70), (1.0, 0.57), (0.62, 0.28), (0.80, 0.52)])
-        quad(s[4], [(1.0, 0.44), (1.0, 0.30), (0.55, 0.10), (0.78, 0.26)])
-        lg = min(w * 0.46, h * 0.28)
-        cy = y + 0.72 * h
-        self.logo_bg.size = (lg * 0.62, lg * 0.62)
-        self.logo_bg.pos = (x + w / 2 - lg * 0.31, cy - lg * 0.31 + lg * 0.04)
-        if self.logo is not None:
+        if self.logo is not None:                      # fallback only (no start image)
+            lg = min(w * 0.4, h * 0.22)
             self.logo.size = (lg, lg)
-            self.logo.pos = (x + w / 2 - lg / 2, cy - lg / 2)
+            self.logo.pos = (x + w / 2 - lg / 2, y + 0.50 * h - lg / 2)
         ww = min(w * 0.62, dp(300))
         if HAS_WORDMARK:
             self.word.size = (ww, ww * 111.0 / 371.0)
         else:
             self.word.size = (ww, dp(70))
-        self.word.pos = (x + w / 2 - ww / 2, y + 0.55 * h - self.word.height / 2)
-        self.tag1.pos = (x, y + 0.49 * h)
-        self.tag2.pos = (x, y + 0.38 * h)
+        self.word.pos = (x + w / 2 - ww / 2, y + 0.35 * h - self.word.height / 2)
+        self.tag1.pos = (x, y + 0.28 * h - self.tag1.height / 2)
+        self.tag2.pos = (x, y + 0.21 * h - self.tag2.height / 2)
         sr = dp(17)
-        scx, scy = x + w / 2, y + 0.19 * h
+        scx, scy = x + w / 2, y + 0.14 * h
         self._ring.circle = (scx, scy, sr)
         self._spin_c = (scx, scy, sr)
         self._draw_arc()
-        self.status.pos = (x, y + 0.115 * h)
-        self.ver.pos = (x, y + 0.075 * h)
+        self.status.pos = (x, y + 0.09 * h - self.status.height / 2)
+        self.ver.pos = (x, y + 0.05 * h - self.ver.height / 2)
 
     def _draw_arc(self):
         cx, cy, r = getattr(self, "_spin_c", (0, 0, 10))

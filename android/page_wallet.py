@@ -5,8 +5,8 @@ from kivy.uix.boxlayout import BoxLayout
 import core
 import strings as S
 from theme import BLACK, BLUE, GRAY, LIGHT, RED, WHITE
-from widgets import (Card, Choice, Dot, Icon, IconBtn, Panel, Ring, Tappable, label, offer_row,
-                     title_row)
+from widgets import (Card, Choice, Dot, Icon, IconBtn, Panel, Ring, Tap, Tappable, label,
+                     offer_row, title_row)
 
 
 def chip(color, title, value, on_tap=None):
@@ -30,7 +30,13 @@ class BalanceCard(Panel):
         rest = max(0, d["balance"] - d["sendable"] - d["expiring"] - d["expired"])
         top = BoxLayout(size_hint_y=None, height=dp(130))
         left = BoxLayout(orientation="vertical")
-        left.add_widget(label(S.WALLET_BAL_TITLE, font_size="14sp", size_hint_y=None, height=dp(24)))
+        trow = BoxLayout(size_hint_y=None, height=dp(24), spacing=dp(6))
+        trow.add_widget(label(S.WALLET_BAL_TITLE, font_size="14sp", size_hint_x=None, width=dp(92)))
+        more = Tap(size_hint_x=None, width=dp(96))
+        more.add_widget(label(S.BAL_SHOW_MORE, font_size="14sp", color=BLUE))
+        more.bind(on_release=lambda *_: app.open_economics() if app is not None else None)
+        trow.add_widget(more)
+        left.add_widget(trow)
         left.add_widget(label(S.WALLET_BAL_BIG.format(n=d["balance"])))
         left.add_widget(label(S.WALLET_ETH.format(eth=core.eth(d["value_wei"])),
                               font_size="15sp", size_hint_y=None, height=dp(28)))
@@ -89,7 +95,8 @@ def build(app, b, d):
     for o in shown:
         b.add_widget(offer_row(o, on_tap=lambda: app.set_page("offers")))
     pool = Panel(size_hint_y=None, height=dp(88), spacing=dp(10))
-    pool.add_widget(label(S.SHARED_POOL.format(eth=core.eth(d["pool_wei"]), supply=d["supply"])))
+    pool.add_widget(label(S.SHARED_POOL.format(eth=core.eth(d.get("unalloc_wei", d["pool_wei"])),
+                                      supply=d["supply"])))
     don = Choice(base=BLACK, fg=WHITE, text=S.BTN_DONATE, bold=True, size_hint=(None, None),
                  size=(dp(110), dp(52)), pos_hint={"center_y": 0.5})
     don.bind(on_release=lambda *_: app.open_donate())

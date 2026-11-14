@@ -1,5 +1,6 @@
 """Transaction page: dry run, "Send with wallet", and copy buttons for any other wallet."""
 import threading
+import time
 
 from kivy.clock import Clock
 from kivy.metrics import dp
@@ -11,9 +12,12 @@ import core
 import strings as S
 import tx
 import util
-from theme import (BLACK, BLUE, DAPP_URL, DSOS_ADDR, ETHERSCAN_TX, ETHERSCAN_WRITE, LIGHT,
-                   WHITE, short)
-from widgets import PullScroll, Card, Choice, Overlay, Panel, IconBtn, label
+from theme import (BLACK, BLUE, DAPP_URL, DARK_GREEN, DSOS_ADDR, ETHERSCAN_TX, ETHERSCAN_WRITE,
+                   LIGHT, LIGHT_GREEN, RED, WHITE, short)
+from widgets import PullScroll, Card, Choice, Overlay, Panel, IconBtn, Tap, label
+
+POLL_SECONDS = 4
+POLL_TRIES = 45          # 45 x 4 s = 3 minutes
 
 REJECT_CODES = (4001, 5000)
 
@@ -165,11 +169,22 @@ class TxScreen(Overlay):
         self.sign_on = not self.sign_on
         self.refresh_buttons()
 
-    def show(self, text, view_hash=None):
-        """Replace the wallet message area."""
+    def show(self, text, view_hash=None, bg=WHITE, fg=BLACK, copy_text=None):
+        """Replace the wallet message area. `view_hash` adds a tappable hash and a button;
+        `copy_text` adds a Copy button for an error text."""
         self.out_box.clear_widgets()
         if text:
-            self.out_box.add_widget(Card(text))
+            self.out_box.add_widget(Card(text, bg=bg, fg=fg))
+        if view_hash:
+            link = Tap(size_hint_y=None, height=dp(34))
+            link.add_widget(label(S.TX_HASH_LINK.format(hash=short(view_hash)), font_size="15sp"))
+            link.bind(on_release=lambda *_: self.open(ETHERSCAN_TX + view_hash))
+            self.out_box.add_widget(link)
+        if copy_text:
+            cb = Choice(base=LIGHT, fg=BLACK, text=S.TX_ERR_COPY, size_hint_y=None, height=dp(44),
+                        bold=True)
+            cb.bind(on_release=lambda *_: self.copy(S.TX_ERR_COPY, copy_text))
+            self.out_box.add_widget(cb)
         if view_hash:
             b = Choice(base=BLACK, fg=WHITE, text=S.TX_BTN_VIEW, size_hint_y=None, height=dp(48),
                        bold=True)
@@ -296,9 +311,44 @@ class TxScreen(Overlay):
         h = str(result)
         self.busy = False
         self.sent = True
-        self.show(S.TX_SENT.format(hash=short(h)) + "\n" + S.TX_SENT_NOTE, view_hash=h)
+        self.show(S.TX_WAITING.format(hash=short(h)), view_hash=h)
         self.refresh_buttons()
-        Clock.schedule_once(lambda dt: self.app.load(), 45)   # refresh the data once it is mined
+        threading.Thread(target=self._watch, args=(h,), daemon=True).start()
+
+    # ------------------------------------------------------------ result: poll the receipt
+    def _watch(self, h):
+        chain = core.Chain(self.app.key.text)
+        err = None
+        for i in range(POLL_TRIES):
+            if not self.alive:
+                return
+            try:
+                rc = chain.receipt(h)
+            except Exception as e:  # noqa: BLE001
+                rc, err = None, str(e)
+            if rc:
+                ok = str(rc.get("status", "0x1")) == "0x1"
+                block = int(rc.get("blockNumber") or "0x0", 16)
+                reason = "" if ok else chain.failure_reason(h, rc)
+                Clock.schedule_once(lambda dt: self.confirmed(h, ok, block, reason))
+                return
+            time.sleep(POLL_SECONDS)
+        Clock.schedule_once(lambda dt: self.confirmed(h, None, 0, err or ""))
+
+    def confirmed(self, h, ok, block, reason):
+        if not self.alive:
+            return
+        if ok is None:
+            self.show(S.TX_PENDING.format(hash=short(h)), view_hash=h)
+        elif ok:
+            self.show(S.TX_OK.format(block=block, hash=short(h)), view_hash=h,
+                      bg=LIGHT_GREEN, fg=DARK_GREEN)
+            self.app.reload()
+        else:
+            txt = S.TX_FAILED.format(reason=escape_markup(reason) if reason else S.TX_FAILED_UNKNOWN,
+                                     hash=short(h))
+            self.show(txt, view_hash=h, bg=RED, fg=WHITE,
+                      copy_text="%s %s" % (reason or S.TX_FAILED_UNKNOWN, h))
 
     def is_rejection(self, text, code):
         low = str(text).lower()
@@ -312,7 +362,7 @@ class TxScreen(Overlay):
         if self.is_rejection(text, code):
             self.show(S.TX_REJECTED)
         else:
-            self.show(S.TX_ERROR.format(error=escape_markup(str(text))))
+            self.show(S.TX_ERROR.format(error=escape_markup(str(text))), copy_text=str(text))
         self.refresh_buttons()
 
     def fail_final(self, text, code=None):
@@ -323,7 +373,7 @@ class TxScreen(Overlay):
         if self.is_rejection(text, code):
             self.show(S.TX_REJECTED)
         else:
-            self.show(escape_markup(str(text)))
+            self.show(escape_markup(str(text)), copy_text=str(text))
         self.refresh_buttons()
 
     def on_disconnect(self):
