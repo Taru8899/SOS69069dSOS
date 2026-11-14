@@ -4,8 +4,8 @@ import threading
 from kivy.clock import Clock
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
 from kivy.uix.label import Label
+from kivy.uix.scrollview import ScrollView
 
 import core
 import strings as S
@@ -28,11 +28,14 @@ class OffersPage:
         self.app, self.b, self.d = app, b, d
         # newest first = the order the contract's wallet send uses
         self.offers = sorted(d["offers"], key=lambda o: o["pos"], reverse=True)
-        self.filter = "all"
+        self.filter = app.ui.pop("offers_filter", None) or "all"
         self.sel_id = self.offers[0]["id"] if self.offers else None
         want = app.ui.pop("offer_sel", None)
         if want is not None and any(o["id"] == want for o in self.offers):
             self.sel_id = want
+        vis0 = self.visible()
+        if not any(o["id"] == self.sel_id for o in vis0):
+            self.sel_id = vis0[0]["id"] if vis0 else None
         sel = self.selected()
         self.amount = sel["count"] if sel else 0
         self.transfer_mode = False
@@ -43,7 +46,11 @@ class OffersPage:
 
     # ---- helpers
     def visible(self):
-        return [o for o in self.offers if self.filter == "all" or o["status"] == self.filter]
+        if self.filter == "all":
+            return list(self.offers)
+        if self.filter == "sendable":
+            return [o for o in self.offers if o["sendable"]]
+        return [o for o in self.offers if o["status"] == self.filter]
 
     def selected(self):
         for o in self.offers:
@@ -84,13 +91,17 @@ class OffersPage:
             halign="right", size_hint_x=0.7, font_size="14sp"))
         b.add_widget(head)
 
-        chips = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(8))
+        sv = ScrollView(size_hint_y=None, height=dp(44), do_scroll_y=False, bar_width=0)
+        chips = BoxLayout(size_hint=(None, 1), spacing=dp(8))
+        chips.bind(minimum_width=chips.setter("width"))
         for key, text in S.OFFERS_FILTERS:
-            ch = Choice(base=WHITE, text=text, font_size="13sp", bold=True)
+            ch = Choice(base=WHITE, text=text, font_size="13sp", bold=True, size_hint_x=None,
+                        width=dp(28 + 9 * len(text)))
             ch.set_selected(key == self.filter)
             ch.bind(on_release=lambda _w, k=key: self.set_filter(k))
             chips.add_widget(ch)
-        b.add_widget(chips)
+        sv.add_widget(chips)
+        b.add_widget(sv)
 
         vis = self.visible()
         if not vis:
@@ -173,8 +184,8 @@ class OffersPage:
         self.to_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(6))
         self.to_in = make_input(S.HINT_RECIPIENT, self.to_text)
         self.to_in.bind(text=lambda _i, v: self.on_to_text(v))
-        pb = Button(text=S.BTN_PASTE, size_hint=(None, 1), width=dp(72), background_normal="",
-                    background_color=BLUE, color=WHITE, bold=True)
+        pb = Choice(base=BLUE, fg=WHITE, text=S.BTN_PASTE, bold=True, size_hint=(None, 1),
+                    width=dp(72))
         pb.bind(on_release=lambda *_: self.paste_to())
         self.to_row.add_widget(self.to_in)
         self.to_row.add_widget(pb)
@@ -184,8 +195,8 @@ class OffersPage:
             pin_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(6))
             self.pin_in = make_input(S.OD_PIN_HINT, self.pin_text, password=True)
             self.pin_in.bind(text=lambda _i, v: self.on_pin_text(v))
-            pp = Button(text=S.BTN_PASTE, size_hint=(None, 1), width=dp(72), background_normal="",
-                        background_color=BLUE, color=WHITE, bold=True)
+            pp = Choice(base=BLUE, fg=WHITE, text=S.BTN_PASTE, bold=True, size_hint=(None, 1),
+                        width=dp(72))
             pp.bind(on_release=lambda *_: self.paste_pin())
             pin_row.add_widget(self.pin_in)
             pin_row.add_widget(pp)

@@ -130,9 +130,8 @@ class TxScreen(Overlay):
     def copy_row(self, title, value, shown):
         row = Panel(size_hint_y=None, height=dp(68), spacing=dp(8))
         row.add_widget(label(f"[size=12sp]{escape_markup(title)}[/size]\n[b]{escape_markup(shown)}[/b]"))
-        btn = Button(text=S.BTN_COPY, size_hint=(None, None), size=(dp(72), dp(40)),
-                     pos_hint={"center_y": 0.5}, background_normal="",
-                     background_color=BLUE, color=WHITE, bold=True)
+        btn = Choice(base=BLUE, fg=WHITE, text=S.BTN_COPY, size_hint=(None, None),
+                     size=(dp(72), dp(40)), pos_hint={"center_y": 0.5}, bold=True)
         btn.bind(on_release=lambda *_: self.copy(title, value))
         row.add_widget(btn)
         return row

@@ -198,19 +198,16 @@ class ActivityPage:
         self.msg = label("", size_hint_y=None, height=dp(20), font_size="12sp", color=RED)
         p.add_widget(self.msg)
         btns = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(8))
-        cp = Button(text=S.BTN_COPY, size_hint_x=0.4, background_normal="", background_down="",
-                    background_color=BLUE, color=WHITE, bold=True)
+        cp = Choice(base=BLUE, fg=WHITE, text=S.BTN_COPY, size_hint_x=0.4, bold=True)
         cp.bind(on_release=lambda *_: self.copy(r["tx"]))
-        op = Button(text=S.ACT_BTN_ETHERSCAN, background_normal="", background_down="",
-                    background_color=BLUE, color=WHITE, bold=True)
+        op = Choice(base=BLUE, fg=WHITE, text=S.ACT_BTN_ETHERSCAN, bold=True)
         op.bind(on_release=lambda *_: self.open(ETHERSCAN_TX + r["tx"]))
         btns.add_widget(cp)
         btns.add_widget(op)
         p.add_widget(btns)
         if r["offer_id"] is not None:
-            go = Button(text=S.ACT_BTN_OFFER.format(id=r["offer_id"]), size_hint_y=None,
-                        height=dp(44), background_normal="", background_down="",
-                        background_color=BLACK, color=WHITE, bold=True)
+            go = Choice(base=BLACK, fg=WHITE, text=S.ACT_BTN_OFFER.format(id=r["offer_id"]),
+                        size_hint_y=None, height=dp(44), bold=True)
             go.bind(on_release=lambda *_: self.app.go_offer(r["offer_id"]))
             p.add_widget(go)
         else:

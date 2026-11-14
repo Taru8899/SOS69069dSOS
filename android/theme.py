@@ -7,10 +7,12 @@ import strings as S
 HERE = os.path.dirname(os.path.abspath(__file__))
 LOGO = os.path.join(HERE, "logo.png")
 HAS_LOGO = os.path.exists(LOGO)
+START = os.path.join(HERE, "start.jpg")            # big start image (flat green + logo)
+HAS_START = os.path.exists(START)
 WORDMARK = os.path.join(HERE, "wordmark.png")
 HAS_WORDMARK = os.path.exists(WORDMARK)
 
-APP_VERSION = "v9"
+APP_VERSION = "v9.1"
 try:                                   # build_info.py is written by the CI workflow
     import build_info
     if build_info.NUMBER == "dev":
@@ -35,6 +37,9 @@ DARK_GREEN = (0.04, 0.48, 0.17, 1)
 DARK_GREEN_HEX = "0a7a2a"
 
 SPLASH_SECONDS = 1.8
+WELCOME_MIN = 3.0          # seconds the welcome screen stays at least (saved wallet)
+WELCOME_NO_WALLET = 3.0    # no saved wallet: nothing to wait for
+WELCOME_MAX = 8.0          # ... and at most
 DSOS_ADDR = "0x7Bd7c427b3c69e2a09603573ac875987c61ECAB8"
 LEDGER_ADDR = "0x7373DBC24Dcd785896E8Ac3d5372c6ced9B75a8A"
 ETHERSCAN_ADDR = "https://etherscan.io/address/"

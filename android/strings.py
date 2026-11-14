@@ -95,8 +95,8 @@ BTN_DONATE = "Donate"
 # ------------------------------------------------------------------ offers tab (My offers)
 OFFERS_TITLE = "[b]My offers[/b]"
 OFFERS_SUMMARY = "{n} active · {slices:,} dSOS"
-OFFERS_FILTERS = (("all", "All"), ("redeemable", "Redeemable"), ("expiring", "Expiring"),
-                  ("expired", "Expired"))
+OFFERS_FILTERS = (("all", "All"), ("sendable", "Sendable"), ("redeemable", "Redeemable"),
+                  ("expiring", "Expiring"), ("expired", "Expired"))
 OFFERS_EMPTY = "No offers in this view."
 OC_TITLE = "[b]{count:,} dSOS · #{id}{pin}[/b]"
 OC_SUB_FROM = "{eth} ETH · from {donor}"
@@ -507,8 +507,8 @@ PIN_SHOW = "Show"
 PIN_HIDE = "Hide"
 
 # ------------------------------------------------------------------ v8: Offers | Activity
-OFFERS_SWITCH = [("offers", "Offers"), ("activity", "Activity")]
-ACT_SCOPES = [("mine", "Mine"), ("contract", "Contract")]
+OFFERS_SWITCH = [("activity", "Activity"), ("offers", "Offers")]
+ACT_SCOPES = [("contract", "Contract"), ("mine", "Mine")]
 ACT_FILTERS = [("all", "All"), ("created", "Created"), ("received", "Received"),
                ("sent", "Sent"), ("redeemed", "Redeemed"), ("swept", "Swept"),
                ("stake", "Stake & Credits"), ("donation", "Donations"),
@@ -517,12 +517,13 @@ ACT_LOADING = "Loading activity..."
 ACT_EMPTY = "No activity found in this range."
 ACT_NEED_ADDRESS = "Load your wallet first to see your activity."
 ACT_ERROR = "[b]Could not load activity[/b]\n{error}"
-ACT_NO_KEY = ("Showing about the last 7 days from public nodes. Add an Etherscan key for the full "
+ACT_NO_KEY = ("Showing about the last 2 days from public nodes. Add an Etherscan key for the full "
               "history and for failed transactions.")
 ACT_WINDOW = "Covers blocks {lo:,} to {hi:,}."
 ACT_COMPLETE = "Full history loaded."
 ACT_TRUNCATED = "More than 10,000 events: the oldest are not shown."
 ACT_LOAD_OLDER = "Load older"
+ACT_ES_FAILED = "Etherscan refused: {error}\nShowing public-node data instead."
 ACT_TX_NOTE = "Failed transactions could not be read: {error}"
 ACT_COUNT = "{n} items"
 ACT_ICONS = {"created": ("+", (0.02, 0.66, 0.21, 1)), "received": ("<", (0.0, 0.2, 1, 1)),
@@ -573,8 +574,8 @@ WALLET_BAL_TITLE = "dSOS balance"
 WALLET_BAL_BIG = "[size=46sp][b]{n}[/b][/size]  [size=18sp]dSOS[/size]"
 WALLET_ETH = "\u2248 {eth} ETH redeemable"
 WALLET_CHIP_SENDABLE = "Sendable"
-WALLET_CHIP_EXPIRING = "Expiring < 1 day"
-WALLET_CHIP_EXPIRED = "Expired, unswept"
+WALLET_CHIP_EXPIRING = "Expiring <1d"
+WALLET_CHIP_EXPIRED = "Unswept"
 WALLET_CHIP_VALUE = "[b]{n} dSOS[/b]"
 WALLET_NEXT = "[b]{n} dSOS expire in ~{time}[/b]\nRedeem before block {block:,}"
 WROW_SUB = "{eth} ETH \u00b7 {left}"

@@ -12,9 +12,11 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 import core
+import strings as S
 from core import DSOS, LEDGER, UNIT, keccak256
 
-WINDOW_BLOCKS = 50400            # about 7 days
+WINDOW_BLOCKS = 50400            # about 7 days (Etherscan)
+RPC_WINDOW = 14400               # about 2 days per step on the public nodes (800 blocks per call)
 MAX_PAGES = 10                   # Etherscan: 10 pages x 1000 logs per query
 MAX_BLOCK_LOOKUPS = 40           # exact timestamps for the newest blocks only (RPC path)
 ZERO = "0x" + "0" * 40
@@ -303,6 +305,7 @@ class Store:
         self.complete = False          # history reached block 0
         self.truncated = False         # a query hit its size limit
         self.exact = bool(chain.api_key)
+        self.use_es = bool(chain.api_key)
         self.note = ""
         self.times = {}                # block -> timestamp (RPC path)
 
@@ -311,45 +314,71 @@ class Store:
         for lg in logs:
             self.logs[(lg["tx"], lg["idx"])] = lg
 
-    def _queries(self):
-        """List of (address, topics) that make up this view."""
+    def _es_queries(self):
+        """List of (address, topics) that make up this view on Etherscan. Every query carries
+        topic0 (the event) as well as the address topic."""
         if self.scope == "contract":
             return [(DSOS, [])]
         me = pad_topic(self.me)
-        return [(DSOS, [None, me]), (DSOS, [None, None, me]), (DSOS, [None, None, None, me]),
-                (LEDGER, [T_RECORDED, me]), (LEDGER, [T_RECORDED, None, me])]
+        q = []
+        for t0 in (T_CREATED, T_TRANSFERRED, T_REDEEMED, T_SWEPT):      # id, donor/from, to/holder
+            q.append((DSOS, [t0, None, me]))
+            q.append((DSOS, [t0, None, None, me]))
+        for t0 in (T_DONATION, T_FORMED, T_CREDIT_REDEEMED, T_STAKED):  # address at topic1
+            q.append((DSOS, [t0, me]))
+        for t0 in (T_TRANSFER, T_SKIPPED):                              # address at topic1 or 2
+            q.append((DSOS, [t0, me]))
+            q.append((DSOS, [t0, None, me]))
+        q.append((LEDGER, [T_RECORDED, me]))
+        q.append((LEDGER, [T_RECORDED, None, me]))
+        return q
 
-    def _fetch(self, frm, to):
-        for addr, topics in self._queries():
-            logs, trunc = self.chain.get_logs(addr, topics, frm, to)
+    def _fetch_es(self, frm, to):
+        for addr, topics in self._es_queries():
+            logs, trunc = self.chain.es_logs(addr, topics, frm, to)
             self._add(logs)
             self.truncated = self.truncated or trunc
 
-    # -- public
-    def _window(self):
-        self.lo = max(0, self.latest - WINDOW_BLOCKS + 1)
-        self._fetch(self.lo, self.latest)
-        self.complete = self.lo == 0
+    def _fetch_rpc(self, frm, to):
+        """Public nodes cannot filter by 'any topic': Mine takes all dSOS logs (and the ledger's
+        SignatureRecorded) and keeps the transactions that mention the address."""
+        if self.scope == "contract":
+            self._add(self.chain.rpc_logs(DSOS, [], frm, to))
+            return
+        got = self.chain.rpc_logs(DSOS, [], frm, to) + self.chain.rpc_logs(LEDGER, [T_RECORDED], frm, to)
+        me = pad_topic(self.me)
+        txs = {lg["tx"] for lg in got if me in lg["topics"][1:]}
+        self._add([lg for lg in got if lg["tx"] in txs])
 
+    def _load(self, hi):
+        """Fetch the next piece of history ending at block `hi`; returns its first block."""
+        if self.use_es:
+            lo = 0 if self.scope == "mine" else max(0, hi - WINDOW_BLOCKS + 1)
+            try:
+                self._fetch_es(lo, hi)
+                return lo
+            except Exception as e:  # noqa: BLE001
+                self.note = S.ACT_ES_FAILED.format(error=str(e) or type(e).__name__)
+                self.use_es = False
+                self.exact = False
+        lo = max(0, hi - RPC_WINDOW + 1)
+        self._fetch_rpc(lo, hi)
+        return lo
+
+    # -- public
     def refresh(self):
-        """Newest data. Mine with a key: the whole history. Otherwise the last WINDOW_BLOCKS."""
+        """Newest data. With a key: Mine = whole history, Contract = last 7 days (Etherscan).
+        Otherwise (or if Etherscan refuses): the last 2 days from the public nodes."""
         self.logs.clear()
         self.failed = []
         self.truncated = False
         self.note = ""
         self.latest = self.chain.block()
-        self.exact = bool(self.chain.api_key)
-        done = False
-        if self.scope == "mine" and self.chain.api_key:
-            try:
-                self._fetch(0, self.latest)
-                self.lo, self.complete, done = 0, True, True
-            except core.NeedWindow:
-                self.logs.clear()
-                self.exact = False
-        if not done:
-            self._window()
-        if self.scope == "mine" and self.chain.api_key:
+        self.use_es = bool(self.chain.api_key)
+        self.exact = self.use_es
+        self.lo = self._load(self.latest)
+        self.complete = self.lo == 0
+        if self.scope == "mine" and self.use_es:
             self._failed()
         self._times()
 
@@ -364,11 +393,9 @@ class Store:
     def older(self):
         if self.complete or self.lo is None:
             return
-        hi = self.lo - 1
-        self.lo = max(0, hi - WINDOW_BLOCKS + 1)
-        self._fetch(self.lo, hi)
+        self.lo = self._load(self.lo - 1)
         self.complete = self.lo == 0
-        if self.scope == "mine" and self.chain.api_key:
+        if self.scope == "mine" and self.use_es:
             self._failed()
         self._times()
 

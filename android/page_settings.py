@@ -7,7 +7,7 @@ from kivy.utils import escape_markup
 import strings as S
 import util
 from theme import BLACK, BLUE, BUILD, DSOS_ADDR, ETHERSCAN_ADDR, LEDGER_ADDR, WHITE, short
-from widgets import Card, Overlay, Panel, PullScroll, IconBtn, label
+from widgets import Card, Choice, Overlay, Panel, PullScroll, IconBtn, label
 
 
 class SettingsScreen(Overlay):
@@ -46,8 +46,7 @@ class SettingsScreen(Overlay):
         btns = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(8))
         for text, fn in ((S.BTN_COPY, lambda: self.copy(title, addr)),
                          (S.BTN_OPEN, lambda: self.open(ETHERSCAN_ADDR + addr))):
-            b = Button(text=text, background_normal="", background_down="",
-                       background_color=BLUE, color=WHITE, bold=True)
+            b = Choice(base=BLUE, fg=WHITE, text=text, bold=True)
             b.bind(on_release=lambda *_, f=fn: f())
             btns.add_widget(b)
         p.add_widget(btns)
@@ -56,9 +55,8 @@ class SettingsScreen(Overlay):
     def layout_row(self):
         p = Panel(orientation="vertical", size_hint_y=None, height=dp(112), spacing=dp(6))
         p.add_widget(label(S.SETTINGS_LAYOUT, size_hint_y=None, height=dp(44), font_size="13sp"))
-        b = Button(text=S.SETTINGS_LAYOUT_COPY, size_hint_y=None, height=dp(44),
-                   background_normal="", background_down="", background_color=BLUE,
-                   color=WHITE, bold=True)
+        b = Choice(base=BLUE, fg=WHITE, text=S.SETTINGS_LAYOUT_COPY, size_hint_y=None,
+                   height=dp(44), bold=True)
         b.bind(on_release=lambda *_: self.copy(S.SETTINGS_LAYOUT_COPY, self.app.layout_report()))
         p.add_widget(b)
         return p

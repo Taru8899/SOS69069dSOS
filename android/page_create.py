@@ -106,9 +106,8 @@ class CreateScreen(Overlay):
         self.pin_in.bind(text=lambda *_: self.refresh())
         self.pin_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(6))
         self.pin_row.add_widget(self.pin_in)
-        self.pin_eye = Button(text=S.PIN_SHOW, size_hint=(None, 1), width=dp(72),
-                              background_normal="", background_color=BLUE, color=WHITE,
-                              bold=True)
+        self.pin_eye = Choice(base=BLUE, fg=WHITE, text=S.PIN_SHOW, bold=True,
+                              size_hint=(None, 1), width=dp(72))
         self.pin_eye.bind(on_release=lambda *_: self.toggle_pin())
         self.pin_row.add_widget(self.pin_eye)
         form.add_widget(self.pin_row)
@@ -125,8 +124,8 @@ class CreateScreen(Overlay):
         self.other_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(6))
         self.other_in = make_input(S.HINT_HOLDER)
         self.other_in.bind(text=lambda *_: self.refresh())
-        pb = Button(text=S.BTN_PASTE, size_hint=(None, 1), width=dp(72), background_normal="",
-                    background_color=BLUE, color=WHITE, bold=True)
+        pb = Choice(base=BLUE, fg=WHITE, text=S.BTN_PASTE, bold=True, size_hint=(None, 1),
+                    width=dp(72))
         pb.bind(on_release=lambda *_: self.paste_other())
         self.other_row.add_widget(self.other_in)
         self.other_row.add_widget(pb)

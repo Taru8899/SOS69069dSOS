@@ -31,16 +31,14 @@ from page_redeem import RedeemScreen
 from page_send import SendScreen
 from page_settings import SettingsScreen
 from wallet import Wallet
-from theme import BLACK, BUILD, BLUE, GREEN, HAS_LOGO, LOGO, LIGHT, WHITE, short
+from theme import (BLACK, BUILD, BLUE, GREEN, HAS_LOGO, LOGO, LIGHT, WHITE, WELCOME_MAX, WELCOME_MIN,
+                   WELCOME_NO_WALLET, short)
 from widgets import (Caret, Card, Choice, ErrorBanner, IconBtn, LogoBtn, NavTab, Panel, PillBtn, PullScroll,
                      Tap, Welcome, label, make_input)
 
 Window.clearcolor = GREEN
 Window.softinput_mode = "below_target"   # keep the focused field visible above the keyboard
 
-WELCOME_MIN = 2.0          # seconds the welcome screen stays at least (saved wallet)
-WELCOME_MAX = 8.0          # ... and at most
-WELCOME_NO_WALLET = 2.5    # no saved wallet: nothing to wait for
 
 # tab name -> function that fills that tab:  build(app, box, data)
 PAGES = {
@@ -92,8 +90,8 @@ class DsosApp(App):
         self.loading = False
         self.drawer_open = False
         # page state that must survive a reload
-        self.ui = {"offers_tab": "offers", "act_scope": "mine", "act_filter": "all",
-                   "offer_sel": None, "act_sel": None}
+        self.ui = {"offers_tab": "activity", "act_scope": "contract", "act_filter": "all",
+                   "offer_sel": None, "act_sel": None, "offers_filter": None}
         self.activity = {}        # scope -> activity.Store (cleared by reload)
 
         root = FloatLayout()
@@ -102,8 +100,8 @@ class DsosApp(App):
         self.main = main
 
         # ---- header: logo (+ large caret), "My wallet" text, Ethereum pill
-        head = BoxLayout(size_hint_y=None, height=dp(82), spacing=dp(10),
-                         padding=[dp(14), dp(6), dp(14), dp(2)])
+        head = BoxLayout(size_hint_y=None, height=dp(76), spacing=dp(10),
+                         padding=[dp(14), dp(4), dp(14), dp(2)])
         self.head = head
         logo_col = BoxLayout(orientation="vertical", size_hint=(None, 1), width=dp(56))
         if HAS_LOGO:
@@ -116,16 +114,16 @@ class DsosApp(App):
         head.add_widget(logo_col)
         title = Tap(orientation="vertical")
         title.bind(on_release=lambda *_: self.open_settings())
-        self.sub = label(S.HEADER_WALLET.format(addr=short(cfg.get("addr", "")) or S.HEADER_NO_ADDR))
+        self.sub = label(self._head_text(short(cfg.get("addr", "")) or S.HEADER_NO_ADDR))
         title.add_widget(self.sub)
         head.add_widget(title)
         pill = PillBtn(text=S.CHAIN_PILL, color=WHITE, bold=True, size_hint=(None, None),
-                       size=(dp(104), dp(38)), pos_hint={"center_y": 0.5})
+                       size=(dp(124), dp(38)), pos_hint={"center_y": 0.5})
         pill.bind(on_release=lambda *_: self.open_links())
         head.add_widget(pill)
         main.add_widget(head)
 
-        self.msg = Label(text="", size_hint_y=None, height=dp(22), color=BLACK, font_size="13sp")
+        self.msg = Label(text="", size_hint_y=None, height=dp(18), color=BLACK, font_size="13sp")
         main.add_widget(self.msg)
 
         # ---- drawer (Etherscan key + wallet address + Load): a panel that floats over the top
@@ -145,7 +143,7 @@ class DsosApp(App):
         # ---- body: the page (scrolls, pull to reload) and, on top of it, overlay pages
         self.body = FloatLayout()
         self.body.bind(width=self._fit_drawer)
-        self.sv = PullScroll(size_hint=(1, 1))
+        self.sv = PullScroll(size_hint=(1, 1), pos_hint={"x": 0, "y": 0})
         self.box = BoxLayout(orientation="vertical", spacing=dp(10), size_hint_y=None,
                              padding=[dp(14), dp(4), dp(14), dp(16)])
         self.box.bind(minimum_height=self.box.setter("height"))
@@ -226,13 +224,29 @@ class DsosApp(App):
         self.close_all()
         self.set_page("wallet")
 
-    def open_settings(self):
+    def _head_text(self, addr):
+        return S.HEADER_WALLET.format(addr="[u]" + addr + "[/u]  [b]\u203a[/b]")
+
+    def _toggle_overlay(self, cls):
+        """Open the page; a second tap on the same header link closes it again."""
+        if self.overlays and isinstance(self.overlays[-1], cls):
+            self.close_all()
+            return
         self.close_all()
-        self.open_overlay(SettingsScreen(self))
+        self.open_overlay(cls(self))
+
+    def open_settings(self):
+        self._toggle_overlay(SettingsScreen)
 
     def open_links(self):
+        self._toggle_overlay(LinksScreen)
+
+    def open_offers(self, flt=None):
+        """Offers tab (not Activity) with a filter: used by the Wallet chips."""
         self.close_all()
-        self.open_overlay(LinksScreen(self))
+        self.ui["offers_tab"] = "offers"
+        self.ui["offers_filter"] = flt
+        self.set_page("offers")
 
     # ---------------------------------------------------------- tabs
     def _tab(self, name, text, icon):
@@ -481,7 +495,7 @@ class DsosApp(App):
         self.data = d
         self.err = None
         self.msg.text = S.MSG_BLOCK_VIA.format(block=d["block"], source=d["source"])
-        self.sub.text = S.HEADER_WALLET.format(addr=short(d["address"]))
+        self.sub.text = self._head_text(short(d["address"]))
         self.render()
 
     # ---------------------------------------------------------- pages

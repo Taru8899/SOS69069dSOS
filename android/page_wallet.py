@@ -9,19 +9,22 @@ from widgets import (Card, Choice, Dot, Icon, IconBtn, Panel, Ring, Tappable, la
                      title_row)
 
 
-def chip(color, title, value):
-    """Small grey box: coloured dot + title, bold value below."""
-    p = Panel(orientation="vertical", bg=LIGHT, padding=[dp(12), dp(8)], spacing=dp(2))
-    top = BoxLayout(size_hint_y=None, height=dp(22), spacing=dp(8))
-    top.add_widget(Dot(bg=color, text="", size=(dp(10), dp(10)), pos_hint={"center_y": 0.5}))
-    top.add_widget(label(title, font_size="13sp"))
-    p.add_widget(top)
-    p.add_widget(label(S.WALLET_CHIP_VALUE.format(n=value), font_size="18sp"))
+def chip(color, title, value, on_tap=None):
+    """Small grey box that is a link: underlined title, then dot + bold value. Tap = open Offers
+    with that filter."""
+    p = Tappable(orientation="vertical", bg=LIGHT, padding=[dp(10), dp(8)], spacing=dp(2))
+    p.add_widget(label(f"[u]{title}[/u]", font_size="12sp", size_hint_y=None, height=dp(22)))
+    row = BoxLayout(spacing=dp(6))
+    row.add_widget(Dot(bg=color, text="", size=(dp(10), dp(10)), pos_hint={"center_y": 0.5}))
+    row.add_widget(label(S.WALLET_CHIP_VALUE.format(n=value), font_size="17sp"))
+    p.add_widget(row)
+    if on_tap:
+        p.bind(on_release=lambda *_: on_tap())
     return p
 
 
 class BalanceCard(Panel):
-    def __init__(self, d, **kw):
+    def __init__(self, d, app=None, **kw):
         super().__init__(orientation="vertical", size_hint_y=None, height=dp(246), spacing=dp(8), **kw)
         total = max(d["balance"], 1)
         rest = max(0, d["balance"] - d["sendable"] - d["expiring"] - d["expired"])
@@ -38,10 +41,12 @@ class BalanceCard(Panel):
         top.add_widget(self.ring)
         self.add_widget(top)
         chips = BoxLayout(size_hint_y=None, height=dp(76), spacing=dp(10))
-        chips.add_widget(chip(BLUE, S.WALLET_CHIP_SENDABLE, d["sendable"]))
-        chips.add_widget(chip(BLACK, S.WALLET_CHIP_EXPIRING, d["expiring"]))
+        def go(f):
+            return (lambda: app.open_offers(f)) if app is not None else None
+        chips.add_widget(chip(BLUE, S.WALLET_CHIP_SENDABLE, d["sendable"], go("sendable")))
+        chips.add_widget(chip(BLACK, S.WALLET_CHIP_EXPIRING, d["expiring"], go("expiring")))
         if d["expired"]:
-            chips.add_widget(chip(RED, S.WALLET_CHIP_EXPIRED, d["expired"]))
+            chips.add_widget(chip(RED, S.WALLET_CHIP_EXPIRED, d["expired"], go("expired")))
         self.add_widget(chips)
 
 
@@ -68,7 +73,7 @@ def next_expiry_card(app, d):
 
 
 def build(app, b, d):
-    b.add_widget(BalanceCard(d))
+    b.add_widget(BalanceCard(d, app))
     acts = BoxLayout(size_hint_y=None, height=dp(104), spacing=dp(8))
     acts.add_widget(action_btn("send", S.ACTION_SEND, app.open_send, bg=BLUE, fg=WHITE))
     acts.add_widget(action_btn("plus", S.ACTION_CREATE, app.open_create))

@@ -1,4 +1,6 @@
+import re
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 import requests
 from Crypto.Hash import keccak
@@ -100,8 +102,7 @@ def dur(blocks):
             (S.DUR_HOURS.format(h=h, m=m) if h else S.DUR_MINUTES.format(m=m)))
 
 
-class NeedWindow(Exception):
-    """A wide log query cannot be served without an Etherscan key: ask for a block window."""
+RPC_STEP = 800     # blocks per eth_getLogs on the public nodes (learned from their errors)
 
 
 class Chain:
@@ -110,6 +111,7 @@ class Chain:
         self.s = requests.Session()
         self.source = "?"
         self._last = 0.0
+        self.rpc_step = RPC_STEP
 
     def _es(self, action, **kw):
         q = {"chainid": 1, "module": "proxy", "action": action,
@@ -143,68 +145,85 @@ class Chain:
 
     # ------------------------------------------------------------ logs (Activity)
     def _es_api(self, module, action, **kw):
-        """Etherscan call that returns a list (logs, txlist). [] when there is nothing."""
+        """Etherscan call that returns a list (logs, txlist). [] when there is nothing.
+        Raises RuntimeError with Etherscan's own message when it refuses."""
         q = {"chainid": 1, "module": module, "action": action, "apikey": self.api_key, **kw}
-        wait = 0.25 - (time.time() - self._last)
-        if wait > 0:
-            time.sleep(wait)
-        self._last = time.time()
-        j = self.s.get(ES_URL, params=q, timeout=25).json()
-        r = j.get("result")
-        if isinstance(r, list):
-            return r
-        msg = str(j.get("message") or "")
-        if "no records" in msg.lower() or "no transactions" in msg.lower():
-            return []
-        raise RuntimeError(str(r or msg))
+        for attempt in (0, 1):
+            wait = 0.25 - (time.time() - self._last)
+            if wait > 0:
+                time.sleep(wait)
+            self._last = time.time()
+            j = self.s.get(ES_URL, params=q, timeout=25).json()
+            r = j.get("result")
+            if isinstance(r, list):
+                return r
+            msg = str(j.get("message") or "")
+            if "no records" in msg.lower() or "no transactions" in msg.lower():
+                return []
+            text = str(r or msg)
+            if attempt == 0 and "rate limit" in text.lower():
+                time.sleep(1.2)
+                continue
+            raise RuntimeError(text)
 
-    def get_logs(self, address, topics, frm, to):
-        """Logs of `address` between two blocks. topics: [] or a list of None / 0x-hash.
-        Returns (list of normalised logs, truncated). Etherscan first (with a key), then the
-        public RPC (block windows only: a wide range raises NeedWindow)."""
+    def es_logs(self, address, topics, frm, to):
+        """Etherscan getLogs of `address`. topics: list of None / 0x-hash by position. Always
+        send topic0 when you can: Etherscan answers a lone topic1/2/3 filter with an error.
+        Returns (logs, truncated). Raises RuntimeError with Etherscan's message."""
         from activity import MAX_PAGES, norm_log
         topics = list(topics)
         while topics and topics[-1] is None:
             topics.pop()
-        if self.api_key:
-            try:
-                q = {"address": address, "fromBlock": frm, "toBlock": to,
-                     "offset": 1000}
-                given = [i for i, t in enumerate(topics) if t]
-                for i in given:
-                    q["topic%d" % i] = topics[i]
-                for a, b in zip(given, given[1:]):
+        q = {"address": address, "fromBlock": frm, "toBlock": to, "offset": 1000}
+        given = [i for i, t in enumerate(topics) if t]
+        for i in given:
+            q["topic%d" % i] = topics[i]
+        for a in given:
+            for b in given:
+                if a < b:
                     q["topic%d_%d_opr" % (a, b)] = "and"
-                for a in given:
-                    for b in given:
-                        if a < b and "topic%d_%d_opr" % (a, b) not in q:
-                            q["topic%d_%d_opr" % (a, b)] = "and"
-                out = []
-                for page in range(1, MAX_PAGES + 1):
-                    rows = self._es_api("logs", "getLogs", page=page, **q)
-                    out.extend(norm_log(r) for r in rows)
-                    if len(rows) < 1000:
-                        return out, False
-                return out, True
-            except Exception:  # noqa: BLE001
-                pass
-        if to - frm > 2 * 50400:
-            raise NeedWindow()
-        return self._logs_rpc(address, topics, frm, to), False
+        out = []
+        for page in range(1, MAX_PAGES + 1):
+            rows = self._es_api("logs", "getLogs", page=page, **q)
+            out.extend(norm_log(r) for r in rows)
+            if len(rows) < 1000:
+                return out, False
+        return out, True
 
-    def _logs_rpc(self, address, topics, frm, to, depth=0):
+    def rpc_logs(self, address, topics, frm, to):
+        """Logs from the public nodes in chunks of the nodes' range limit (800 blocks by default;
+        a 'Max range: N' error changes it). Chunks are fetched in parallel."""
+        topics = list(topics)
+        while topics and topics[-1] is None:
+            topics.pop()
+        step = max(1, int(self.rpc_step))
+        spans = [(a, min(a + step - 1, to)) for a in range(frm, to + 1, step)]
+        if not spans:
+            return []
+        with ThreadPoolExecutor(max_workers=6) as ex:
+            parts = list(ex.map(lambda sp: self._rpc_span(address, topics, sp[0], sp[1], 0), spans))
+        return [lg for p in parts for lg in p]
+
+    def _rpc_span(self, address, topics, frm, to, depth):
         from activity import norm_log
-        flt = {"address": address, "fromBlock": hex(frm), "toBlock": hex(to),
-               "topics": [t for t in topics]}
+        flt = {"address": address, "fromBlock": hex(frm), "toBlock": hex(to), "topics": topics}
         try:
-            res = self._pub("eth_getLogs", [flt])
-        except RuntimeError:
-            if depth >= 4 or to - frm < 2:
+            return [norm_log(r) for r in self._pub("eth_getLogs", [flt])]
+        except RuntimeError as e:
+            n = to - frm + 1
+            m = re.search(r"max(?:imum)? range:?\s*(\d+)|limited to\s*(\d+)|(\d+) blocks", str(e), re.I)
+            lim = next((int(g) for g in (m.groups() if m else ()) if g), 0)
+            if lim and lim < n:
+                self.rpc_step = lim                      # remember it for the next chunks
+                out = []
+                for a in range(frm, to + 1, lim):
+                    out.extend(self._rpc_span(address, topics, a, min(a + lim - 1, to), depth + 1))
+                return out
+            if depth >= 6 or n < 2:
                 raise
-            mid = (frm + to) // 2          # node refused: ask for two smaller windows
-            return (self._logs_rpc(address, topics, frm, mid, depth + 1)
-                    + self._logs_rpc(address, topics, mid + 1, to, depth + 1))
-        return [norm_log(r) for r in res]
+            mid = (frm + to) // 2
+            return (self._rpc_span(address, topics, frm, mid, depth + 1)
+                    + self._rpc_span(address, topics, mid + 1, to, depth + 1))
 
     def failed_txs(self, address):
         """The address's failed transactions to the dSOS contract (needs an Etherscan key)."""

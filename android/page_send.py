@@ -53,8 +53,8 @@ class SendScreen(Overlay):
         row = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(6))
         self.to_in = make_input(S.HINT_RECIPIENT)
         self.to_in.bind(text=lambda *_: self.refresh())
-        pb = Button(text=S.BTN_PASTE, size_hint=(None, 1), width=dp(72), background_normal="",
-                    background_color=BLUE, color=WHITE, bold=True)
+        pb = Choice(base=BLUE, fg=WHITE, text=S.BTN_PASTE, bold=True, size_hint=(None, 1),
+                    width=dp(72))
         pb.bind(on_release=lambda *_: self.paste_to())
         row.add_widget(self.to_in)
         row.add_widget(pb)
