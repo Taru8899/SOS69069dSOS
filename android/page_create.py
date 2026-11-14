@@ -16,7 +16,7 @@ import tx
 import util
 from page_tx import TxScreen
 from theme import BLACK, BLUE, DSOS_ADDR, LIGHT, RED, WHITE, WINDOWS, short, set_visible
-from widgets import (Card, Choice, DashedBox, Overlay, Panel, PullScroll, IconBtn, TypeCard,
+from widgets import (Icon, IconRow, Card, Choice, DashedBox, Overlay, Panel, PullScroll, IconBtn, TypeCard,
                      label, make_input, page_head)
 
 
@@ -119,11 +119,7 @@ class CreateScreen(Overlay):
         # holder
         form.add_widget(label(S.CREATE_HOLDER, size_hint_y=None, height=dp(26)))
         hold = Panel(orientation="vertical", size_hint_y=None, height=dp(150), spacing=dp(6))
-        self.holder_btn = Button(text="", markup=True, halign="left", valign="middle",
-                                 background_normal="", background_down="",
-                                 background_color=(0, 0, 0, 0), color=BLACK,
-                                 size_hint_y=None, height=dp(52))
-        self.holder_btn.bind(size=lambda i, s: setattr(i, "text_size", (s[0], s[1])))
+        self.holder_btn = IconRow("user", size_hint_y=None, height=dp(56))
         self.holder_btn.bind(on_release=lambda *_: self.toggle_holder())
         hold.add_widget(self.holder_btn)
         self.other_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(6))
@@ -140,6 +136,7 @@ class CreateScreen(Overlay):
 
         # ledger
         dash = DashedBox(size_hint_y=None, height=dp(56), padding=[dp(16), 0])
+        dash.add_widget(Icon("list", color=BLACK, size=(dp(24), dp(24)), pos_hint={"center_y": 0.5}))
         dash.add_widget(label(S.CREATE_LEDGER))
         dash.add_widget(label(S.CREATE_LEDGER_SKIPPED, halign="right", size_hint_x=None, width=dp(70)))
         form.add_widget(dash)

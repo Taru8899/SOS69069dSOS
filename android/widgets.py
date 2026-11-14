@@ -887,3 +887,25 @@ class TypeCard(Tappable):
         mid.add_widget(label(f"[b]{title}[/b]", font_size="16sp"))
         mid.add_widget(label(sub, font_size="13sp"))
         self.add_widget(mid)
+
+
+class IconRow(ButtonBehavior, BoxLayout):
+    """Row: blue round icon, two-line text (set `.text`), chevron. Tap = on_release."""
+
+    def __init__(self, icon, **kw):
+        kw.setdefault("spacing", dp(12))
+        super().__init__(**kw)
+        self.add_widget(IconBtn(icon=icon, bg=BLUE, color=WHITE, icon_size=22,
+                                size_hint=(None, 1), width=dp(52)))
+        self.lab = label("", font_size="16sp")
+        self.add_widget(self.lab)
+        self.add_widget(Icon("chevron", color=BLACK, size=(dp(22), dp(22)),
+                             pos_hint={"center_y": 0.5}))
+
+    @property
+    def text(self):
+        return self.lab.text
+
+    @text.setter
+    def text(self, v):
+        self.lab.text = v
