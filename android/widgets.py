@@ -1,4 +1,7 @@
 """Reusable widgets and small UI helpers."""
+import math
+
+from kivy.animation import Animation
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.graphics import Color, Ellipse, Line, Quad, Rectangle, RoundedRectangle, Triangle
@@ -11,6 +14,7 @@ from kivy.uix.image import Image
 from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.textinput import TextInput
+from kivy.properties import NumericProperty
 from kivy.uix.widget import Widget
 
 import core
@@ -180,6 +184,7 @@ class Ring(Widget):
     def redraw(self, *_):
         self.canvas.clear()
         w = dp(13)
+        w = min(w, min(self.width, self.height) * 0.14)     # thinner ring when the ring is small
         r = min(self.width, self.height) / 2 - w
         if r <= 0:
             return
@@ -535,35 +540,45 @@ class LogoBtn(ButtonBehavior, Image):
     """The logo in the header: tap = back to the Wallet page."""
 
 
-class Caret(ButtonBehavior, Widget):
-    """Down-arrow chip under the logo (large tap area). `open` flips the arrow up."""
+class Chevron(Widget):
+    """Small triangle after the wallet address. Closed it points right; opening turns it 90
+    degrees clockwise (down). Not a button itself: the address row around it is the tap target."""
+    angle = NumericProperty(0)
 
     def __init__(self, **kw):
         kw.setdefault("size_hint", (None, None))
-        kw.setdefault("size", (dp(56), dp(34)))
+        kw.setdefault("size", (dp(16), dp(16)))
+        kw.setdefault("pos_hint", {})
         super().__init__(**kw)
         self.open = False
+        self.bind(angle=self.redraw)
         settle(self, self.redraw)
 
-    def set_open(self, on):
-        self.open = on
-        self.redraw()
+    def set_open(self, on, animate=True):
+        self.open = bool(on)
+        target = 90 if self.open else 0
+        if animate:
+            Animation(angle=target, duration=0.15).start(self)
+        else:
+            self.angle = target
 
     def redraw(self, *_):
         self.canvas.clear()
-        if self.width < 8 or self.height < 8:
+        if self.width < 4:
             return
-        cx, cy = self.center
-        a = dp(7)
-        w, h = min(self.width, dp(48)), min(self.height, dp(28))
+        t = math.radians(self.angle)
+        a = min(self.width, self.height) * 0.42
+        pts = []
+        for x, y in ((a, 0), (-a * 0.6, a * 0.8), (-a * 0.6, -a * 0.8)):      # points right
+            pts += [self.center_x + x * math.cos(t) + y * math.sin(t),
+                    self.center_y - x * math.sin(t) + y * math.cos(t)]         # clockwise by angle
         with self.canvas:
-            Color(0, 0, 0, 0.18)
-            RoundedRectangle(pos=(cx - w / 2, cy - h / 2), size=(w, h), radius=[rad(w, h, dp(14))])
-            Color(*WHITE)
-            if self.open:
-                Triangle(points=[cx - a, cy - a / 2, cx + a, cy - a / 2, cx, cy + a / 2])
-            else:
-                Triangle(points=[cx - a, cy + a / 2, cx + a, cy + a / 2, cx, cy - a / 2])
+            Color(*BLACK)
+            Triangle(points=pts)
+
+
+class TapFloat(ButtonBehavior, FloatLayout):
+    """Tappable container whose children are placed with pos_hint."""
 
 
 class ErrorBanner(BoxLayout):

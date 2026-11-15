@@ -7,6 +7,7 @@ from kivy.utils import escape_markup
 import strings as S
 import util
 from theme import BLACK, BLUE, BUILD, DSOS_ADDR, ETHERSCAN_ADDR, LEDGER_ADDR, WHITE, short
+from page_links import build_grid
 from widgets import Card, Choice, Overlay, Panel, PullScroll, IconBtn, label
 
 
@@ -30,6 +31,7 @@ class SettingsScreen(Overlay):
         box = BoxLayout(orientation="vertical", spacing=dp(10), size_hint_y=None,
                         padding=[dp(14), 0, dp(14), dp(20)])
         box.bind(minimum_height=box.setter("height"))
+        box.add_widget(build_grid(app, lambda t: setattr(self.status, "text", t)))
         box.add_widget(Card(S.SETTINGS_INTRO))
         box.add_widget(self.address_row(S.SETTINGS_DSOS, DSOS_ADDR))
         box.add_widget(self.address_row(S.SETTINGS_LEDGER, LEDGER_ADDR))

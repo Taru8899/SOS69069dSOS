@@ -27,14 +27,13 @@ import util
 from page_create import CreateScreen
 from page_donate import DonateScreen
 from page_economics import EconomicsScreen
-from page_links import LinksScreen
 from page_redeem import RedeemScreen
 from page_send import SendScreen
 from page_settings import SettingsScreen
 from wallet import Wallet
 from theme import (BLACK, BUILD, BLUE, GREEN, HAS_LOGO, LOGO, LIGHT, WHITE, WELCOME_MAX, WELCOME_MIN,
                    WELCOME_NO_WALLET, short)
-from widgets import (Caret, Card, Choice, ErrorBanner, IconBtn, LogoBtn, NavTab, Panel, PillBtn, PullScroll,
+from widgets import (Chevron, Card, Choice, ErrorBanner, IconBtn, LogoBtn, NavTab, Panel, PillBtn, PullScroll,
                      Tap, Welcome, label, make_input)
 
 Window.clearcolor = GREEN
@@ -104,23 +103,30 @@ class DsosApp(App):
         head = BoxLayout(size_hint_y=None, height=dp(76), spacing=dp(10),
                          padding=[dp(14), dp(4), dp(14), dp(2)])
         self.head = head
-        logo_col = BoxLayout(orientation="vertical", size_hint=(None, 1), width=dp(56))
+        logo_col = BoxLayout(orientation="vertical", size_hint=(None, 1), width=dp(72))
         if HAS_LOGO:
-            self.logo = LogoBtn(source=LOGO, size_hint=(1, 1))
+            self.logo = LogoBtn(source=LOGO, size_hint=(1, 1))      # the whole column: 68 dp logo
             self.logo.bind(on_release=lambda *_: self.go_home())
             logo_col.add_widget(self.logo)
-        self.caret = Caret()
-        self.caret.bind(on_release=lambda *_: self.toggle_drawer())
-        logo_col.add_widget(self.caret)
         head.add_widget(logo_col)
+        # "Main wallet" / underlined address + triangle right after it; tap = wallet panel
         title = Tap(orientation="vertical")
-        title.bind(on_release=lambda *_: self.open_settings())
-        self.sub = label(self._head_text(short(cfg.get("addr", "")) or S.HEADER_NO_ADDR))
-        title.add_widget(self.sub)
+        title.bind(on_release=lambda *_: self.toggle_drawer())
+        title.add_widget(label(S.HEADER_TITLE, size_hint_y=0.5))
+        addr_row = BoxLayout(size_hint_y=0.5, spacing=dp(6))
+        self.sub = Label(text=self._head_text(short(cfg.get("addr", "")) or S.HEADER_NO_ADDR),
+                         markup=True, color=BLACK, font_size="17sp", halign="left",
+                         valign="middle", size_hint=(None, 1))
+        self.sub.bind(texture_size=lambda i, ts: setattr(i, "width", ts[0]))
+        self.chev = Chevron(pos_hint={"center_y": 0.5})
+        addr_row.add_widget(self.sub)
+        addr_row.add_widget(self.chev)
+        addr_row.add_widget(BoxLayout())
+        title.add_widget(addr_row)
         head.add_widget(title)
         pill = PillBtn(text=S.CHAIN_PILL, color=WHITE, bold=True, size_hint=(None, None),
                        size=(dp(124), dp(38)), pos_hint={"center_y": 0.5})
-        pill.bind(on_release=lambda *_: self.open_links())
+        pill.bind(on_release=lambda *_: self.open_settings())
         head.add_widget(pill)
         main.add_widget(head)
 
@@ -206,7 +212,9 @@ class DsosApp(App):
 
     def set_drawer(self, show, animate=True):
         self.drawer_open = bool(show)
-        self.caret.set_open(self.drawer_open)
+        self.chev.set_open(self.drawer_open, animate=animate)
+        if self.drawer_open:
+            self.close_all()                  # the panel and a page are never open together
         if self.drawer_open and self.drawer.parent is None:
             self._fit_drawer()
             self.drawer.pos_hint = {"x": dp(14) / max(self.body.width, 1), "top": 1}
@@ -248,7 +256,7 @@ class DsosApp(App):
                              "%s\n%s" % (why, h))
 
     def _head_text(self, addr):
-        return S.HEADER_WALLET.format(addr="[u]" + addr + "[/u]  [b]\u203a[/b]")
+        return "[u]" + addr + "[/u]"
 
     def _toggle_overlay(self, cls):
         """Open the page; a second tap on the same header link closes it again."""
@@ -260,9 +268,6 @@ class DsosApp(App):
 
     def open_settings(self):
         self._toggle_overlay(SettingsScreen)
-
-    def open_links(self):
-        self._toggle_overlay(LinksScreen)
 
     def open_economics(self):
         if not self.data:
@@ -302,6 +307,8 @@ class DsosApp(App):
 
     # ---------------------------------------------------------- overlays (inside the body)
     def open_overlay(self, w):
+        if self.drawer_open:
+            self.set_drawer(False)
         self.overlays.append(w)
         self.body.add_widget(w)
 

@@ -1,11 +1,12 @@
 """Wallet tab (mockup layout): balance + chips, quick actions, next expiry, offers, pool."""
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.label import Label
 
 import core
 import strings as S
 from theme import BLACK, BLUE, GRAY, LIGHT, RED, WHITE
-from widgets import (Card, Choice, Dot, Icon, IconBtn, Panel, Ring, Tap, Tappable, label,
+from widgets import (Card, Choice, Dot, Icon, IconBtn, Panel, Ring, Tap, TapFloat, Tappable, label,
                      offer_row, title_row)
 
 
@@ -25,25 +26,21 @@ def chip(color, title, value, on_tap=None):
 
 class BalanceCard(Panel):
     def __init__(self, d, app=None, **kw):
-        super().__init__(orientation="vertical", size_hint_y=None, height=dp(246), spacing=dp(8), **kw)
+        super().__init__(orientation="vertical", size_hint_y=None, height=dp(212), spacing=dp(8), **kw)
         total = max(d["balance"], 1)
         rest = max(0, d["balance"] - d["sendable"] - d["expiring"] - d["expired"])
-        top = BoxLayout(size_hint_y=None, height=dp(130))
+        top = BoxLayout(size_hint_y=None, height=dp(96))
         left = BoxLayout(orientation="vertical")
-        trow = BoxLayout(size_hint_y=None, height=dp(24), spacing=dp(6))
-        trow.add_widget(label(S.WALLET_BAL_TITLE, font_size="14sp", size_hint_x=None, width=dp(92)))
-        more = Tap(size_hint_x=None, width=dp(96))
-        more.add_widget(label(S.BAL_SHOW_MORE, font_size="14sp", color=BLUE))
-        more.bind(on_release=lambda *_: app.open_economics() if app is not None else None)
-        trow.add_widget(more)
-        left.add_widget(trow)
         left.add_widget(label(S.WALLET_BAL_BIG.format(n=d["balance"])))
         left.add_widget(label(S.WALLET_ETH.format(eth=core.eth(d["value_wei"])),
                               font_size="15sp", size_hint_y=None, height=dp(28)))
         top.add_widget(left)
-        self.ring = Ring(size_hint=(None, 1), width=dp(112))
-        self.ring_tap = Tap(size_hint=(None, 1), width=dp(112))
+        # the small donut; its "%" centre (and the whole ring) opens the Economics page
+        self.ring_tap = TapFloat(size_hint=(None, 1), width=dp(76))
+        self.ring = Ring(size_hint=(1, 1), pos_hint={"x": 0, "y": 0})
         self.ring_tap.add_widget(self.ring)
+        self.ring_tap.add_widget(Label(text=S.BAL_RING_CENTER, bold=True, color=BLUE, font_size="20sp",
+                                       size_hint=(1, 1), pos_hint={"x": 0, "y": 0}))
         self.ring_tap.bind(on_release=lambda *_: app.open_economics() if app is not None else None)
         self.ring.set_parts([(d["sendable"] / total, BLUE), (d["expiring"] / total, BLACK),
                              (d["expired"] / total, RED), (rest / total, GRAY)])

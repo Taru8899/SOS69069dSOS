@@ -7,7 +7,7 @@ Texts with {name} parts are templates: the pages fill them in with .format(...).
 # ------------------------------------------------------------------ app shell
 APP_TITLE = "dSOS"
 SPLASH_FALLBACK = "[b]dSOS[/b]"
-HEADER_WALLET = "[b]Main wallet[/b]\n{addr}"
+HEADER_TITLE = "[b]Main wallet[/b]"
 HEADER_NO_ADDR = "enter address"
 CHAIN_PILL = "Ethereum"
 
@@ -471,7 +471,7 @@ DRAWER_SAVED_HINT = "Add your wallet address, then tap Load."
 MSG_RELOADING = "Reloading..."
 MSG_NEED_ADDRESS = "Add your wallet address first."
 MSG_PULL = "Pull down to reload"
-SETTINGS_TITLE = "Settings"
+SETTINGS_TITLE = "Ethereum"
 SETTINGS_INTRO = ("[b]Contracts[/b]\nBoth are on Ethereum mainnet. Copy an address or open it on "
                   "Etherscan.")
 SETTINGS_DSOS = "dSOS contract"
@@ -479,7 +479,6 @@ SETTINGS_LEDGER = "SOS69069 ledger"
 SETTINGS_VERSION = "[b]App version[/b]\n{build}"
 SETTINGS_COPIED = "{title} copied"
 SETTINGS_OPEN_FAILED = "Could not open the link. Copy it instead."
-LINKS_TITLE = "Ethereum links"
 LINKS_NEED_ADDRESS = "Load your wallet first to open it on Etherscan."
 LINK_TILES = [
     # key, caption, glyph, colour
@@ -570,7 +569,6 @@ SETTINGS_LAYOUT = ("[b]Layout report[/b]\nIf something looks misplaced, copy thi
 SETTINGS_LAYOUT_COPY = "Copy layout report"
 
 # ------------------------------------------------------------------ v9 step 2: wallet page (mockup)
-WALLET_BAL_TITLE = "dSOS balance"
 WALLET_BAL_BIG = "[size=46sp][b]{n}[/b][/size]  [size=18sp]dSOS[/size]"
 WALLET_ETH = "\u2248 {eth} ETH redeemable"
 WALLET_CHIP_SENDABLE = "Sendable"
@@ -589,7 +587,7 @@ TX_FAILED_UNKNOWN = "reverted (the reason could not be read)"
 TX_PENDING = "[b]Still pending[/b] after 3 minutes. Check the link below.\nTransaction {hash}"
 TX_HASH_LINK = "[u]{hash}[/u]  [b]\u203a[/b]"
 TX_ERR_COPY = "Copy error"
-BAL_SHOW_MORE = "[u]Show more[/u] [b]\u203a[/b]"
+BAL_RING_CENTER = "%"
 ECON_TITLE = "[b]Economics[/b]"
 ECON_NEED_DATA = "Load your wallet first."
 ECON_G_CONTRACT = "[b]Contract[/b]"
