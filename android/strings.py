@@ -15,6 +15,7 @@ CHAIN_PILL = "Ethereum"
 HINT_ADDRESS = "Wallet address 0x..."
 HINT_API_KEY = "Etherscan API key (optional)"
 BTN_LOAD = "Load"
+BTN_EXIT = "Exit"                      # disconnects the wallet (WalletConnect session)
 BTN_PASTE = "Paste"
 BTN_COPY = "Copy"
 
@@ -471,6 +472,7 @@ BTN_OPEN = "Open"
 BTN_BACK_HOME = "Wallet"
 DRAWER_SAVED_HINT = "Add your wallet address, then tap Load."
 MSG_RELOADING = "Reloading..."
+MSG_WALLET_DISCONNECTED = "Wallet disconnected."
 MSG_NEED_ADDRESS = "Add your wallet address first."
 MSG_PULL = "Pull down to reload"
 SETTINGS_TITLE = "Ethereum"
@@ -571,7 +573,7 @@ SETTINGS_LAYOUT = ("[b]Layout report[/b]\nIf something looks misplaced, copy thi
 SETTINGS_LAYOUT_COPY = "Copy layout report"
 
 # ------------------------------------------------------------------ v9 step 2: wallet page (mockup)
-WALLET_BAL_BIG = "[size=46sp][b]{n}[/b][/size]  [size=18sp]dSOS[/size]"
+WALLET_BAL_BIG = "[size=40sp][b]{n}[/b][/size]  [size=18sp]dSOS[/size]"
 WALLET_HELD = "[u][b]{eth} ETH[/b][/u]"      # contract balance, tap = Economics
 WALLET_ETH = "\u2248 {eth} ETH redeemable"
 WALLET_CHIP_SENDABLE = "Sendable"

@@ -2,13 +2,39 @@
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 
+import re
+
+from kivy.uix.label import Label
+
 import core
 import strings as S
-from design import FONT_ECON_ROW, FONT_ECON_ROW_BIG, FONT_TITLE
+from design import (ECON_ROW_MIN_H, FONT_ECON_ETH, FONT_ECON_ROW, FONT_ECON_ROW_BIG, FONT_ECON_TITLE,
+                    FONT_ECON_VALUE, FONT_TITLE)
 from theme import BLACK, WHITE
 from widgets import Divider, IconBtn, Overlay, Panel, PullScroll, label
 
 DAY_BLOCKS = 7200
+_ETH_PART = re.compile(r"(\d[\d.,]* ETH)")
+
+
+def style_value(v):
+    """Bold markup for a value: ETH amounts big, the rest (dSOS count, reasons) smaller."""
+    out = []
+    for part in _ETH_PART.split(v):
+        if not part:
+            continue
+        size = FONT_ECON_ETH if _ETH_PART.fullmatch(part) else FONT_ECON_VALUE
+        out.append("[size=%s]%s[/size]" % (size, part))
+    return "[b]%s[/b]" % "".join(out)
+
+
+def wrap_label(text, font_size, halign, size_hint_x):
+    """A label that wraps to its width and reports its real height."""
+    lab = Label(text=text, markup=True, color=BLACK, font_size=font_size, halign=halign, valign="middle",
+                size_hint=(size_hint_x, None))
+    lab.bind(width=lambda i, w: setattr(i, "text_size", (w, None)))
+    lab.bind(texture_size=lambda i, ts: setattr(i, "height", ts[1]))
+    return lab
 
 
 def _eth(wei):
@@ -93,15 +119,19 @@ class EconomicsScreen(Overlay):
                         padding=[dp(14), 0, dp(14), dp(20)])
         box.bind(minimum_height=box.setter("height"))
         for title, rows in groups(app.data):
-            p = Panel(orientation="vertical", size_hint_y=None, spacing=dp(2),
-                      height=dp(40 + 36 * len(rows) + 24))
-            p.add_widget(label(title, size_hint_y=None, height=dp(30), font_size="16sp"))
+            p = Panel(orientation="vertical", size_hint_y=None, spacing=dp(2))
+            p.bind(minimum_height=p.setter("height"))
+            p.add_widget(label(title, size_hint_y=None, height=dp(34), font_size=FONT_ECON_TITLE))
             for k, v in rows:
-                r = BoxLayout(size_hint_y=None, height=dp(36), spacing=dp(8))
                 big = k in (S.ECON_BALANCE, S.ECON_CREDITS)
-                r.add_widget(label(k, font_size=FONT_ECON_ROW_BIG if big else FONT_ECON_ROW, size_hint_x=0.46))
-                r.add_widget(label("[b]%s[/b]" % v, font_size=FONT_ECON_ROW, halign="right",
-                                   size_hint_x=0.54))
+                r = BoxLayout(size_hint_y=None, height=dp(ECON_ROW_MIN_H), spacing=dp(8))
+                name = wrap_label(k, FONT_ECON_ROW_BIG if big else FONT_ECON_ROW, "left", 0.38)
+                val = wrap_label(style_value(v), FONT_ECON_VALUE, "right", 0.62)
+                for w in (name, val):
+                    w.bind(height=lambda *_, r=r, a=name, b=val:
+                           setattr(r, "height", max(dp(ECON_ROW_MIN_H), a.height + dp(10), b.height + dp(10))))
+                r.add_widget(name)
+                r.add_widget(val)
                 p.add_widget(r)
             box.add_widget(p)
         sv.add_widget(box)

@@ -31,7 +31,7 @@ from page_redeem import RedeemScreen
 from page_send import SendScreen
 from page_settings import SettingsScreen
 from wallet import Wallet
-from design import HEADER_LINE_H, HEADER_H, LOGO_W, NAV_H, FONT_BODY
+from design import PLUS_D, PLUS_OUT, HEADER_LINE_H, HEADER_H, LOGO_W, NAV_H, FONT_BODY
 from theme import (BLACK, BUILD, BLUE, GREEN, HAS_LOGO, LOGO, LIGHT, WHITE, WELCOME_MAX, WELCOME_MIN,
                    WELCOME_NO_WALLET, short)
 from widgets import (Chevron, Card, Choice, ErrorBanner, IconBtn, LogoBtn, NavTab, Panel, PillBtn, PullScroll,
@@ -145,10 +145,16 @@ class DsosApp(App):
         self.drawer.size = (dp(300), dp(12 * 2 + 3 * 50 + 2 * 8))
         self.drawer.add_widget(self._with_paste(self.key))
         self.drawer.add_widget(self._with_paste(self.addr))
-        load_btn = Choice(base=BLUE, fg=WHITE, text=S.BTN_LOAD, bold=True, size_hint_y=None,
-                          height=dp(50))
+        # Load (70 %) on the left, Exit (30 %) on the right: Exit disconnects the wallet
+        btn_row = BoxLayout(size_hint_y=None, height=dp(50), spacing=dp(8))
+        load_btn = Choice(base=BLUE, fg=WHITE, text=S.BTN_LOAD, bold=True, size_hint_x=0.7)
         load_btn.bind(on_release=self.load)
-        self.drawer.add_widget(load_btn)
+        exit_btn = Choice(base=BLACK, fg=WHITE, text=S.BTN_EXIT, bold=True, size_hint_x=0.3)
+        exit_btn.bind(on_release=self.exit_wallet)
+        self.load_btn, self.exit_btn = load_btn, exit_btn
+        btn_row.add_widget(load_btn)
+        btn_row.add_widget(exit_btn)
+        self.drawer.add_widget(btn_row)
 
         # ---- body: the page (scrolls, pull to reload) and, on top of it, overlay pages
         self.body = FloatLayout()
@@ -172,9 +178,20 @@ class DsosApp(App):
         self.nav_btns = {}
         for name, lab, ic in (("wallet", S.TAB_WALLET, "wallet"), ("offers", S.TAB_OFFERS, "list")):
             nav.add_widget(self._tab(name, lab, ic))
-        plus = IconBtn(icon="plus", bg=BLUE, color=WHITE, icon_size=30, size_hint_x=0.9)
+        # the "+" circle: PLUS_OUT (10 %) of it sticks out above the top edge of the bar
+        plus_cell = FloatLayout(size_hint_x=0.9)
+        plus = IconBtn(icon="plus", bg=BLUE, color=WHITE, icon_size=30, size_hint=(None, None),
+                       size=(dp(PLUS_D + 6), dp(PLUS_D + 6)))      # IconBtn draws a circle 6 dp smaller
         plus.bind(on_release=lambda *_: self.open_create())
-        nav.add_widget(plus)
+        self.plus = plus
+
+        def place_plus(*_):
+            plus.center_x = plus_cell.center_x
+            plus.center_y = plus_cell.top + dp(PLUS_OUT * PLUS_D) - dp(PLUS_D) / 2
+        plus_cell.bind(pos=place_plus, size=place_plus)
+        plus_cell.add_widget(plus)
+        place_plus()
+        nav.add_widget(plus_cell)
         for name, lab, ic in (("stake", S.TAB_STAKE, "lock"), ("credits", S.TAB_CREDITS, "credits")):
             nav.add_widget(self._tab(name, lab, ic))
         main.add_widget(nav)
@@ -490,6 +507,14 @@ class DsosApp(App):
                 json.dump({"addr": self.addr.text.strip(), "key": self.key.text.strip()}, f)
         except Exception:  # noqa: BLE001
             pass
+
+    def exit_wallet(self, *_):
+        """Exit: end the WalletConnect session. The loaded data stays on screen."""
+        try:
+            self.wallet.disconnect()
+        except Exception:  # noqa: BLE001
+            pass
+        self.say(S.MSG_WALLET_DISCONNECTED)
 
     def load(self, *_):
         self.save_cfg()

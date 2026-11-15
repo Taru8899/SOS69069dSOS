@@ -5,7 +5,7 @@ from kivy.uix.label import Label
 
 import core
 import strings as S
-from design import BAL_CARD_H, BAL_TOP_H, BAL_LINE_H, RING_SIZE, FONT_RING, FONT_ETH_LINE, FONT_HELD
+from design import BAL_CHIP_H, BAL_CARD_H, BAL_TOP_H, BAL_LINE_H, RING_SIZE, FONT_RING, FONT_ETH_LINE, FONT_HELD
 from theme import BLACK, BLUE, GRAY, LIGHT, RED, WHITE
 from widgets import (Card, Choice, Dot, Icon, IconBtn, Panel, Ring, Tap, TapFloat, Tappable, label,
                      offer_row, title_row)
@@ -55,7 +55,7 @@ class BalanceCard(Panel):
         line.add_widget(eth)
         line.add_widget(self.held)
         self.add_widget(line)
-        chips = BoxLayout(size_hint_y=None, height=dp(76), spacing=dp(10))
+        chips = BoxLayout(size_hint_y=None, height=dp(BAL_CHIP_H), spacing=dp(10))
         def go(f):
             return (lambda: app.open_offers(f)) if app is not None else None
         chips.add_widget(chip(BLUE, S.WALLET_CHIP_SENDABLE, d["sendable"], go("sendable")))
