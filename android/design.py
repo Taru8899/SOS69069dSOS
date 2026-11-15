@@ -50,6 +50,7 @@ ICON_SLATE = (0.35, 0.37, 0.4, 1)
 
 # ============================================================== SIZES (dp unless noted)
 HEADER_H = 76              # header bar height
+HEADER_LINE_H = 26         # height of each of the two header text lines ("Main wallet" / address)
 LOGO_W = 72                # logo column width (the logo fills it)
 NAV_H = 66                 # bottom navigation bar height
 RING_SIZE = 76             # the small donut on the Wallet card
@@ -70,7 +71,7 @@ FONT_RING = "20sp"         # "%" in the ring
 FONT_ETH_LINE = "15sp"     # "≈ 0.004 ETH redeemable"
 FONT_ECON_ROW = "13sp"     # Economics page rows
 FONT_ECON_ROW_BIG = "16.25sp"   # names of "Your dSOS" / "Your credits": 25% bigger
-FONT_HELD = "18.75sp"      # held-by-contract amount: 25% bigger than the line next to it
+FONT_HELD = "18.75sp"      # held-by-contract amount (bold): 25% bigger than the redeemable line
 
 # ============================================================== INPUT FIELD LOOK
 FIELD_BG = WHITE

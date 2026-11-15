@@ -572,7 +572,7 @@ SETTINGS_LAYOUT_COPY = "Copy layout report"
 
 # ------------------------------------------------------------------ v9 step 2: wallet page (mockup)
 WALLET_BAL_BIG = "[size=46sp][b]{n}[/b][/size]  [size=18sp]dSOS[/size]"
-WALLET_HELD = "[u]{eth} ETH[/u]"      # contract balance, tap = Economics
+WALLET_HELD = "[u][b]{eth} ETH[/b][/u]"      # contract balance, tap = Economics
 WALLET_ETH = "\u2248 {eth} ETH redeemable"
 WALLET_CHIP_SENDABLE = "Sendable"
 WALLET_CHIP_EXPIRING = "Expiring <1d"

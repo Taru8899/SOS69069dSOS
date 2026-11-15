@@ -31,7 +31,7 @@ from page_redeem import RedeemScreen
 from page_send import SendScreen
 from page_settings import SettingsScreen
 from wallet import Wallet
-from design import HEADER_H, LOGO_W, NAV_H, FONT_BODY
+from design import HEADER_LINE_H, HEADER_H, LOGO_W, NAV_H, FONT_BODY
 from theme import (BLACK, BUILD, BLUE, GREEN, HAS_LOGO, LOGO, LIGHT, WHITE, WELCOME_MAX, WELCOME_MIN,
                    WELCOME_NO_WALLET, short)
 from widgets import (Chevron, Card, Choice, ErrorBanner, IconBtn, LogoBtn, NavTab, Panel, PillBtn, PullScroll,
@@ -113,8 +113,9 @@ class DsosApp(App):
         # "Main wallet" / underlined address + triangle right after it; tap = wallet panel
         title = Tap(orientation="vertical")
         title.bind(on_release=lambda *_: self.toggle_drawer())
-        title.add_widget(label(S.HEADER_TITLE, size_hint_y=0.5))
-        addr_row = BoxLayout(size_hint_y=0.5, spacing=dp(6))
+        title.add_widget(BoxLayout())                      # equal spacers keep the two lines together
+        title.add_widget(label(S.HEADER_TITLE, size_hint_y=None, height=dp(HEADER_LINE_H)))
+        addr_row = BoxLayout(size_hint_y=None, height=dp(HEADER_LINE_H), spacing=dp(6))
         self.sub = Label(text=self._head_text(short(cfg.get("addr", "")) or S.HEADER_NO_ADDR),
                          markup=True, color=BLACK, font_size=FONT_BODY, halign="left",
                          valign="middle", size_hint=(None, 1))
@@ -124,6 +125,7 @@ class DsosApp(App):
         addr_row.add_widget(self.chev)
         addr_row.add_widget(BoxLayout())
         title.add_widget(addr_row)
+        title.add_widget(BoxLayout())
         head.add_widget(title)
         pill = PillBtn(text=S.CHAIN_PILL, color=WHITE, bold=True, size_hint=(None, None),
                        size=(dp(124), dp(38)), pos_hint={"center_y": 0.5})
