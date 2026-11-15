@@ -15,6 +15,7 @@ import strings as S
 import tx
 import util
 from page_tx import TxScreen
+from design import NOTE_GRAY
 from theme import BLACK, BLUE, DSOS_ADDR, LIGHT, RED, WHITE, WINDOWS, short, set_visible
 from widgets import (Icon, IconRow, Card, Choice, DashedBox, Overlay, Panel, PullScroll, IconBtn, TypeCard,
                      label, make_input, page_head)
@@ -155,7 +156,7 @@ class CreateScreen(Overlay):
                           font_size="18sp", size_hint_y=None, height=dp(58))
         self.btn.bind(on_release=lambda *_: self.on_create())
         foot.add_widget(self.btn)
-        self.note = Label(text="", color=(0.8, 0.82, 0.82, 1), font_size="13sp",
+        self.note = Label(text="", color=NOTE_GRAY, font_size="13sp",
                           halign="center", valign="middle")
         self.note.bind(size=lambda i, s: setattr(i, "text_size", s))
         foot.add_widget(self.note)

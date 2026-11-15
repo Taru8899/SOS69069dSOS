@@ -20,6 +20,7 @@ from kivy.uix.widget import Widget
 import core
 import strings as S
 import util
+from design import RADIUS, RADIUS_PANEL, FIELD_H, WELCOME_SPINNER, FONT_TITLE, BTN_OFF_DARK, BTN_OFF_LIGHT, GRAY, HINT_GRAY, LIGHT_BLUE, NAV_GRAY, OK_BG, PANEL_GRAY, RED_BG, SELECTION, TILE_CAP_OFF, TRACK_GRAY, TRANSPARENT, WHITE_70, WHITE_85, DARK_GREEN
 from theme import (BLACK, BLUE, BUILD, FIELD, FIELD_FOCUS, GREEN, HAS_FIELD, HAS_LOGO, HAS_START, LOGO, RED, START, WHITE,
                    WORDMARK, HAS_WORDMARK, left_text)
 
@@ -49,18 +50,18 @@ def make_input(hint, text="", password=False, filt=None):
     background image (no custom canvas instructions: those leaked textures and colours)."""
     if HAS_FIELD:
         bgk = dict(background_normal=FIELD, background_active=FIELD_FOCUS,
-                   background_disabled_normal=FIELD, background_color=(1, 1, 1, 1),
+                   background_disabled_normal=FIELD, background_color=WHITE,
                    border=(24, 24, 24, 24))
     else:
         bgk = dict(background_normal="", background_active="", background_disabled_normal="",
-                   background_color=(1, 1, 1, 1))
+                   background_color=WHITE)
     return TextInput(text=text, hint_text=hint, multiline=False, password=password,
-                     size_hint_y=None, height=dp(48), write_tab=False,
+                     size_hint_y=None, height=dp(FIELD_H), write_tab=False,
                      input_type="text", keyboard_suggestions=False,
                      use_bubble=True, use_handles=True, input_filter=filt,
                      foreground_color=BLACK, disabled_foreground_color=BLACK,
-                     hint_text_color=(0.45, 0.47, 0.47, 1), cursor_color=BLUE,
-                     selection_color=(0, 0.2, 1, 0.3),
+                     hint_text_color=HINT_GRAY, cursor_color=BLUE,
+                     selection_color=SELECTION,
                      padding=[dp(14), dp(14), dp(14), dp(8)], **bgk)
 
 
@@ -101,13 +102,13 @@ class Panel(BoxLayout):
         super().__init__(**kw)
         with self.canvas.before:
             Color(*bg)
-            self._r = RoundedRectangle(radius=[dp(18)])
+            self._r = RoundedRectangle(radius=[dp(RADIUS_PANEL)])
         settle(self, self._upd)
 
     def _upd(self, *_):
         self._r.pos = self.pos
         self._r.size = self.size
-        self._r.radius = [rad(self.width, self.height, dp(18))]
+        self._r.radius = [rad(self.width, self.height, dp(RADIUS_PANEL))]
 
 
 class Card(Panel):
@@ -131,13 +132,13 @@ class Pill(Label):
         super().__init__(**kw)
         with self.canvas.before:
             Color(*bg)
-            self._r = RoundedRectangle(radius=[dp(16)])
+            self._r = RoundedRectangle(radius=[dp(RADIUS)])
         settle(self, self._upd)
 
     def _upd(self, *_):
         self._r.pos = self.pos
         self._r.size = self.size
-        self._r.radius = [rad(self.width, self.height, dp(16))]
+        self._r.radius = [rad(self.width, self.height, dp(RADIUS))]
 
 
 class PillBtn(ButtonBehavior, Pill):
@@ -150,7 +151,7 @@ class PillBtn(ButtonBehavior, Pill):
         with self.canvas.after:
             Color(*GREEN)
             self._dot = Ellipse()
-            Color(1, 1, 1, 0.85)
+            Color(*WHITE_85)
             self._ln = Line(rounded_rectangle=(0, 0, 40, 40, dp(16)), width=dp(1.1))
             self._grid = [Rectangle() for _ in range(9)]
         settle(self, self._upd_dot)
@@ -190,7 +191,7 @@ class Ring(Widget):
             return
         cx, cy = self.center
         with self.canvas:
-            Color(0.93, 0.94, 0.94, 1)
+            Color(*PANEL_GRAY)
             Line(circle=(cx, cy, r), width=w)
             start = 0.0
             for frac, col in self.parts:
@@ -207,7 +208,7 @@ class NavBtn(Button):
 
     def __init__(self, **kw):
         super().__init__(background_normal="", background_down="",
-                         background_color=(0, 0, 0, 0), font_size="14sp", **kw)
+                         background_color=TRANSPARENT, font_size="14sp", **kw)
 
 
 class RoundBtn(Button):
@@ -215,7 +216,7 @@ class RoundBtn(Button):
 
     def __init__(self, bg=BLUE, **kw):
         super().__init__(background_normal="", background_down="",
-                         background_color=(0, 0, 0, 0), **kw)
+                         background_color=TRANSPARENT, **kw)
         with self.canvas.before:
             Color(*bg)
             self._e = Ellipse()
@@ -233,23 +234,23 @@ class Choice(Button):
     def __init__(self, base=WHITE, sel=BLUE, fg=BLACK, sel_fg=WHITE, **kw):
         kw.setdefault("valign", "middle")
         super().__init__(background_normal="", background_down="",
-                         background_color=(0, 0, 0, 0), color=fg,
-                         disabled_color=((1, 1, 1, 0.8) if sum(base[:3]) < 1.8
-                                         else (0.35, 0.4, 0.4, 1)), **kw)
+                         background_color=TRANSPARENT, color=fg,
+                         disabled_color=(BTN_OFF_LIGHT if sum(base[:3]) < 1.8
+                                         else BTN_OFF_DARK), **kw)
         self.bind(size=lambda i, sz: setattr(i, "text_size", (sz[0], sz[1]) if i.halign == "left" else (None, sz[1])))
         self.base, self.sel, self.fg, self.sel_fg = base, sel, fg, sel_fg
         self._on = False
         self._en = True
         with self.canvas.before:
             self._c = Color(*base)
-            self._r = RoundedRectangle(radius=[dp(16)])
+            self._r = RoundedRectangle(radius=[dp(RADIUS)])
         settle(self, self._upd)
         self._paint()
 
     def _upd(self, *_):
         self._r.pos = self.pos
         self._r.size = self.size
-        self._r.radius = [rad(self.width, self.height, dp(16))]
+        self._r.radius = [rad(self.width, self.height, dp(RADIUS))]
 
     def _paint(self):
         c = self.sel if self._on else self.base
@@ -315,7 +316,7 @@ def title_row(text, link_text=None, on_link=None):
 class Divider(Widget):
     """Thin horizontal line between rows."""
 
-    def __init__(self, color=(0.9, 0.91, 0.91, 1), **kw):
+    def __init__(self, color=TRACK_GRAY, **kw):
         kw.setdefault("size_hint_y", None)
         kw.setdefault("height", dp(1))
         super().__init__(**kw)
@@ -383,8 +384,8 @@ class LockIcon(Widget):
         if w < 20 or h < 20:
             return
         with self.canvas:
-            Color(0.87, 0.9, 1, 1)
-            RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(16)])
+            Color(*LIGHT_BLUE)
+            RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(RADIUS)])
             Color(*BLUE)
             Line(rounded_rectangle=(x + w * .34, y + h * .42, w * .32, h * .28, dp(8)),
                  width=dp(2.4))
@@ -417,7 +418,7 @@ class Steps(BoxLayout):
         kw.setdefault("orientation", "vertical")
         super().__init__(**kw)
         with self.canvas.before:
-            Color(0.78, 0.8, 0.8, 1)
+            Color(*GRAY)
             self._ln = Line(points=[0, 0, 0, 0], width=dp(3))
         settle(self, self.update_line)
 
@@ -434,7 +435,7 @@ class Tappable(ButtonBehavior, Panel):
     def __init__(self, **kw):
         super().__init__(**kw)
         with self.canvas.after:
-            self._bc = Color(0, 0, 0, 0)
+            self._bc = Color(*TRANSPARENT)
             self._ln = Line(rounded_rectangle=(0, 0, 40, 40, dp(18)), width=dp(2))
         settle(self, self._upd_border)
 
@@ -442,7 +443,7 @@ class Tappable(ButtonBehavior, Panel):
         set_rr(self._ln, self.x, self.y, self.width, self.height, dp(18))
 
     def set_selected(self, on):
-        self._bc.rgba = BLUE if on else (0, 0, 0, 0)
+        self._bc.rgba = BLUE if on else TRANSPARENT
 
 
 class Badge(Label):
@@ -490,7 +491,7 @@ class ThinBar(Widget):
             return
         r = rad(self.width, self.height, dp(4))
         with self.canvas:
-            Color(0.9, 0.91, 0.91, 1)
+            Color(*TRACK_GRAY)
             RoundedRectangle(pos=self.pos, size=self.size, radius=[r])
             if self.frac > 0:
                 Color(*self.color)
@@ -628,7 +629,7 @@ class Tile(ButtonBehavior, BoxLayout):
             self._e = Ellipse()
         settle(self.disc, self._upd)
         self.add_widget(self.disc)
-        cap = Label(text=caption, color=BLACK if enabled else (0.5, 0.52, 0.52, 1),
+        cap = Label(text=caption, color=BLACK if enabled else TILE_CAP_OFF,
                     font_size="12sp", halign="center", valign="top")
         cap.bind(size=lambda i, s: setattr(i, "text_size", s))
         self.add_widget(cap)
@@ -676,13 +677,13 @@ class Welcome(FloatLayout):
         self.tag2.bind(size=lambda i, s: setattr(i, "text_size", s))
         self.status = Label(text=S.WELCOME_CONNECTING, color=WHITE, font_size="17sp",
                             size_hint=(1, None), height=dp(28))
-        self.ver = Label(text=BUILD, color=(1, 1, 1, 0.7), font_size="12sp",
+        self.ver = Label(text=BUILD, color=WHITE_70, font_size="12sp",
                          size_hint=(1, None), height=dp(22))
         for w in (self.tag1, self.tag2, self.status, self.ver):
             self.add_widget(w)
         self._arcs = []
         with self.canvas:
-            for col in (RED, BLUE, BLACK):          # red, blue, black arcs turning together
+            for col in WELCOME_SPINNER:          # red, blue, black arcs turning together
                 Color(*col)
                 self._arcs.append(Line(circle=(0, 0, 10, 0, 90), width=dp(3)))
         settle(self, self.layout)
@@ -743,7 +744,7 @@ def page_head(app, title):
                     size_hint=(None, 1), width=dp(52))
     back.bind(on_release=lambda *_: app.close_top())
     head.add_widget(back)
-    head.add_widget(label(title, font_size="24sp"))
+    head.add_widget(label(title, font_size=FONT_TITLE))
     return head
 
 
@@ -843,14 +844,14 @@ class NavTab(ButtonBehavior, BoxLayout):
     def __init__(self, icon, text, **kw):
         super().__init__(orientation="vertical", padding=[0, dp(8), 0, dp(4)], spacing=dp(2), **kw)
         holder = FloatLayout(size_hint_y=None, height=dp(28))
-        self.icon = Icon(icon, color=(0.6, 0.62, 0.62, 1), pos_hint={"center_x": 0.5, "center_y": 0.5})
+        self.icon = Icon(icon, color=NAV_GRAY, pos_hint={"center_x": 0.5, "center_y": 0.5})
         holder.add_widget(self.icon)
         self.add_widget(holder)
-        self.lab = Label(text=text, font_size="12sp", color=(0.6, 0.62, 0.62, 1))
+        self.lab = Label(text=text, font_size="12sp", color=NAV_GRAY)
         self.add_widget(self.lab)
 
     def set_active(self, on):
-        c = WHITE if on else (0.6, 0.62, 0.62, 1)
+        c = WHITE if on else NAV_GRAY
         self.icon.set_color(c)
         self.lab.color = c
         self.lab.bold = on
@@ -864,9 +865,9 @@ def status_pill(text, bg, fg):
                 size=(dp(108), dp(30)), pos_hint={"center_y": 0.5})
 
 
-OFFER_STATUS_STYLE = {"redeemable": ((0.88, 0.97, 0.90, 1), (0.04, 0.48, 0.17, 1)),
+OFFER_STATUS_STYLE = {"redeemable": (OK_BG, DARK_GREEN),
                       "expiring": (BLACK, WHITE),
-                      "expired": ((1, 0.9, 0.9, 1), RED)}
+                      "expired": (RED_BG, RED)}
 
 
 def offer_row(o, on_tap=None):

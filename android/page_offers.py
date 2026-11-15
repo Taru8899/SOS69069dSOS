@@ -11,12 +11,12 @@ import core
 import strings as S
 import tx
 from page_tx import TxScreen
+from design import RED_BG
 from theme import (BLACK, BLUE, BROWN, CREAM, DARK_GREEN, GREEN, LIGHT, PILL_BG,
                    RED, WHITE, left_text, set_visible, short)
 from widgets import (Badge, Choice, Panel, Pill, ThinBar, IconBtn, Tappable, label,
                      make_input)
 
-RED_BG = (1, 0.9, 0.9, 1)
 # status -> (pill background, pill text, progress bar color)
 STATUS_STYLE = {"redeemable": (PILL_BG, DARK_GREEN, GREEN),
                 "expiring": (CREAM, BROWN, BLACK),

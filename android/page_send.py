@@ -10,6 +10,8 @@ import strings as S
 import tx
 import util
 from page_tx import TxScreen
+from design import NOTE_GRAY
+from design import FONT_TITLE
 from theme import BLACK, BLUE, DSOS_ADDR, LIGHT, WHITE, left_text, short
 from widgets import PullScroll, Card, Choice, Overlay, Panel, IconBtn, label, make_input
 
@@ -33,7 +35,7 @@ class SendScreen(Overlay):
                         size_hint=(None, 1), width=dp(56))
         back.bind(on_release=lambda *_: app.close_top())
         head.add_widget(back)
-        head.add_widget(label(S.SEND_TITLE, font_size="24sp"))
+        head.add_widget(label(S.SEND_TITLE, font_size=FONT_TITLE))
         col.add_widget(head)
 
         sv = PullScroll()
@@ -108,7 +110,7 @@ class SendScreen(Overlay):
                           font_size="18sp", size_hint_y=None, height=dp(58))
         self.btn.bind(on_release=lambda *_: self.on_send())
         foot.add_widget(self.btn)
-        self.note = Label(text="", color=(0.8, 0.82, 0.82, 1), font_size="13sp",
+        self.note = Label(text="", color=NOTE_GRAY, font_size="13sp",
                           halign="center", valign="middle")
         self.note.bind(size=lambda i, s: setattr(i, "text_size", s))
         foot.add_widget(self.note)

@@ -377,6 +377,7 @@ def donate_tx(amount_text):
 
 # ---------------------------------------------------------------- ledger record (EIP-712)
 RECORD_TYPE = "Record(address signer,address intendedTo,bytes32 payloadHash,bytes32 metadataHash)"
+REC_META = "dSOS tx"   # metadata of the record that follows a dSOS transaction (max 64 chars)
 LEDGER_RECORD_SIG = "recordSignature(address,address,bytes32,bytes,string)"
 
 

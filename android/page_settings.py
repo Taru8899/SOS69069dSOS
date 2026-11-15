@@ -6,6 +6,7 @@ from kivy.utils import escape_markup
 
 import strings as S
 import util
+from design import FONT_TITLE
 from theme import BLACK, BLUE, BUILD, DSOS_ADDR, ETHERSCAN_ADDR, LEDGER_ADDR, WHITE, short
 from page_links import build_grid
 from widgets import Card, Choice, Overlay, Panel, PullScroll, IconBtn, label
@@ -21,7 +22,7 @@ class SettingsScreen(Overlay):
                         size_hint=(None, 1), width=dp(56))
         back.bind(on_release=lambda *_: app.close_top())
         head.add_widget(back)
-        head.add_widget(label(S.SETTINGS_TITLE, font_size="24sp"))
+        head.add_widget(label(S.SETTINGS_TITLE, font_size=FONT_TITLE))
         col.add_widget(head)
         self.status = label("", size_hint_y=None, height=dp(22), font_size="13sp",
                             padding=(dp(14), 0))

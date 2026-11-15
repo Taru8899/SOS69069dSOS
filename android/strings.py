@@ -3,6 +3,7 @@
 Texts with {name} parts are templates: the pages fill them in with .format(...).
 [b]..[/b] = bold, [size=..sp]..[/size] = size, [color=rrggbb]..[/color] = color.
 """
+from design import BLACK, BLUE, BROWN, ICON_GREEN, ICON_ORANGE, ICON_PURPLE, ICON_SLATE, RED
 
 # ------------------------------------------------------------------ app shell
 APP_TITLE = "dSOS"
@@ -390,11 +391,12 @@ TX_BTN_WALLET = "Send with wallet"
 TX_BTN_WALLET_BUSY = "Waiting for your wallet..."
 TX_BTN_WALLET_BLOCKED = "Send with wallet (dry run failed)"
 TX_BTN_VIEW = "View on Etherscan"
-TX_LEDGER_OFF = "Ledger record: off"
-TX_LEDGER_ON = "Ledger record: on"
-TX_LEDGER_HELP = ("[b]Ledger record[/b]\nOn: your wallet first signs a record for the SOS ledger "
-                  "(a second approval), and it is sent together with the transaction. Off: no record "
-                  "is written and the action works the same.")
+TX_LEDGER_OFF = "Ledger record after success: off"
+TX_LEDGER_ON = "Ledger record after success: on"
+TX_LEDGER_HELP = ("[b]Ledger record[/b]\nOn: the transaction is sent alone first. When it has succeeded, "
+                  "your wallet signs a record that carries its transaction hash, and a second, separate "
+                  "transaction writes it to the SOS ledger (a second approval and a little extra gas). "
+                  "Off: no record is written and the action works the same.")
 TX_WALLET_UNAVAILABLE = ("The wallet link is not available on this device. Use the copy buttons "
                          "below.")
 TX_WC_NO_PROJECT = "The WalletConnect project id is not set (WC_PROJECT_ID in theme.py)."
@@ -482,12 +484,12 @@ SETTINGS_OPEN_FAILED = "Could not open the link. Copy it instead."
 LINKS_NEED_ADDRESS = "Load your wallet first to open it on Etherscan."
 LINK_TILES = [
     # key, caption, glyph, colour
-    ("wallet", "Etherscan\nmy wallet", "W", (0.0, 0.2, 1, 1)),
-    ("read", "dSOS contract\nRead", "R", (0.02, 0.66, 0.21, 1)),
-    ("write", "dSOS contract\nWrite", "Wr", (0.9, 0.55, 0.0, 1)),
-    ("ledger", "SOS69069\nledger", "L", (0.45, 0.2, 0.85, 1)),
-    ("dapp", "dSOS dApp", "d", (0.04, 0.04, 0.04, 1)),
-    ("github", "GitHub\nrepo", "G", (0.35, 0.37, 0.4, 1)),
+    ("wallet", "Etherscan\nmy wallet", "W", BLUE),
+    ("read", "dSOS contract\nRead", "R", ICON_GREEN),
+    ("write", "dSOS contract\nWrite", "Wr", ICON_ORANGE),
+    ("ledger", "SOS69069\nledger", "L", ICON_PURPLE),
+    ("dapp", "dSOS dApp", "d", BLACK),
+    ("github", "GitHub\nrepo", "G", ICON_SLATE),
 ]
 
 # ------------------------------------------------------------------ v8: welcome
@@ -525,13 +527,13 @@ ACT_LOAD_OLDER = "Load older"
 ACT_ES_FAILED = "Etherscan refused: {error}\nShowing public-node data instead."
 ACT_TX_NOTE = "Failed transactions could not be read: {error}"
 ACT_COUNT = "{n} items"
-ACT_ICONS = {"created": ("+", (0.02, 0.66, 0.21, 1)), "received": ("<", (0.0, 0.2, 1, 1)),
-             "sent": (">", (0.04, 0.04, 0.04, 1)), "redeemed": ("$", (0.02, 0.66, 0.21, 1)),
-             "redeemed_by": ("$", (0.04, 0.04, 0.04, 1)), "swept": ("S", (0.45, 0.3, 0.0, 1)),
-             "staked": ("o", (0.0, 0.2, 1, 1)), "formed": ("c", (0.0, 0.2, 1, 1)),
-             "credit_redeemed": ("$", (0.02, 0.66, 0.21, 1)),
-             "donation": ("d", (0.45, 0.2, 0.85, 1)), "ledger": ("L", (0.45, 0.2, 0.85, 1)),
-             "failed": ("!", (0.69, 0, 0.13, 1))}
+ACT_ICONS = {"created": ("+", ICON_GREEN), "received": ("<", BLUE),
+             "sent": (">", BLACK), "redeemed": ("$", ICON_GREEN),
+             "redeemed_by": ("$", BLACK), "swept": ("S", BROWN),
+             "staked": ("o", BLUE), "formed": ("c", BLUE),
+             "credit_redeemed": ("$", ICON_GREEN),
+             "donation": ("d", ICON_PURPLE), "ledger": ("L", ICON_PURPLE),
+             "failed": ("!", RED)}
 ACT_TITLE = {
     "created": "Created {amt} · #{id}",
     "received": "Received {amt}{idpart}",
@@ -639,3 +641,18 @@ TX_BTN_TRY_AGAIN = "Try again"
 TX_OK_SHORT = "Transaction {hash} succeeded (block {block:,})."
 TX_FAILED_SHORT = "Transaction {hash} failed: {reason}"
 ACT_MINE_LIMIT = "Showing the newest {n} entries."
+
+# ---- ledger record sent as its own transaction after a successful dSOS transaction
+REC_HEAD = "[b]Ledger record[/b]"
+REC_SIGNING = "Ledger record: approve the signature in {wallet}..."
+REC_SENDING = "Ledger record: approve the transaction in {wallet}..."
+REC_WAITING = "Ledger record sent. Waiting for the network to confirm...\nTransaction {hash}"
+REC_OK = "[b]Ledger record confirmed[/b] - block {block:,}\nTransaction {hash}"
+REC_FAILED = "[b]Ledger record failed on chain:[/b] {reason}\nTransaction {hash}"
+REC_PENDING = "[b]Ledger record still pending[/b] after 3 minutes. Check the link below.\nTransaction {hash}"
+REC_SIGN_BAD = "The ledger would not accept this signature ({reason}). Nothing was sent. The dSOS transaction above is not affected."
+REC_ERROR = "Ledger record not written: {error}\nThe dSOS transaction above is not affected."
+REC_CANCELLED = "Ledger record cancelled in the wallet. The dSOS transaction above is not affected."
+REC_TIMEOUT = ("The wallet has not answered the ledger record {step} request after 2 minutes.\n"
+               "The dSOS transaction above is not affected.")
+BTN_REC_RETRY = "Record in ledger again"

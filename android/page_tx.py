@@ -12,6 +12,7 @@ import core
 import strings as S
 import tx
 import util
+from design import FONT_TITLE
 from theme import (BLACK, BLUE, DAPP_URL, DARK_GREEN, DSOS_ADDR, ETHERSCAN_TX, ETHERSCAN_WRITE,
                    LIGHT, LIGHT_GREEN, RED, WHITE, short)
 from widgets import PullScroll, Card, Choice, Overlay, Panel, IconBtn, Tap, label
@@ -35,7 +36,9 @@ class TxScreen(Overlay):
         self.alive = True
         self.busy = False
         self.sent = False
-        self.sign_on = False
+        self.sign_on = False               # "Ledger record after success"
+        self.rec_busy = False
+        self.rec_hash = ""
         self.sim_ok = None                 # None = unknown, True = passes, False = would fail
         self.log = []                      # step log: what was asked, what the wallet answered
         self._open_reqs = set()
@@ -49,7 +52,7 @@ class TxScreen(Overlay):
                         size_hint=(None, 1), width=dp(56))
         back.bind(on_release=lambda *_: self.close())
         head.add_widget(back)
-        head.add_widget(label(S.TX_TITLE, font_size="24sp"))
+        head.add_widget(label(S.TX_TITLE, font_size=FONT_TITLE))
         col.add_widget(head)
 
         self.status = label("", size_hint_y=None, height=dp(22), font_size="13sp",
@@ -81,6 +84,9 @@ class TxScreen(Overlay):
         self.out_box = BoxLayout(orientation="vertical", spacing=dp(8), size_hint_y=None)
         self.out_box.bind(minimum_height=self.out_box.setter("height"))
         box.add_widget(self.out_box)
+        self.rec_box = BoxLayout(orientation="vertical", spacing=dp(8), size_hint_y=None)
+        self.rec_box.bind(minimum_height=self.rec_box.setter("height"))
+        box.add_widget(self.rec_box)
         self.log_box = BoxLayout(orientation="vertical", spacing=dp(8), size_hint_y=None)
         self.log_box.bind(minimum_height=self.log_box.setter("height"))
         box.add_widget(self.log_box)
@@ -181,28 +187,38 @@ class TxScreen(Overlay):
     def show(self, text, view_hash=None, bg=WHITE, fg=BLACK, copy_text=None, actions=()):
         """Replace the wallet message area. `view_hash` adds a tappable hash and a button;
         `copy_text` adds a Copy button for an error text."""
-        self.out_box.clear_widgets()
+        self._fill(self.out_box, text, view_hash, bg, fg, copy_text, actions)
+
+    def rec_show(self, text, view_hash=None, bg=WHITE, fg=BLACK, copy_text=None, actions=()):
+        """Same, for the separate ledger-record area under the dSOS result."""
+        self._fill(self.rec_box, text, view_hash, bg, fg, copy_text, actions, head=S.REC_HEAD)
+
+    def _fill(self, box, text, view_hash, bg, fg, copy_text, actions, head=""):
+        out_box = box
+        out_box.clear_widgets()
+        if head:
+            out_box.add_widget(label(head, size_hint_y=None, height=dp(28)))
         if text:
-            self.out_box.add_widget(Card(text, bg=bg, fg=fg))
+            out_box.add_widget(Card(text, bg=bg, fg=fg))
         if view_hash:
             link = Tap(size_hint_y=None, height=dp(34))
             link.add_widget(label(S.TX_HASH_LINK.format(hash=short(view_hash)), font_size="15sp"))
             link.bind(on_release=lambda *_: self.open(ETHERSCAN_TX + view_hash))
-            self.out_box.add_widget(link)
+            out_box.add_widget(link)
         if copy_text:
             cb = Choice(base=LIGHT, fg=BLACK, text=S.TX_ERR_COPY, size_hint_y=None, height=dp(44),
                         bold=True)
             cb.bind(on_release=lambda *_: self.copy(S.TX_ERR_COPY, copy_text))
-            self.out_box.add_widget(cb)
+            out_box.add_widget(cb)
         for label_text, fn in actions:
             ab = Choice(base=BLACK, fg=WHITE, text=label_text, size_hint_y=None, height=dp(46), bold=True)
             ab.bind(on_release=lambda *_w, f=fn: f())
-            self.out_box.add_widget(ab)
+            out_box.add_widget(ab)
         if view_hash:
             b = Choice(base=BLACK, fg=WHITE, text=S.TX_BTN_VIEW, size_hint_y=None, height=dp(48),
                        bold=True)
             b.bind(on_release=lambda *_: self.open(ETHERSCAN_TX + view_hash))
-            self.out_box.add_widget(b)
+            out_box.add_widget(b)
 
     # ------------------------------------------------------------ dry run (eth_call)
     def start_dry_run(self):
@@ -271,10 +287,7 @@ class TxScreen(Overlay):
             self.fail_final(S.TX_WRONG_ACCOUNT.format(got=short(got) or "?", want=short(self.frm)))
             return
         self.show(S.TX_CONNECTED.format(wallet=w.label(), addr=short(got)))
-        if self.sign_on and self.t0.get("rec"):
-            self.ask_signature()
-        else:
-            self.ask_send(self.t0)
+        self.ask_send(self.t0)             # the ledger record, if on, follows AFTER success
 
     # ------------------------------------------------------------ step log and requests
     def note(self, text):
@@ -288,7 +301,7 @@ class TxScreen(Overlay):
         cb.bind(on_release=lambda *_: self.copy(S.TX_LOG_COPY, "\n".join(self.log)))
         self.log_box.add_widget(cb)
 
-    def request(self, method, params, on_ok, step):
+    def request(self, method, params, on_ok, step, on_err=None, on_timeout=None):
         """Ask the wallet. Every reply (also a late one) is handled; after REQUEST_TIMEOUT seconds
         without an answer the screen says which step is waiting and offers Open wallet / Try again."""
         self._req_no += 1
@@ -306,57 +319,24 @@ class TxScreen(Overlay):
             late = rid not in self._open_reqs
             self._open_reqs.discard(rid)
             self.note("%serror code=%s text=%s" % ("late " if late else "", code, str(text)[:160]))
-            self.fail(text, code)
+            (on_err or self.fail)(text, code)
 
         self.wallet.request(method, params, ok, err)
-        Clock.schedule_once(lambda dt: self._timeout(rid, step), REQUEST_TIMEOUT)
+        Clock.schedule_once(lambda dt: self._timeout(rid, step, on_timeout), REQUEST_TIMEOUT)
 
-    def _timeout(self, rid, step):
+    def _timeout(self, rid, step, on_timeout=None):
         if rid not in self._open_reqs or not self.alive:
             return
         self._open_reqs.discard(rid)
-        self.busy = False
         self.note("no answer after %d s (%s)" % (REQUEST_TIMEOUT, step))
+        if on_timeout:
+            on_timeout(step)
+            return
+        self.busy = False
         self.show(S.TX_TIMEOUT.format(step=step, wallet=self.wallet.label()), bg=RED, fg=WHITE,
                   actions=[(S.TX_BTN_OPEN_WALLET, lambda: self.wallet.open_wallet()),
                            (S.TX_BTN_TRY_AGAIN, lambda: self.on_wallet_send())])
         self.refresh_buttons()
-
-    def ask_signature(self):
-        rec = self.t0["rec"]
-        w = self.wallet
-        typed = tx.ledger_typed_data(self.frm, rec["intended_to"], rec["payload_hash"], "")
-        self.show(S.TX_SIGNING.format(wallet=w.label()))
-        self.request("eth_signTypedData_v4", [self.frm, typed], self.got_signature, S.TX_STEP_SIGN)
-
-    def got_signature(self, result):
-        if not self.alive:
-            return
-        try:
-            sig = bytes.fromhex(str(result)[2:])
-            if len(sig) != 65:
-                raise ValueError("signature length")
-        except Exception:  # noqa: BLE001
-            self.fail_final(S.TX_ERROR.format(error="bad signature"))
-            return
-        threading.Thread(target=self._verify_worker, args=(sig,), daemon=True).start()
-
-    def _verify_worker(self, sig):
-        rec = self.t0["rec"]
-        to, data = tx.ledger_check_call(self.frm, rec["intended_to"], rec["payload_hash"], sig, "")
-        try:
-            ok, reason = core.Chain("").simulate(self.frm, to, data, 0)
-        except Exception:  # noqa: BLE001
-            ok, reason = True, ""          # no node reachable: a bad record is only skipped, not harmful
-        Clock.schedule_once(lambda dt: self.verified(sig, ok, reason))
-
-    def verified(self, sig, ok, reason):
-        if not self.alive:
-            return
-        if not ok:
-            self.fail_final(S.TX_SIGN_BAD.format(reason=self.reason_text(reason)))
-            return
-        self.ask_send(self.t0["rec"]["make"](sig, ""))
 
     def ask_send(self, t):
         w = self.wallet
@@ -378,6 +358,9 @@ class TxScreen(Overlay):
 
     # ------------------------------------------------------------ result: poll the receipt
     def _watch(self, h):
+        self._poll(h, self.confirmed)
+
+    def _poll(self, h, done):
         chain = core.Chain(self.app.key.text)
         err = None
         for i in range(POLL_TRIES):
@@ -389,10 +372,10 @@ class TxScreen(Overlay):
                 ok = str(rc.get("status", "0x1")) == "0x1"
                 block = int(rc.get("blockNumber") or "0x0", 16)
                 reason = "" if ok else chain.failure_reason(h, rc)
-                Clock.schedule_once(lambda dt: self.confirmed(h, ok, block, reason))
+                Clock.schedule_once(lambda dt: done(h, ok, block, reason))
                 return
             time.sleep(POLL_SECONDS)
-        Clock.schedule_once(lambda dt: self.confirmed(h, None, 0, err or ""))
+        Clock.schedule_once(lambda dt: done(h, None, 0, err or ""))
 
     def confirmed(self, h, ok, block, reason):
         self.note("result %s block=%s reason=%s" % ({True: "ok", False: "reverted", None: "pending"}[ok],
@@ -407,6 +390,9 @@ class TxScreen(Overlay):
             self.show(S.TX_OK.format(block=block, hash=short(h)), view_hash=h,
                       bg=LIGHT_GREEN, fg=DARK_GREEN)
             self.app.reload()
+            self.rec_hash = h
+            if self.sign_on and self.t0.get("rec"):
+                self.rec_begin()
         else:
             txt = S.TX_FAILED.format(reason=escape_markup(reason) if reason else S.TX_FAILED_UNKNOWN,
                                      hash=short(h))
@@ -445,3 +431,120 @@ class TxScreen(Overlay):
             self.wallet.disconnect()
             self.show(S.TX_DISCONNECTED)
             self.refresh_buttons()
+
+    # ------------------------------------------------------------ ledger record: its own transaction
+    def rec_actions(self):
+        return [(S.BTN_REC_RETRY, lambda: self.rec_begin())]
+
+    def rec_begin(self):
+        """After the dSOS transaction succeeded: sign a record carrying its tx hash, then send
+        SOS69069.recordSignature as a separate transaction."""
+        w = self.wallet
+        if self.rec_busy or not self.alive or not w:
+            return
+        self.rec_busy = True
+        self.note("ledger record: start for %s" % self.rec_hash)
+        w.set_listener(lambda text: self.alive and self.rec_show(text))
+        if w.connected:
+            self.rec_sign()
+        else:
+            self.rec_show(S.TX_CONNECTING)
+            w.connect(self.rec_sign, self.rec_fail_final)
+
+    def rec_sign(self):
+        if not self.alive:
+            return
+        rec = self.t0["rec"]
+        ph = bytes.fromhex(self.rec_hash[2:])
+        typed = tx.ledger_typed_data(self.frm, rec["intended_to"], ph, tx.REC_META)
+        self.rec_show(S.REC_SIGNING.format(wallet=self.wallet.label()))
+        self.request("eth_signTypedData_v4", [self.frm, typed], self.rec_got_sig, S.TX_STEP_SIGN,
+                     on_err=self.rec_fail, on_timeout=self.rec_timeout)
+
+    def rec_got_sig(self, result):
+        if not self.alive:
+            return
+        try:
+            sig = bytes.fromhex(str(result)[2:])
+            if len(sig) != 65:
+                raise ValueError("signature length")
+        except Exception:  # noqa: BLE001
+            self.rec_fail_final(S.REC_ERROR.format(error="bad signature"))
+            return
+        threading.Thread(target=self._rec_verify, args=(sig,), daemon=True).start()
+
+    def _rec_call(self, sig):
+        rec = self.t0["rec"]
+        return tx.ledger_check_call(self.frm, rec["intended_to"], bytes.fromhex(self.rec_hash[2:]),
+                                    sig, tx.REC_META)
+
+    def _rec_verify(self, sig):
+        to, data = self._rec_call(sig)
+        try:
+            ok, reason = core.Chain("").simulate(self.frm, to, data, 0)
+        except Exception:  # noqa: BLE001
+            ok, reason = True, ""          # no node reachable: the chain decides
+        Clock.schedule_once(lambda dt: self.rec_verified(sig, ok, reason))
+
+    def rec_verified(self, sig, ok, reason):
+        if not self.alive:
+            return
+        if not ok:
+            self.rec_fail_final(S.REC_SIGN_BAD.format(reason=escape_markup(self.reason_text(reason))))
+            return
+        to, data = self._rec_call(sig)
+        params = [{"from": self.frm, "to": to, "value": "0x0", "data": data}]
+        self.rec_show(S.REC_SENDING.format(wallet=self.wallet.label()))
+        self.request("eth_sendTransaction", params, self.rec_sent, S.TX_STEP_SEND,
+                     on_err=self.rec_fail, on_timeout=self.rec_timeout)
+
+    def rec_sent(self, result):
+        h = str(result)
+        if self.alive:
+            self.rec_show(S.REC_WAITING.format(hash=short(h)), view_hash=h)
+        threading.Thread(target=self._poll, args=(h, self.rec_confirmed), daemon=True).start()
+
+    def rec_confirmed(self, h, ok, block, reason):
+        self.rec_busy = False
+        self.note("ledger record result %s block=%s reason=%s" % (
+            {True: "ok", False: "reverted", None: "pending"}[ok], block, reason))
+        if not self.alive:
+            return
+        if ok is None:
+            self.rec_show(S.REC_PENDING.format(hash=short(h)), view_hash=h)
+        elif ok:
+            self.rec_show(S.REC_OK.format(block=block, hash=short(h)), view_hash=h,
+                          bg=LIGHT_GREEN, fg=DARK_GREEN)
+        else:
+            why = escape_markup(self.reason_text(reason)) if reason else S.TX_FAILED_UNKNOWN
+            self.rec_show(S.REC_FAILED.format(reason=why, hash=short(h)), view_hash=h, bg=RED, fg=WHITE,
+                          copy_text="%s %s" % (reason or S.TX_FAILED_UNKNOWN, h), actions=self.rec_actions())
+
+    def rec_fail(self, text, code=None):
+        """A raw error from the wallet during the ledger step."""
+        self.rec_busy = False
+        self.note("ledger record failed: code=%s text=%s" % (code, str(text)[:160]))
+        if not self.alive:
+            return
+        if self.is_rejection(text, code):
+            self.rec_show(S.REC_CANCELLED, actions=self.rec_actions())
+        else:
+            self.rec_show(S.REC_ERROR.format(error=escape_markup(str(text))), copy_text=str(text),
+                          actions=self.rec_actions())
+
+    def rec_fail_final(self, text, code=None):
+        self.rec_busy = False
+        if not self.alive:
+            return
+        if self.is_rejection(text, code):
+            self.rec_show(S.REC_CANCELLED, actions=self.rec_actions())
+        else:
+            self.rec_show(text if "\n" in str(text) else escape_markup(str(text)), copy_text=str(text),
+                          actions=self.rec_actions())
+
+    def rec_timeout(self, step):
+        self.rec_busy = False
+        if not self.alive:
+            return
+        self.rec_show(S.REC_TIMEOUT.format(step=step), bg=RED, fg=WHITE,
+                      actions=[(S.TX_BTN_OPEN_WALLET, lambda: self.wallet.open_wallet())] + self.rec_actions())

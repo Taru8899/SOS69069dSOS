@@ -4,6 +4,7 @@ from kivy.uix.boxlayout import BoxLayout
 
 import core
 import strings as S
+from design import FONT_TITLE
 from theme import BLACK, WHITE
 from widgets import Divider, IconBtn, Overlay, Panel, PullScroll, label
 
@@ -85,7 +86,7 @@ class EconomicsScreen(Overlay):
         back = IconBtn(icon="back", bg=WHITE, color=BLACK, size_hint=(None, 1), width=dp(52))
         back.bind(on_release=lambda *_: app.close_top())
         head.add_widget(back)
-        head.add_widget(label(S.ECON_TITLE, font_size="24sp"))
+        head.add_widget(label(S.ECON_TITLE, font_size=FONT_TITLE))
         col.add_widget(head)
         sv = PullScroll()
         box = BoxLayout(orientation="vertical", spacing=dp(10), size_hint_y=None,

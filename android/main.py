@@ -31,6 +31,7 @@ from page_redeem import RedeemScreen
 from page_send import SendScreen
 from page_settings import SettingsScreen
 from wallet import Wallet
+from design import HEADER_H, LOGO_W, NAV_H, FONT_BODY
 from theme import (BLACK, BUILD, BLUE, GREEN, HAS_LOGO, LOGO, LIGHT, WHITE, WELCOME_MAX, WELCOME_MIN,
                    WELCOME_NO_WALLET, short)
 from widgets import (Chevron, Card, Choice, ErrorBanner, IconBtn, LogoBtn, NavTab, Panel, PillBtn, PullScroll,
@@ -100,10 +101,10 @@ class DsosApp(App):
         self.main = main
 
         # ---- header: logo (+ large caret), "My wallet" text, Ethereum pill
-        head = BoxLayout(size_hint_y=None, height=dp(76), spacing=dp(10),
+        head = BoxLayout(size_hint_y=None, height=dp(HEADER_H), spacing=dp(10),
                          padding=[dp(14), dp(4), dp(14), dp(2)])
         self.head = head
-        logo_col = BoxLayout(orientation="vertical", size_hint=(None, 1), width=dp(72))
+        logo_col = BoxLayout(orientation="vertical", size_hint=(None, 1), width=dp(LOGO_W))
         if HAS_LOGO:
             self.logo = LogoBtn(source=LOGO, size_hint=(1, 1))      # the whole column: 68 dp logo
             self.logo.bind(on_release=lambda *_: self.go_home())
@@ -115,7 +116,7 @@ class DsosApp(App):
         title.add_widget(label(S.HEADER_TITLE, size_hint_y=0.5))
         addr_row = BoxLayout(size_hint_y=0.5, spacing=dp(6))
         self.sub = Label(text=self._head_text(short(cfg.get("addr", "")) or S.HEADER_NO_ADDR),
-                         markup=True, color=BLACK, font_size="17sp", halign="left",
+                         markup=True, color=BLACK, font_size=FONT_BODY, halign="left",
                          valign="middle", size_hint=(None, 1))
         self.sub.bind(texture_size=lambda i, ts: setattr(i, "width", ts[0]))
         self.chev = Chevron(pos_hint={"center_y": 0.5})
@@ -159,7 +160,7 @@ class DsosApp(App):
         main.add_widget(self.body)
 
         # ---- bottom bar (always visible, full width)
-        nav = BoxLayout(size_hint_y=None, height=dp(66))
+        nav = BoxLayout(size_hint_y=None, height=dp(NAV_H))
         self.nav = nav
         with nav.canvas.before:
             Color(*BLACK)
