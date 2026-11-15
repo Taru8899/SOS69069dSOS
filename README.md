@@ -1,5 +1,5 @@
 ## SOS69069 dSOS
-https://drive.google.com/file/d/1Oidw-blLGKnwoUTSsF9RU87sbeyiQluE/view?usp=drivesdk
+https://drive.google.com/file/d/1LPFJhzGWkX2znQ4HL_Mw4pHqBzEbNzwM/view?usp=drivesdk
 
 https://github.com/Taru8899/SOS69069dSOS/actions/runs/43736338542
 
