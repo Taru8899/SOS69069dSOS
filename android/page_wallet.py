@@ -5,7 +5,7 @@ from kivy.uix.label import Label
 
 import core
 import strings as S
-from design import BAL_CARD_H, BAL_TOP_H, RING_SIZE, FONT_RING
+from design import BAL_CARD_H, BAL_TOP_H, BAL_LINE_H, RING_SIZE, FONT_RING, FONT_ETH_LINE, FONT_HELD
 from theme import BLACK, BLUE, GRAY, LIGHT, RED, WHITE
 from widgets import (Card, Choice, Dot, Icon, IconBtn, Panel, Ring, Tap, TapFloat, Tappable, label,
                      offer_row, title_row)
@@ -31,11 +31,7 @@ class BalanceCard(Panel):
         total = max(d["balance"], 1)
         rest = max(0, d["balance"] - d["sendable"] - d["expiring"] - d["expired"])
         top = BoxLayout(size_hint_y=None, height=dp(BAL_TOP_H))
-        left = BoxLayout(orientation="vertical")
-        left.add_widget(label(S.WALLET_BAL_BIG.format(n=d["balance"])))
-        left.add_widget(label(S.WALLET_ETH.format(eth=core.eth(d["value_wei"])),
-                              font_size="15sp", size_hint_y=None, height=dp(28)))
-        top.add_widget(left)
+        top.add_widget(label(S.WALLET_BAL_BIG.format(n=d["balance"])))
         # the small donut; its "%" centre (and the whole ring) opens the Economics page
         self.ring_tap = TapFloat(size_hint=(None, 1), width=dp(RING_SIZE))
         self.ring = Ring(size_hint=(1, 1), pos_hint={"x": 0, "y": 0})
@@ -47,6 +43,18 @@ class BalanceCard(Panel):
                              (d["expired"] / total, RED), (rest / total, GRAY)])
         top.add_widget(self.ring_tap)
         self.add_widget(top)
+        # same line: "≈ 0.004 ETH redeemable" (left) and the contract's held ETH (right, tappable)
+        line = BoxLayout(size_hint_y=None, height=dp(BAL_LINE_H))
+        eth = label(S.WALLET_ETH.format(eth=core.eth(d["value_wei"])), font_size=FONT_ETH_LINE,
+                    shorten=True, shorten_from="right")
+        self.held = Tap(size_hint=(None, 1), width=dp(110))
+        self.held_lbl = label(S.WALLET_HELD.format(eth=core.eth(d["pool_wei"])), font_size=FONT_HELD,
+                              halign="right")
+        self.held.add_widget(self.held_lbl)
+        self.held.bind(on_release=lambda *_: app.open_economics() if app is not None else None)
+        line.add_widget(eth)
+        line.add_widget(self.held)
+        self.add_widget(line)
         chips = BoxLayout(size_hint_y=None, height=dp(76), spacing=dp(10))
         def go(f):
             return (lambda: app.open_offers(f)) if app is not None else None

@@ -1,21 +1,30 @@
-"""Colors, constants and small helpers shared by all pages."""
+"""Constants and small helpers shared by all pages. Colours, sizes and fonts live in design.py
+(re-exported here, so `from theme import BLUE` keeps working)."""
 import os
+import tempfile
 
 import core
+import design
+from design import *  # noqa: F401,F403  (colours, sizes, fonts: edit them in design.py)
 import strings as S
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 LOGO = os.path.join(HERE, "logo.png")
 HAS_LOGO = os.path.exists(LOGO)
-FIELD = os.path.join(HERE, "field.png")              # rounded white input with thin blue outline
+FIELD = os.path.join(HERE, "field.png")              # shipped pictures = fallback
 FIELD_FOCUS = os.path.join(HERE, "field_focus.png")
+for _folder in (HERE, tempfile.gettempdir()):        # the pictures are drawn from design.py colours
+    _gen = design.ensure_fields(_folder)
+    if _gen:
+        FIELD, FIELD_FOCUS = _gen
+        break
 HAS_FIELD = os.path.exists(FIELD) and os.path.exists(FIELD_FOCUS)
 START = os.path.join(HERE, "start.jpg")            # big start image (flat green + logo)
 HAS_START = os.path.exists(START)
 WORDMARK = os.path.join(HERE, "wordmark.png")
 HAS_WORDMARK = os.path.exists(WORDMARK)
 
-APP_VERSION = "v9.4"
+APP_VERSION = "v9.6"
 try:                                   # build_info.py is written by the CI workflow
     import build_info
     if build_info.NUMBER == "dev":
@@ -24,25 +33,6 @@ try:                                   # build_info.py is written by the CI work
 except Exception:  # noqa: BLE001
     BUILD = f"{APP_VERSION} \u00b7 dev build"
 
-GREEN = (4 / 255, 168 / 255, 53 / 255, 1)   # same green as the logo background
-BLUE = (0, 0.2, 1, 1)
-BLACK = (0.04, 0.04, 0.04, 1)
-WHITE = (1, 1, 1, 1)
-RED = (0.69, 0, 0.13, 1)
-GRAY = (0.78, 0.8, 0.8, 1)
-LIGHT = (0.94, 0.95, 0.95, 1)
-LIGHT_BLUE = (0.87, 0.9, 1, 1)
-LIGHT_GREEN = (0.88, 0.94, 0.89, 1)
-PILL_BG = (0.9, 0.97, 0.92, 1)
-CREAM = (1, 0.96, 0.85, 1)
-BROWN = (0.45, 0.3, 0, 1)
-DARK_GREEN = (0.04, 0.48, 0.17, 1)
-DARK_GREEN_HEX = "0a7a2a"
-
-SPLASH_SECONDS = 1.8
-WELCOME_MIN = 3.0          # seconds the welcome screen stays at least (saved wallet)
-WELCOME_NO_WALLET = 3.0    # no saved wallet: nothing to wait for
-WELCOME_MAX = 8.0          # ... and at most
 DSOS_ADDR = "0x7Bd7c427b3c69e2a09603573ac875987c61ECAB8"
 LEDGER_ADDR = "0x7373DBC24Dcd785896E8Ac3d5372c6ced9B75a8A"
 ETHERSCAN_ADDR = "https://etherscan.io/address/"

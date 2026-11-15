@@ -53,8 +53,9 @@ HEADER_H = 76              # header bar height
 LOGO_W = 72                # logo column width (the logo fills it)
 NAV_H = 66                 # bottom navigation bar height
 RING_SIZE = 76             # the small donut on the Wallet card
-BAL_CARD_H = 212           # Wallet balance card height
-BAL_TOP_H = 96             # its top row (number + ring)
+BAL_CARD_H = 228           # Wallet balance card height
+BAL_TOP_H = 76             # its top row (number + ring)
+BAL_LINE_H = 28            # the line "≈ … ETH redeemable" + held amount
 FIELD_H = 48               # input-field height
 BUTTON_H = 58              # big action button
 RADIUS = 16                # standard corner radius
@@ -66,6 +67,8 @@ FONT_BIG = "18sp"          # big buttons
 FONT_BODY = "17sp"         # header address, main text
 FONT_SMALL = "13sp"        # notes
 FONT_RING = "20sp"         # "%" in the ring
+FONT_ETH_LINE = "15sp"     # "≈ 0.004 ETH redeemable"
+FONT_HELD = "18.75sp"      # held-by-contract amount: 25% bigger than the line next to it
 
 # ============================================================== INPUT FIELD LOOK
 FIELD_BG = WHITE

@@ -46,10 +46,10 @@ def groups(d):
     nxt = d["next_expiry"]
     contract = [
         (S.ECON_HELD, _eth(d["pool_wei"])),
-        (S.ECON_OFFERS, _eth(d["earmarked_wei"]) + " · %s dSOS" % format(d["supply"], ",")),
-        (S.ECON_POOL, _eth(unalloc)),
         (S.ECON_PAYOUT, _dsos(payout_units(d))),
         (S.ECON_STAKE_NEED, _eth(d["stake_need_wei"])),
+        (S.ECON_POOL, _eth(unalloc)),
+        (S.ECON_OFFERS, _eth(d["earmarked_wei"]) + " · %s dSOS" % format(d["supply"], ",")),
     ]
     you = [
         (S.ECON_BALANCE, _dsos(d["balance"])),
