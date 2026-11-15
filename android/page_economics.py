@@ -4,7 +4,7 @@ from kivy.uix.boxlayout import BoxLayout
 
 import core
 import strings as S
-from design import FONT_TITLE
+from design import FONT_ECON_ROW, FONT_ECON_ROW_BIG, FONT_TITLE
 from theme import BLACK, WHITE
 from widgets import Divider, IconBtn, Overlay, Panel, PullScroll, label
 
@@ -98,8 +98,9 @@ class EconomicsScreen(Overlay):
             p.add_widget(label(title, size_hint_y=None, height=dp(30), font_size="16sp"))
             for k, v in rows:
                 r = BoxLayout(size_hint_y=None, height=dp(36), spacing=dp(8))
-                r.add_widget(label(k, font_size="13sp", size_hint_x=0.46))
-                r.add_widget(label("[b]%s[/b]" % v, font_size="13sp", halign="right",
+                big = k in (S.ECON_BALANCE, S.ECON_CREDITS)
+                r.add_widget(label(k, font_size=FONT_ECON_ROW_BIG if big else FONT_ECON_ROW, size_hint_x=0.46))
+                r.add_widget(label("[b]%s[/b]" % v, font_size=FONT_ECON_ROW, halign="right",
                                    size_hint_x=0.54))
                 p.add_widget(r)
             box.add_widget(p)

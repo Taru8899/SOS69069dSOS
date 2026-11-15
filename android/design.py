@@ -68,6 +68,8 @@ FONT_BODY = "17sp"         # header address, main text
 FONT_SMALL = "13sp"        # notes
 FONT_RING = "20sp"         # "%" in the ring
 FONT_ETH_LINE = "15sp"     # "≈ 0.004 ETH redeemable"
+FONT_ECON_ROW = "13sp"     # Economics page rows
+FONT_ECON_ROW_BIG = "16.25sp"   # names of "Your dSOS" / "Your credits": 25% bigger
 FONT_HELD = "18.75sp"      # held-by-contract amount: 25% bigger than the line next to it
 
 # ============================================================== INPUT FIELD LOOK
