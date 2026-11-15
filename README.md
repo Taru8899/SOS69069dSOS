@@ -1,7 +1,7 @@
 ## SOS69069 dSOS
 https://drive.google.com/file/d/1Oidw-blLGKnwoUTSsF9RU87sbeyiQluE/view?usp=drivesdk
 
-https://github.com/Taru8899/SOS69069dSOS/actions/runs/43617459709
+https://github.com/Taru8899/SOS69069dSOS/actions/runs/43736338542
 
 0x7Bd7c427b3c69e2a09603573ac875987c61ECAB8
 
