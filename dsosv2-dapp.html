@@ -1,0 +1,868 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>dSOS Dapp</title>
+<style>
+:root{--bg:#0e1014;--card:#171a21;--card2:#1d212a;--line:#2a2f3b;--tx:#e8eaf0;--mut:#8a91a3;--acc:#7a93ff;--ok:#3ecf8e;--err:#ff6b6b;--warn:#f5b94a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:14px 16px 60px}
+header{display:grid;gap:10px;margin-bottom:12px}
+h1{font-size:20px;margin:6px 0 0}
+h2{font-size:16px;margin:0 0 10px}
+h3{font-size:14px;margin:14px 0 6px;color:var(--mut);font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.stat{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:10px}
+.stat b{display:block;font-size:17px;word-break:break-all}
+.stat span{font-size:12px;color:var(--mut)}
+label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
+input,select,textarea{width:100%;background:var(--bg);color:var(--tx);border:1px solid var(--line);border-radius:9px;padding:10px;font-size:15px;font-family:inherit}
+input.mono,.mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px}
+button{background:var(--acc);color:#fff;border:0;border-radius:9px;padding:10px 14px;font-size:14px;font-weight:600;cursor:pointer}
+button.sec{background:transparent;border:1px solid var(--line);color:var(--tx)}
+button.sm{padding:6px 10px;font-size:13px}
+button:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.row>.grow{flex:1;min-width:120px}
+.tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:12px}
+.tabs button{background:var(--card);border:1px solid var(--line);color:var(--mut);white-space:nowrap}
+.tabs button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.pill{display:inline-block;padding:1px 8px;border-radius:99px;font-size:12px;border:1px solid var(--line);color:var(--mut)}
+.pill.ok{color:var(--ok);border-color:var(--ok)}.pill.err{color:var(--err);border-color:var(--err)}.pill.warn{color:var(--warn);border-color:var(--warn)}
+.mut{color:var(--mut);font-size:13px}
+.note{font-size:13px;color:var(--mut);background:var(--card2);border-left:3px solid var(--warn);padding:8px 10px;border-radius:6px;margin:10px 0}
+#status{position:sticky;bottom:10px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px;word-break:break-all;display:none}
+#status.show{display:block}
+#status.ok{border-color:var(--ok)}#status.err{border-color:var(--err)}
+a{color:var(--acc)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td,th{padding:6px 4px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.offer{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:10px}
+.offer .top{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.hide{display:none}
+.copy{cursor:pointer;text-decoration:underline dotted}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>dSOS Dapp <span class="mut" id="tokname"></span></h1>
+  <div class="card" style="margin:0">
+    <label style="margin-top:0">Contract</label>
+    <input id="caddr" class="mono" value="0x1fDBA066224e2F9D3cDbFB90190881157f7d284E" spellcheck="false">
+    <div class="row">
+      <select id="net" class="grow"></select>
+      <input id="customrpc" class="grow mono hide" placeholder="Custom RPC URL">
+      <button id="connect">Connect wallet</button>
+    </div>
+    <div class="mut" id="conn" style="margin-top:8px"></div>
+    <div id="codewarn"></div>
+  </div>
+</header>
+
+<div class="tabs" id="tabs"></div>
+
+<!-- OVERVIEW -->
+<section id="t-overview">
+  <div class="card"><h2>Pool</h2><div class="grid" id="poolStats"></div></div>
+  <div class="card"><h2>You</h2><div class="grid" id="meStats"></div><div class="mut" id="meNote" style="margin-top:8px"></div></div>
+  <div class="card">
+    <h2>Units</h2>
+    <div class="mut">1 slice = 1 dSOS = 0.001 ETH. Time is in blocks (7200 blocks ≈ 1 day). Every value-moving call uses your on-chain nonce; this dapp reads and sends it for you.</div>
+  </div>
+</section>
+
+<!-- CREATE -->
+<section id="t-create" class="hide">
+  <div class="card">
+    <h2>Create offer</h2>
+    <div class="mut">Quick presets:</div>
+    <div class="row" style="margin-top:6px">
+      <button class="sec sm" data-preset="S">S → me · 10 slices · 1 day</button>
+      <button class="sec sm" data-preset="A1">Open A · 10 slices · 1/record · 2 days</button>
+      <button class="sec sm" data-preset="A2">Open A · 100 slices · 5/record · 7 days</button>
+    </div>
+    <label style="margin-top:0">Type</label>
+    <select id="ckind">
+      <option value="S">S – sendable, free redeem (to an exact address)</option>
+      <option value="A">A – open, sellers confirm SOS records</option>
+      <option value="B">B – named, one seller confirms SOS records</option>
+      <option value="G">G – gated with a PIN</option>
+    </select>
+    <div id="cto-w"><label>Receiver / holder (empty = DEAD address)</label><input id="cto" class="mono" placeholder="0x… (your address for a self-held offer)"><div class="row"><button class="sec sm" id="cme">Use my address</button></div></div>
+    <label>Funded slices (1 slice = 0.001 ETH)</label>
+    <input id="cslices" type="number" min="1" step="1" value="10" inputmode="numeric">
+    <div class="mut" id="ceth"></div>
+    <label>Delay until expiry (blocks)</label>
+    <input id="cdelay" type="number" min="1" step="1" value="7200" inputmode="numeric">
+    <div class="row">
+      <button class="sec sm" data-delay="1">1 block</button>
+      <button class="sec sm" data-delay="7200">1 day</button>
+      <button class="sec sm" data-delay="14400">2 days</button>
+      <button class="sec sm" data-delay="50400">7 days</button>
+    </div>
+    <div class="mut" id="cdelayinfo"></div>
+    <div id="cper-w"><label>Slices paid per confirmed record</label><input id="cper" type="number" min="1" step="1" value="1" inputmode="numeric"><div class="mut">Funded slices must divide exactly by this.</div></div>
+    <div id="cpin-w"><label>PIN (bytes32 hex, or any passphrase – hashed)</label><input id="cpin" class="mono" placeholder="0x… or text"><div class="row"><button class="sec sm" id="cpingen">Generate random PIN</button></div><div class="mut mono" id="cpininfo"></div></div>
+    <div class="note" id="cnote"></div>
+    <div class="row"><button id="cgo">Create offer</button></div>
+  </div>
+</section>
+
+<!-- OFFERS -->
+<section id="t-offers" class="hide">
+  <div class="card">
+    <h2>My offers</h2>
+    <div class="row" style="margin-top:0"><button class="sec sm" id="oref">Refresh</button></div>
+    <div id="olist" class="mut">Connect a wallet to see your offers.</div>
+  </div>
+  <div class="card">
+    <h2>Send dSOS (wallet-style)</h2>
+    <div class="mut">Sends sendable S slices (more than 7200 blocks left). Uses the standard transfer(to, n).</div>
+    <label>To</label><input id="sto" class="mono" placeholder="0x…">
+    <label>Slices</label><input id="sn" type="number" min="1" step="1" value="1">
+    <div class="row"><button id="sgo">Send</button></div>
+  </div>
+</section>
+
+<!-- BROWSE -->
+<section id="t-browse" class="hide">
+  <div class="card">
+    <h2>Latest offers</h2>
+    <div class="row" style="margin-top:0"><button class="sec sm" id="bref">Refresh</button><span class="mut">Newest 20 ids. Sales are A/B escrows; offers are held slices.</span></div>
+    <div id="blist"></div>
+  </div>
+</section>
+
+<!-- SYNC -->
+<section id="t-sync" class="hide">
+  <div class="card">
+    <h2>Confirm SOS records (A / B sales)</h2>
+    <label style="margin-top:0">Sale id</label>
+    <input id="yid" type="number" min="1" step="1" inputmode="numeric">
+    <label>Seller address</label>
+    <input id="yseller" class="mono" placeholder="defaults to your connected wallet">
+    <div class="row"><button id="yload">Load</button></div>
+    <div id="yinfo"></div>
+  </div>
+</section>
+
+<!-- CREDITS -->
+<section id="t-credits" class="hide">
+  <div class="card">
+    <h2>Credits &amp; stake</h2>
+    <div class="grid" id="credStats"></div>
+    <div class="row"><button id="csync">Form credits</button></div>
+    <label>Redeem credits (1 credit = 0.001 ETH from the pool)</label>
+    <input id="credn" type="number" min="1" step="1" value="1">
+    <div class="row"><button id="credgo">Redeem</button></div>
+  </div>
+  <div class="card">
+    <h2>Become staked</h2>
+    <div class="mut">A gate offer (G, 1-block delay) worth more than the gate requirement, left unredeemed until expiry and swept, stakes the donor. The ETH goes to the pool. Cooldown before redeeming credits: 14400 blocks.</div>
+    <div class="grid" id="stakeStats" style="margin-top:10px"></div>
+    <div class="row"><button id="stakego">Create gate offer (stake)</button><button class="sec" id="stakesweep">Sweep my expired offers</button></div>
+    <div class="note">Cost is the full stake requirement, paid into the pool and not refundable. The gate requirement moves with the pool, so the amount may change before you confirm.</div>
+  </div>
+  <div class="card">
+    <h2>Donate to pool</h2>
+    <label style="margin-top:0">Amount (ETH)</label><input id="don" type="number" min="0" step="any" value="0.001">
+    <div class="row"><button class="sec" id="dongo">Send ETH to pool</button></div>
+  </div>
+</section>
+
+<!-- LEDGER -->
+<section id="t-ledger" class="hide">
+  <div class="card">
+    <h2>SOS69069 ledger</h2>
+    <div class="mut mono">0x7373DBC24Dcd785896E8Ac3d5372c6ced9B75a8A</div>
+    <div class="grid" id="ledStats" style="margin-top:10px"></div>
+  </div>
+  <div class="card">
+    <h2>Write a record</h2>
+    <div class="mut">Signs an EIP-712 record with your wallet (no gas for the signature) and submits it. Each record: +1 Push for you, +1 Trust for the receiver.</div>
+    <label>Signer (you)</label><div class="mono" id="lsigner">connect wallet</div>
+    <label>Intended to</label><input id="lto" class="mono" placeholder="0x… receiver of the record">
+    <label>Payload hash (bytes32)</label><input id="lpay" class="mono"><div class="row"><button class="sec sm" id="lrand">New random hash</button></div>
+    <label>Metadata (max 64 bytes, optional)</label><input id="lmeta" maxlength="64">
+    <div class="row"><button id="lwrite">Sign &amp; write</button></div>
+  </div>
+</section>
+
+<!-- LOOKUP -->
+<section id="t-lookup" class="hide">
+  <div class="card">
+    <h2>Look up an id</h2>
+    <label style="margin-top:0">Offer / sale id</label>
+    <input id="lid" type="number" min="1" step="1" inputmode="numeric">
+    <div class="row"><button id="lgo">Read</button><button class="sec" id="lsweep">Sweep this id</button></div>
+    <div id="lout"></div>
+  </div>
+  <div class="card">
+    <h2>Address lookup</h2>
+    <label style="margin-top:0">Address</label><input id="aaddr" class="mono" placeholder="0x…">
+    <div class="row"><button id="ago">Read</button></div>
+    <div id="aout"></div>
+  </div>
+</section>
+
+<div id="status"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+<script>
+const {ethers} = window;
+const BN = ethers.BigNumber, ZERO = ethers.constants.AddressZero;
+const UNIT = ethers.utils.parseEther("0.001");
+const DEAD = "0x000000000000000000000000000000000000dEaD";
+const LEDGER = "0x7373DBC24Dcd785896E8Ac3d5372c6ced9B75a8A";
+const BLOCKS_DAY = 7200, SEND_WINDOW = 7200;
+const KIND = ["G","S","A","B"];
+
+const ABI = [
+ "function createOfferS(address to,uint256 delayBlocks,uint256 expectedNonce) payable",
+ "function createOfferGated(address to,uint256 delayBlocks,bytes32 pinCommitment_,uint256 expectedNonce) payable",
+ "function createOfferA(uint256 delayBlocks,uint256 slicesPerRecord,uint256 expectedNonce) payable",
+ "function createOfferB(address to,uint256 delayBlocks,uint256 slicesPerRecord,uint256 expectedNonce) payable",
+ "function syncRecords(uint256 id,uint256 n,uint256 expectedNonce) returns (uint256 taken)",
+ "function transferOffer(uint256 id,address to,uint256 expectedNonce)",
+ "function transferSlices(uint256 id,uint256 slices,address to,uint256 expectedNonce)",
+ "function redeemOffer(uint256 id,bytes32 pin,uint256 expectedNonce)",
+ "function redeemSlices(uint256 id,uint256 slices,bytes32 pin,uint256 expectedNonce)",
+ "function sweepOffer(uint256 id,uint256 expectedNonce)",
+ "function syncCredits() returns (uint256 formed)",
+ "function redeemCredit(uint256 creditsToSpend,uint256 expectedNonce)",
+ "function transfer(address to,uint256 n) returns (bool)",
+ "function offers(uint256 id) view returns (address donor,address holder,uint256 principal,bool active,uint8 kind,uint64 createdAt,uint64 sweepableAt,uint256 count)",
+ "function sales(uint256 id) view returns (address donor,address target,uint8 kind,bool active,uint256 slicesLeft,uint256 slicesPerRecord,uint256 recordsLeft,uint64 createdAt,uint64 sweepableAt,bytes32 salt)",
+ "function recordPayloadHash(uint256 id,address seller,uint256 index) view returns (bytes32)",
+ "function allowanceOf(address) view returns (uint256)",
+ "function offerIdsOf(address) view returns (uint256[])",
+ "function sweepableOffers(address) view returns (uint256[])",
+ "function redemptionCredits(address) view returns (uint256)",
+ "function formableCredits(address) view returns (uint256)",
+ "function pendingCredits(address) view returns (uint256)",
+ "function lastTrust(address) view returns (uint256)",
+ "function canRedeem(address) view returns (bool)",
+ "function staked(address) view returns (bool)",
+ "function stakedAt(address) view returns (uint64)",
+ "function balanceOf(address) view returns (uint256)",
+ "function produced(address) view returns (uint256)",
+ "function redeemed(address) view returns (uint256)",
+ "function redeemNonce(address) view returns (uint256)",
+ "function earnedOffer(uint256,address) view returns (uint256)",
+ "function nextRecord(uint256,address) view returns (uint256)",
+ "function nextOfferId() view returns (uint64)",
+ "function totalEarmarked() view returns (uint256)",
+ "function totalSupply() view returns (uint256)",
+ "function poolBalance() view returns (uint256)",
+ "function unallocatedBalance() view returns (uint256)",
+ "function gateRequirement() view returns (uint256)",
+ "function stakeRequirement() view returns (uint256)",
+ "function name() view returns (string)",
+ "function symbol() view returns (string)",
+ "error ZeroAddress()","error ZeroAmount()","error InvalidValue()","error BadRate()","error BadTarget()","error BadDelay()",
+ "error BadNonce()","error OfferNotActive()","error OfferFull()","error NotHolder()","error NotTransferable()",
+ "error SendWindowClosed()","error SelfTransfer()","error InsufficientSlices()","error InsufficientCredits()","error OverCap()",
+ "error BadOfferPin()","error TooEarly()","error WindowClosed()","error TooManyOffers()","error NotStaked()",
+ "error NotEnoughSendable()","error PoolTooThin()","error RecordNotFound()","error LedgerMissing()","error TransferFailed()","error Reentrant()"
+];
+const LEDGER_ABI = [
+ "function recordStructHash(address signer,address intendedTo,bytes32 payloadHash,string metadata) pure returns (bytes32)",
+ "function isRecordHashUsed(bytes32 structHash) view returns (bool)",
+ "function trustCountOf(address user) view returns (uint256)",
+ "function pushCountOf(address) view returns (uint256)",
+ "function effectiveOf(address) view returns (int256)",
+ "function balanceOf(address) view returns (uint256)",
+ "function totalRecorded() view returns (uint256)",
+ "function recordSignature(address signer,address intendedTo,bytes32 payloadHash,bytes signature,string metadata)",
+ "function recordSignatureOne(address signer,address intendedTo,bytes32[] payloadHashes,bytes[] signatures,string[] metadatas)"
+];
+const LEDGER_ERRS = ["error NoETHAccepted()","error InvalidSignature()","error LengthMismatch()","error EmptyBatch()","error BatchTooLarge()","error MetadataTooLong()","error DuplicatePayloadHash()"];
+const ERR_HELP = {
+ BadNonce:"Nonce changed – a previous transaction is probably still pending. Wait and retry.",
+ InvalidValue:"Value must be a non-zero multiple of 0.001 ETH.",
+ BadRate:"Slices per record must be ≥1 and divide the funded slices exactly.",
+ BadDelay:"Delay too large.",
+ WindowClosed:"The offer has expired.",
+ TooEarly:"Not expired yet (or stake cooldown not over).",
+ OfferNotActive:"Offer is not active.",
+ NotHolder:"You are not the holder / allowed seller.",
+ OverCap:"A/B redeem is capped by what you produced (see Overview → allowance).",
+ BadOfferPin:"Wrong PIN (G offers need the exact PIN, donor and receiver).",
+ SendWindowClosed:"Less than 1 day left – S offer can no longer be sent.",
+ NotTransferable:"Only S offers can be sent.",
+ RecordNotFound:"A required record is not on the SOS ledger yet.",
+ NotStaked:"Address is not staked.",
+ PoolTooThin:"Pool does not hold enough free ETH.",
+ InsufficientCredits:"Not enough credits.",
+ NotEnoughSendable:"Not enough sendable S slices.",
+ OfferFull:"All records for this sale are already confirmed.",
+ BadTarget:"Can't use the dSOS contract as target.",
+ DuplicatePayloadHash:"That exact record is already on the ledger.",
+ InvalidSignature:"Ledger rejected the signature (wrong signer/chain/data).",
+ MetadataTooLong:"Metadata is limited to 64 bytes.",
+ BatchTooLarge:"Max 200 records per batch."
+};
+
+const NETS = {
+ eth:{name:"Ethereum",chainId:1,sym:"ETH",ex:"https://etherscan.io",rpc:["https://ethereum-rpc.publicnode.com","https://eth.llamarpc.com","https://cloudflare-eth.com"]},
+ base:{name:"Base",chainId:8453,sym:"ETH",ex:"https://basescan.org",rpc:["https://mainnet.base.org","https://base-rpc.publicnode.com"]},
+ arb:{name:"Arbitrum One",chainId:42161,sym:"ETH",ex:"https://arbiscan.io",rpc:["https://arb1.arbitrum.io/rpc"]},
+ op:{name:"Optimism",chainId:10,sym:"ETH",ex:"https://optimistic.etherscan.io",rpc:["https://mainnet.optimism.io"]},
+ poly:{name:"Polygon",chainId:137,sym:"POL",ex:"https://polygonscan.com",rpc:["https://polygon-rpc.com"]},
+ bsc:{name:"BNB Chain",chainId:56,sym:"BNB",ex:"https://bscscan.com",rpc:["https://bsc-dataseed.binance.org"]},
+ sep:{name:"Sepolia (testnet)",chainId:11155111,sym:"ETH",ex:"https://sepolia.etherscan.io",rpc:["https://ethereum-sepolia-rpc.publicnode.com"]},
+ custom:{name:"Custom RPC…",chainId:null,sym:"ETH",ex:"",rpc:[]}
+};
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const short = a => a ? a.slice(0,6)+"…"+a.slice(-4) : "";
+const eth = bn => { const s = ethers.utils.formatEther(bn); return s.replace(/\.0$/,""); };
+const isAddr = a => ethers.utils.isAddress(a);
+const store = {
+  get(k,d){ try{ const v=localStorage.getItem("dsos_"+k); return v===null?d:v; }catch{ return d; } },
+  set(k,v){ try{ localStorage.setItem("dsos_"+k,v); }catch{} }
+};
+
+let net = NETS.eth, rp = null, cr = null, led = null, iface = new ethers.utils.Interface(ABI.concat(LEDGER_ERRS));
+let web3 = null, signer = null, cw = null, account = null, walletChain = null, curBlock = 0;
+let tab = "overview";
+
+/* ---------- status ---------- */
+function status(msg, cls, html){
+  const s = $("status"); s.className = "show " + (cls||"");
+  if (html) s.innerHTML = msg; else s.textContent = msg;
+}
+function errMsg(e){
+  if (!e) return "Unknown error";
+  if (e.code === 4001 || e.code === "ACTION_REJECTED") return "Rejected in wallet";
+  const seen = [];
+  const find = o => { if(!o||typeof o!=="object"||seen.includes(o)) return null; seen.push(o);
+    for (const k of ["data","error","body"]){ const v=o[k];
+      if (typeof v==="string" && /^0x[0-9a-fA-F]{8,}$/.test(v)) return v;
+      const r = find(v); if (r) return r; } return null; };
+  const data = find(e);
+  if (data){ try{ const p = iface.parseError(data); return p.name + (ERR_HELP[p.name]?" – "+ERR_HELP[p.name]:""); }catch{} }
+  return e.reason || e.error?.message || e.data?.message || e.message || String(e);
+}
+
+/* ---------- providers ---------- */
+function activeAddr(){ return $("caddr").value.trim(); }
+async function setupRead(){
+  const urls = net===NETS.custom ? [$("customrpc").value.trim()].filter(Boolean) : net.rpc;
+  if (!urls.length){ rp=null; cr=null; return false; }
+  for (const u of urls){
+    try{
+      const p = new ethers.providers.StaticJsonRpcProvider(u, net.chainId ? net.chainId : undefined);
+      const n = await Promise.race([p.getBlockNumber(), new Promise((_,r)=>setTimeout(()=>r(new Error("timeout")),6000))]);
+      if (net===NETS.custom){ const cid=(await p.getNetwork()).chainId; net.chainId=cid; }
+      rp = p; curBlock = n; break;
+    }catch(e){ rp=null; }
+  }
+  if (!rp){ status("Could not reach any RPC for "+net.name,"err"); return false; }
+  if (!isAddr(activeAddr())){ status("Invalid contract address","err"); return false; }
+  const a = ethers.utils.getAddress(activeAddr());
+  cr = new ethers.Contract(a, ABI, rp);
+  led = new ethers.Contract(LEDGER, LEDGER_ABI, rp);
+  if (signer) cw = new ethers.Contract(a, ABI, signer);
+  const code = await rp.getCode(a);
+  $("codewarn").innerHTML = code==="0x" ? `<div class="note">No contract at this address on ${esc(net.name)}. Pick the network where dSOS is deployed.</div>` : "";
+  if (code!=="0x"){ try{ $("tokname").textContent = "· "+await cr.name()+" ("+await cr.symbol()+")"; }catch{ $("tokname").textContent=""; } }
+  return code!=="0x";
+}
+
+async function connect(){
+  if (!window.ethereum){ status("No wallet found. Open this file in a browser with a wallet extension (MetaMask etc.) or a wallet's in-app browser.","err"); return; }
+  try{
+    web3 = new ethers.providers.Web3Provider(window.ethereum,"any");
+    await web3.send("eth_requestAccounts",[]);
+    signer = web3.getSigner();
+    account = ethers.utils.getAddress(await signer.getAddress());
+    walletChain = (await web3.getNetwork()).chainId;
+    if (cr) cw = new ethers.Contract(cr.address, ABI, signer);
+    window.ethereum.on?.("accountsChanged",()=>location.reload());
+    window.ethereum.on?.("chainChanged",()=>location.reload());
+    renderConn(); prefill(); refresh();
+  }catch(e){ status(errMsg(e),"err"); }
+}
+function renderConn(){
+  if (!account){ $("conn").textContent = "Wallet not connected (read-only)."; $("connect").textContent="Connect wallet"; return; }
+  const ok = walletChain===net.chainId;
+  $("connect").textContent = short(account);
+  $("conn").innerHTML = `Connected <span class="mono">${account}</span> · wallet chain ${walletChain} ` +
+    (ok?`<span class="pill ok">matches ${esc(net.name)}</span>`:`<span class="pill warn">differs – will ask to switch when sending</span>`);
+}
+async function ensureChain(){
+  if (!window.ethereum) throw new Error("No wallet");
+  const cur = parseInt(await window.ethereum.request({method:"eth_chainId"}),16);
+  if (cur===net.chainId) return;
+  const hex = "0x"+net.chainId.toString(16);
+  try{ await window.ethereum.request({method:"wallet_switchEthereumChain",params:[{chainId:hex}]}); }
+  catch(e){
+    if (e.code===4902){
+      await window.ethereum.request({method:"wallet_addEthereumChain",params:[{chainId:hex,chainName:net.name,nativeCurrency:{name:net.sym,symbol:net.sym,decimals:18},rpcUrls:net.rpc,blockExplorerUrls:net.ex?[net.ex]:[]}]});
+    } else throw e;
+  }
+  // rebuild signer after chain switch
+  web3 = new ethers.providers.Web3Provider(window.ethereum,"any");
+  signer = web3.getSigner(); cw = new ethers.Contract(cr.address, ABI, signer);
+  walletChain = net.chainId; renderConn();
+}
+
+/* ---------- tx helper ---------- */
+async function send(label, fn, args, value, opts={}){
+  try{
+    if (!account){ status("Connect a wallet first","err"); return; }
+    await ensureChain();
+    const a = [...args];
+    if (!opts.noNonce) a.push(await cr.redeemNonce(account));
+    const ov = value ? {value} : {};
+    status(`${label}: confirm in your wallet…`);
+    const t = await cw[fn](...a, ov);
+    status(`${label}: sent ${t.hash} – waiting for confirmation…`, "", false);
+    const r = await t.wait();
+    const link = net.ex ? ` <a href="${net.ex}/tx/${t.hash}" target="_blank" rel="noopener">view tx</a>` : "";
+    status(`${esc(label)}: confirmed in block ${r.blockNumber}.${link}`,"ok",true);
+    refresh();
+    return r;
+  }catch(e){ status(`${label} failed: ${errMsg(e)}`,"err"); }
+}
+
+/* ---------- helpers ---------- */
+function toPin(s){
+  s = s.trim();
+  if (!s) throw new Error("Enter a PIN");
+  if (/^0x[0-9a-fA-F]{64}$/.test(s)) return s;
+  return ethers.utils.keccak256(ethers.utils.toUtf8Bytes(s));
+}
+const stat = (label,val) => `<div class="stat"><b>${val}</b><span>${label}</span></div>`;
+function blocksLeft(sw){ const d = Number(sw)-curBlock; return d>0 ? `${d} blocks left (~${(d/BLOCKS_DAY).toFixed(2)} d)` : `expired (sweepable)`; }
+function kindName(k){ return KIND[Number(k)]; }
+
+/* ---------- tabs ---------- */
+const TABS = [["overview","Overview"],["create","Create"],["offers","My offers"],["browse","Browse"],["sync","Confirm records"],["credits","Credits"],["ledger","Ledger"],["lookup","Lookup"]];
+$("tabs").innerHTML = TABS.map(([k,l])=>`<button data-tab="${k}">${l}</button>`).join("");
+function showTab(k){
+  tab = k;
+  TABS.forEach(([t])=>$("t-"+t).classList.toggle("hide",t!==k));
+  document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("on",b.dataset.tab===k));
+  refresh();
+}
+$("tabs").onclick = e => { const b=e.target.closest("button"); if(b) showTab(b.dataset.tab); };
+
+/* ---------- network select ---------- */
+for (const k in NETS){ const o=document.createElement("option"); o.value=k; o.textContent=NETS[k].name; $("net").appendChild(o); }
+$("net").onchange = async e => {
+  store.set("net",e.target.value); net = NETS[e.target.value]; $("customrpc").classList.toggle("hide", net!==NETS.custom);
+  renderConn(); await setupRead(); refresh();
+};
+$("customrpc").onchange = async () => { store.set("rpc",$("customrpc").value.trim()); await setupRead(); refresh(); };
+$("caddr").onchange = async () => { store.set("addr",$("caddr").value.trim()); await setupRead(); refresh(); };
+$("connect").onclick = connect;
+
+/* ---------- refresh dispatcher ---------- */
+async function refresh(){
+  if (!cr) return;
+  try{ curBlock = await rp.getBlockNumber(); }catch{}
+  try{
+    if (tab==="overview") await loadOverview();
+    if (tab==="offers") await loadOffers();
+    if (tab==="browse") await loadBrowse();
+    if (tab==="credits") await loadCredits();
+    if (tab==="ledger") await loadLedger();
+    if (tab==="create") updateCreate();
+  }catch(e){ status("Read failed: "+errMsg(e),"err"); }
+}
+
+/* ---------- overview ---------- */
+async function loadOverview(){
+  const [pool,unal,earm,sup,next,gate,stake] = await Promise.all([cr.poolBalance(),cr.unallocatedBalance(),cr.totalEarmarked(),cr.totalSupply(),cr.nextOfferId(),cr.gateRequirement(),cr.stakeRequirement()]);
+  $("poolStats").innerHTML =
+    stat("Contract balance", eth(pool)+" "+net.sym) + stat("Free pool (unallocated)", eth(unal)+" "+net.sym) +
+    stat("Earmarked in offers", eth(earm)+" "+net.sym) + stat("Total slices (dSOS)", sup.toString()) +
+    stat("Next offer id", next.toString()) + stat("Gate requirement (>)", eth(gate)+" "+net.sym) +
+    stat("Cheapest stake", eth(stake)+" "+net.sym) + stat("Block", curBlock);
+  if (!account){ $("meStats").innerHTML=""; $("meNote").textContent="Connect a wallet to see your numbers."; return; }
+  const [bal,nonce,prod,red,allow,st,cred,pend] = await Promise.all([cr.balanceOf(account),cr.redeemNonce(account),cr.produced(account),cr.redeemed(account),cr.allowanceOf(account),cr.staked(account),cr.redemptionCredits(account),cr.pendingCredits(account)]);
+  $("meStats").innerHTML =
+    stat("dSOS slices held", bal.toString()+" ("+eth(bal.mul(UNIT))+" "+net.sym+")") + stat("Nonce", nonce.toString()) +
+    stat("Produced (A/B funded)", prod.toString()) + stat("Redeemed (A/B)", red.toString()) +
+    stat("A/B allowance left", allow.toString()) + stat("Staked", st?"yes":"no") +
+    stat("Credits", cred.toString()) + stat("Credits incl. formable", pend.toString());
+  $("meNote").innerHTML = `<span class="mono">${account}</span>`;
+}
+
+/* ---------- create ---------- */
+function updateCreate(){
+  const k = $("ckind").value;
+  $("cto-w").classList.toggle("hide", k==="A");
+  $("cper-w").classList.toggle("hide", !(k==="A"||k==="B"));
+  $("cpin-w").classList.toggle("hide", k!=="G");
+  const sl = parseInt($("cslices").value)||0;
+  $("ceth").textContent = sl>0 ? `Value: ${eth(UNIT.mul(sl))} ${net.sym}` : "";
+  const d = parseInt($("cdelay").value)||0;
+  $("cdelayinfo").textContent = d>0 ? `≈ ${(d/BLOCKS_DAY).toFixed(2)} days. Expiry cannot be changed later; 0 becomes 1 block.` : "";
+  const notes = {
+    S:"S: slices are held by the receiver and redeemed for free (no records). Sendable while more than 1 day remains. Unredeemed slices go to the pool after expiry.",
+    A:"A: ETH is escrowed. Any seller writes SOS records addressed to you and confirms them (Confirm records tab) to earn slices. Unconfirmed ETH goes to the POOL after expiry, not back to you. Funded slices also raise YOUR A/B allowance.",
+    B:"B: like A, but only the named address can confirm records. Unconfirmed ETH goes to the POOL after expiry.",
+    G:"G: redeemable only with the PIN by the receiver. If unredeemed and swept it goes to the pool, and a gate offer (1-block delay, value above the gate requirement) stakes you. Keep the PIN safe."
+  };
+  $("cnote").textContent = notes[k];
+}
+["ckind","cslices","cdelay","cper","cpin"].forEach(id=>$(id).addEventListener("input",updateCreate));
+document.querySelectorAll("[data-delay]").forEach(b=>b.onclick=()=>{ $("cdelay").value=b.dataset.delay; updateCreate(); });
+$("cme").onclick = () => { if(account){ $("cto").value=account; } else status("Connect a wallet first","err"); };
+$("cpingen").onclick = () => { $("cpin").value = ethers.utils.hexlify(ethers.utils.randomBytes(32)); $("cpininfo").textContent="Save this PIN – it is needed to redeem."; };
+$("cgo").onclick = async () => {
+  try{
+    const k = $("ckind").value;
+    const sl = parseInt($("cslices").value); if(!(sl>0)) throw new Error("Slices must be ≥ 1");
+    const value = UNIT.mul(sl);
+    const delay = parseInt($("cdelay").value)||0;
+    let to = $("cto").value.trim(); if (to && !isAddr(to)) throw new Error("Invalid receiver address");
+    if (k==="A"){
+      const per = parseInt($("cper").value); if(!(per>0) || sl%per!==0) throw new Error("Slices must divide exactly by slices per record");
+      return send("Create A","createOfferA",[delay,per],value);
+    }
+    if (k==="B"){
+      const per = parseInt($("cper").value); if(!(per>0) || sl%per!==0) throw new Error("Slices must divide exactly by slices per record");
+      return send("Create B","createOfferB",[to||ZERO,delay,per],value);
+    }
+    if (k==="S") return send("Create S","createOfferS",[to||ZERO,delay],value);
+    if (k==="G"){
+      if (!account) throw new Error("Connect a wallet first");
+      const pin = toPin($("cpin").value);
+      const finalTo = to ? ethers.utils.getAddress(to) : DEAD;
+      const commit = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(["bytes32","address","address"],[pin,account,finalTo]));
+      $("cpininfo").textContent = "PIN (bytes32): "+pin;
+      return send("Create G","createOfferGated",[to||ZERO,delay,commit],value);
+    }
+  }catch(e){ status(errMsg(e),"err"); }
+};
+
+/* ---------- my offers ---------- */
+function offerCard(id, o, mine){
+  const kind = kindName(o.kind), rem = Number(o.sweepableAt)-curBlock;
+  const expired = rem<=0;
+  let h = `<div class="offer" data-id="${id}"><div class="top"><div><b>#${id}</b> <span class="pill">${kind}</span> ${o.active?'<span class="pill ok">active</span>':'<span class="pill err">closed</span>'}</div><div class="mut">${o.count.toString()} slices · ${eth(o.principal)} ${net.sym}</div></div>
+   <div class="mut">holder <span class="mono">${short(o.holder)}</span> · donor <span class="mono">${short(o.donor)}</span> · expiry block ${o.sweepableAt} (${blocksLeft(o.sweepableAt)})</div>`;
+  if (mine && o.active){
+    h += `<div class="row">`;
+    if (kind==="G") h += `<input class="grow mono" data-f="pin" placeholder="PIN (hex or passphrase)">`;
+    h += `<input class="grow" data-f="n" type="number" min="1" step="1" placeholder="slices (empty = all)" style="max-width:170px">`;
+    h += `<button class="sm" data-act="redeem" ${expired?"disabled":""}>Redeem</button>`;
+    h += `<button class="sm sec" data-act="sweep" ${expired?"":"disabled"}>Sweep</button></div>`;
+    if (kind==="S" && rem>SEND_WINDOW){
+      h += `<div class="row"><input class="grow mono" data-f="to" placeholder="send to 0x…"><button class="sm sec" data-act="send">Send (n or all)</button></div>`;
+    }
+  }
+  return h+"</div>";
+}
+async function loadOffers(){
+  if (!account){ $("olist").textContent="Connect a wallet to see your offers."; return; }
+  const ids = await cr.offerIdsOf(account);
+  if (!ids.length){ $("olist").textContent="You hold no active offers."; return; }
+  const list = await Promise.all(ids.map(id=>cr.offers(id)));
+  $("olist").innerHTML = ids.map((id,i)=>offerCard(id.toString(),list[i],true)).join("");
+}
+$("oref").onclick = refresh;
+$("olist").onclick = e => {
+  const b = e.target.closest("button[data-act]"); if(!b) return;
+  const card = b.closest(".offer"), id = card.dataset.id, act = b.dataset.act;
+  const f = n => card.querySelector(`[data-f="${n}"]`)?.value.trim();
+  try{
+    if (act==="redeem"){
+      const pinEl = f("pin"); const pin = pinEl!==undefined ? toPin(pinEl) : ethers.constants.HashZero;
+      const n = f("n");
+      return n ? send("Redeem slices","redeemSlices",[id,n,pin]) : send("Redeem offer","redeemOffer",[id,pin]);
+    }
+    if (act==="sweep") return send("Sweep","sweepOffer",[id]);
+    if (act==="send"){
+      const to = f("to"); if(!isAddr(to)) throw new Error("Invalid recipient");
+      const n = f("n");
+      return n ? send("Send slices","transferSlices",[id,n,to]) : send("Send offer","transferOffer",[id,to]);
+    }
+  }catch(e){ status(errMsg(e),"err"); }
+};
+$("sgo").onclick = () => {
+  const to=$("sto").value.trim(), n=$("sn").value;
+  if(!isAddr(to)) return status("Invalid recipient","err");
+  send("Send dSOS","transfer",[to,n],null,{noNonce:true});
+};
+
+/* ---------- browse ---------- */
+async function loadBrowse(){
+  const next = Number(await cr.nextOfferId());
+  const ids = []; for(let i=next-1;i>=Math.max(1,next-20);i--) ids.push(i);
+  if (!ids.length){ $("blist").innerHTML='<div class="mut" style="margin-top:10px">Nothing created yet.</div>'; return; }
+  const rows = await Promise.all(ids.map(async id=>{ const s=await cr.sales(id); if (s.donor!==ZERO) return {id,sale:s}; return {id,offer:await cr.offers(id)}; }));
+  $("blist").innerHTML = rows.map(r=>{
+    if (r.sale){ const s=r.sale;
+      return `<div class="offer"><div class="top"><div><b>#${r.id}</b> <span class="pill warn">sale ${kindName(s.kind)}</span> ${s.active?'<span class="pill ok">open</span>':'<span class="pill err">closed</span>'}</div><div class="mut">${s.slicesLeft} slices left · ${s.slicesPerRecord} per record · ${s.recordsLeft} records</div></div>
+      <div class="mut">donor <span class="mono">${short(s.donor)}</span>${kindName(s.kind)==="B"?` · seller <span class="mono">${short(s.target)}</span>`:""} · ${blocksLeft(s.sweepableAt)}</div>
+      <div class="row"><button class="sm sec" data-go="sync" data-id="${r.id}">Confirm records</button><button class="sm sec" data-go="lookup" data-id="${r.id}">Lookup</button></div></div>`; }
+    return offerCard(r.id,r.offer,false);
+  }).join("");
+}
+$("bref").onclick = refresh;
+$("blist").onclick = e => { const b=e.target.closest("[data-go]"); if(!b) return;
+  if (b.dataset.go==="sync"){ $("yid").value=b.dataset.id; showTab("sync"); loadSync(); }
+  else { $("lid").value=b.dataset.id; showTab("lookup"); lookup(); } };
+
+/* ---------- sync records ---------- */
+async function loadSync(){
+  const out = $("yinfo");
+  try{
+    const id = parseInt($("yid").value); if(!(id>0)) throw new Error("Enter a sale id");
+    const s = await cr.sales(id); if (s.donor===ZERO) throw new Error("Not an A/B sale id");
+    let seller = $("yseller").value.trim() || account; if(!seller || !isAddr(seller)) throw new Error("Connect a wallet or enter a seller address");
+    seller = ethers.utils.getAddress(seller);
+    const next = (await cr.nextRecord(id,seller)).toNumber();
+    const idx = Array.from({length:10},(_,i)=>next+i);
+    const rows = await Promise.all(idx.map(async i=>{
+      const ph = await cr.recordPayloadHash(id,seller,i);
+      let used=false; try{ const sh = await led.recordStructHash(seller,s.donor,ph,""); used = await led.isRecordHashUsed(sh); }catch{ used=null; }
+      return {i,ph,used};
+    }));
+    let ready=0; for(const r of rows){ if(r.used===true) ready++; else break; }
+    const maxN = Math.min(ready, s.recordsLeft.toNumber());
+    out.innerHTML = `
+     <div class="grid" style="margin-top:12px">${stat("Kind",kindName(s.kind)+(s.active?" · open":" · closed"))+stat("Records left",s.recordsLeft.toString())+stat("Slices per record",s.slicesPerRecord.toString())+stat("Next record index",next)+stat("Expiry",blocksLeft(s.sweepableAt))}</div>
+     <div class="note">To earn slices, the seller (<span class="mono">${short(seller)}</span>) must write each record to the SOS69069 ledger: <b>signer</b> = seller, <b>intendedTo</b> = <span class="mono">${s.donor}</span>, <b>metadata</b> = empty, <b>payloadHash</b> = the hash below. Then confirm here. ${kindName(s.kind)==="B"?"Only "+short(s.target)+" can confirm.":""}</div>
+     <table><tr><th>#</th><th>payloadHash to sign</th><th>On ledger</th></tr>
+     ${rows.map(r=>`<tr><td>${r.i}</td><td class="mono copy" data-copy="${r.ph}">${r.ph}</td><td>${r.used===true?'<span class="pill ok">yes</span>':r.used===false?'<span class="pill">no</span>':'<span class="pill warn">?</span>'}</td></tr>`).join("")}</table>
+     <div class="mut" style="margin-top:6px">Tap a hash to copy. Ready to confirm in order: ${ready}.</div>
+     <label>Records to confirm now</label><input id="yn" type="number" min="1" step="1" value="${Math.max(1,maxN)}">
+     <div class="row"><button id="ygo" ${maxN>0&&account?"":"disabled"}>Confirm records</button></div>
+     <h3>Write records to the SOS ledger</h3>
+     <div class="mut">Signs each record in your wallet (one signature popup per record, free – no gas), then submits them together to the ledger in one transaction. Signer = you, intendedTo = the offer creator, metadata empty.</div>
+     <label>How many records (starting at index ${next})</label><input id="ywn" type="number" min="1" max="50" step="1" value="${Math.max(1,Math.min(5,s.recordsLeft.toNumber()))}">
+     <div class="row"><button id="ywc" ${(account&&seller===account&&s.active)?"":"disabled"}>Sign, write &amp; confirm</button><button class="sec" id="ywrite" ${(account&&seller===account&&s.active)?"":"disabled"}>Sign &amp; write only</button></div>
+     <div class="mut">Needs your connected wallet to be the seller${kindName(s.kind)==="B"?" ("+short(s.target)+")":""}. Only the next records not yet on the ledger are signed.</div>`;
+    $("ygo").onclick = () => send("Confirm records","syncRecords",[id,$("yn").value]);
+    $("ywrite").onclick = () => writeRecords(id, parseInt($("ywn").value)||1, false);
+    $("ywc").onclick = () => writeRecords(id, parseInt($("ywn").value)||1, true);
+  }catch(e){ out.innerHTML = `<div class="note">${esc(errMsg(e))}</div>`; }
+}
+$("yload").onclick = loadSync;
+document.addEventListener("click",e=>{ const c=e.target.closest("[data-copy]"); if(c){ navigator.clipboard?.writeText(c.dataset.copy).then(()=>status("Copied","ok")); } });
+
+/* ---------- credits ---------- */
+async function loadCredits(){
+  const [stake,gate,unal] = await Promise.all([cr.stakeRequirement(),cr.gateRequirement(),cr.unallocatedBalance()]);
+  $("stakeStats").innerHTML = stat("Stake requirement", eth(stake)+" "+net.sym)+stat("Gate requirement (>)", eth(gate)+" "+net.sym)+stat("Free pool", eth(unal)+" "+net.sym);
+  if (!account){ $("credStats").innerHTML='<div class="mut">Connect a wallet.</div>'; return; }
+  const [st,at,can,cred,form,last] = await Promise.all([cr.staked(account),cr.stakedAt(account),cr.canRedeem(account),cr.redemptionCredits(account),cr.formableCredits(account),cr.lastTrust(account)]);
+  const cool = st ? Math.max(0, Number(at)+14400-curBlock) : null;
+  $("credStats").innerHTML = stat("Staked", st?"yes":"no") + stat("Can redeem now", can?"yes":(st?`in ${cool} blocks`:"no")) +
+    stat("Credits", cred.toString()) + stat("Formable (new trust records)", form.toString()) + stat("Trust counted so far", last.toString());
+}
+$("csync").onclick = () => send("Form credits","syncCredits",[],null,{noNonce:true});
+$("credgo").onclick = () => send("Redeem credits","redeemCredit",[$("credn").value]);
+$("stakego").onclick = async () => {
+  try{
+    if(!account) throw new Error("Connect a wallet first");
+    const val = await cr.stakeRequirement();
+    if (!confirm(`Create a 1-block gate offer for ${eth(val)} ${net.sym}? This amount goes to the pool and is not refundable. After it expires, sweep it to become staked. Do NOT redeem it.`)) return;
+    const pin = ethers.utils.hexlify(ethers.utils.randomBytes(32));
+    const commit = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(["bytes32","address","address"],[pin,account,DEAD]));
+    await send("Stake (gate offer)","createOfferGated",[ZERO,1,commit],val);
+  }catch(e){ status(errMsg(e),"err"); }
+};
+$("stakesweep").onclick = async () => {
+  try{
+    if(!account) throw new Error("Connect a wallet first");
+    const ids = await cr.sweepableOffers(DEAD);
+    const mine = [];
+    for (const id of ids){ const o = await cr.offers(id); if (o.donor===account) mine.push(id); }
+    if (!mine.length) return status("No expired offers of yours found under the DEAD holder yet. Wait a block after creating, then retry.","");
+    await send("Sweep #"+mine[0].toString(),"sweepOffer",[mine[0]]);
+  }catch(e){ status(errMsg(e),"err"); }
+};
+$("dongo").onclick = async () => {
+  try{
+    if(!account) throw new Error("Connect a wallet first");
+    await ensureChain();
+    const v = ethers.utils.parseEther($("don").value||"0"); if(v.lte(0)) throw new Error("Amount must be > 0");
+    status("Donate: confirm in your wallet…");
+    const t = await signer.sendTransaction({to:cr.address,value:v}); await t.wait();
+    status("Donation confirmed: "+t.hash,"ok"); refresh();
+  }catch(e){ status(errMsg(e),"err"); }
+};
+
+/* ---------- lookup ---------- */
+function kv(o, keys){ return `<table>${keys.map(k=>`<tr><td class="mut">${k}</td><td class="mono">${esc(o[k]?.toString?.() ?? o[k])}</td></tr>`).join("")}</table>`; }
+async function lookup(){
+  try{
+    const id = parseInt($("lid").value); if(!(id>0)) throw new Error("Enter an id");
+    const s = await cr.sales(id);
+    if (s.donor!==ZERO){
+      $("lout").innerHTML = `<h3>Sale (A/B escrow) #${id}</h3>`+kv({kind:kindName(s.kind),...s},["kind","donor","target","active","slicesLeft","slicesPerRecord","recordsLeft","createdAt","sweepableAt","salt"]);
+      return;
+    }
+    const o = await cr.offers(id);
+    if (o.donor===ZERO) { $("lout").innerHTML='<div class="note">No offer or sale with this id.</div>'; return; }
+    $("lout").innerHTML = `<h3>Offer #${id}</h3>`+kv({kind:kindName(o.kind),...o,principal:eth(o.principal)+" "+net.sym},["kind","donor","holder","principal","count","active","createdAt","sweepableAt"])+`<div class="mut">${blocksLeft(o.sweepableAt)}</div>`;
+  }catch(e){ $("lout").innerHTML=`<div class="note">${esc(errMsg(e))}</div>`; }
+}
+$("lgo").onclick = lookup;
+$("lsweep").onclick = () => { const id=$("lid").value; if(id) send("Sweep","sweepOffer",[id]); };
+$("ago").onclick = async () => {
+  try{
+    const a = $("aaddr").value.trim(); if(!isAddr(a)) throw new Error("Invalid address");
+    const [bal,nonce,prod,red,st,cred,pend,ids] = await Promise.all([cr.balanceOf(a),cr.redeemNonce(a),cr.produced(a),cr.redeemed(a),cr.staked(a),cr.redemptionCredits(a),cr.pendingCredits(a),cr.offerIdsOf(a)]);
+    $("aout").innerHTML = `<div class="grid" style="margin-top:10px">${stat("Slices held",bal.toString())+stat("Nonce",nonce.toString())+stat("Produced",prod.toString())+stat("Redeemed",red.toString())+stat("Staked",st?"yes":"no")+stat("Credits",cred.toString())+stat("Credits incl. formable",pend.toString())}</div><div class="mut" style="margin-top:8px">Held offer ids: ${ids.length?ids.join(", "):"none"}</div>`;
+  }catch(e){ $("aout").innerHTML=`<div class="note">${esc(errMsg(e))}</div>`; }
+};
+
+/* ---------- ledger signing / writing ---------- */
+function ledW(){ return new ethers.Contract(LEDGER, LEDGER_ABI, signer); }
+async function signRecord(to, ph, md){
+  const domain = {name:"69069",version:"1",chainId:net.chainId,verifyingContract:LEDGER};
+  const types = {Record:[{name:"signer",type:"address"},{name:"intendedTo",type:"address"},{name:"payloadHash",type:"bytes32"},{name:"metadataHash",type:"bytes32"}]};
+  const val = {signer:account,intendedTo:to,payloadHash:ph,metadataHash:ethers.utils.keccak256(ethers.utils.toUtf8Bytes(md))};
+  const sig = await signer._signTypedData(domain,types,val);
+  if (ethers.utils.verifyTypedData(domain,types,val,sig).toLowerCase()!==account.toLowerCase()) throw new Error("Signature check failed");
+  return sig;
+}
+async function run(label, fn){
+  try{
+    status(label+": confirm in your wallet…");
+    const t = await fn();
+    status(label+": sent "+t.hash+" – waiting for confirmation…");
+    const r = await t.wait();
+    const link = net.ex ? ` <a href="${net.ex}/tx/${t.hash}" target="_blank" rel="noopener">view tx</a>` : "";
+    status(esc(label)+": confirmed in block "+r.blockNumber+"."+link,"ok",true);
+    return r;
+  }catch(e){ status(label+" failed: "+errMsg(e),"err"); return null; }
+}
+async function writeRecords(id, n, thenConfirm){
+  try{
+    if(!account) throw new Error("Connect a wallet first");
+    await ensureChain();
+    const s = await cr.sales(id);
+    if(s.donor===ZERO) throw new Error("Not an A/B sale");
+    if(!s.active) throw new Error("Sale is closed");
+    curBlock = await rp.getBlockNumber();
+    if(curBlock>=Number(s.sweepableAt)) throw new Error("Sale expired");
+    if(kindName(s.kind)==="B" && s.target.toLowerCase()!==account.toLowerCase()) throw new Error("Only "+s.target+" can sell to this B offer");
+    n = Math.min(n, s.recordsLeft.toNumber()); if(!(n>0)) throw new Error("Nothing left to confirm");
+    const next = (await cr.nextRecord(id,account)).toNumber();
+    const hashes = await Promise.all(Array.from({length:n},(_,i)=>cr.recordPayloadHash(id,account,next+i)));
+    const used = await Promise.all(hashes.map(async ph=>led.isRecordHashUsed(await led.recordStructHash(account,s.donor,ph,""))));
+    const todo = hashes.filter((_,i)=>!used[i]);
+    if (todo.length){
+      const sigs = [];
+      for (let i=0;i<todo.length;i++){ status(`Sign record ${i+1} of ${todo.length} in your wallet…`); sigs.push(await signRecord(s.donor,todo[i],"")); }
+      const r = await run(`Write ${todo.length} record(s) to ledger`, ()=>ledW().recordSignatureOne(account,s.donor,todo,sigs,todo.map(()=>"")));
+      if(!r) return;
+    }
+    if (thenConfirm) await send("Confirm records","syncRecords",[id,n]);
+    else status(todo.length?"Records written. Press Confirm records to claim your slices.":"Those records are already on the ledger.","ok");
+    loadSync();
+  }catch(e){ status(errMsg(e),"err"); }
+}
+async function loadLedger(){
+  const code = await rp.getCode(LEDGER);
+  if (code==="0x"){ $("ledStats").innerHTML = `<div class="note">No SOS69069 ledger at this address on ${esc(net.name)}.</div>`; return; }
+  let h = stat("Total records", (await led.totalRecorded()).toString());
+  if (account){
+    const [p,t,eff,bal] = await Promise.all([led.pushCountOf(account),led.trustCountOf(account),led.effectiveOf(account),led.balanceOf(account)]);
+    h += stat("Your Push (signed)",p.toString())+stat("Your Trust (received)",t.toString())+stat("Effective",eff.toString())+stat("SOS balance",bal.toString());
+  }
+  $("ledStats").innerHTML = h;
+  $("lsigner").textContent = account || "connect wallet";
+  if (!$("lpay").value) $("lpay").value = ethers.utils.hexlify(ethers.utils.randomBytes(32));
+  if (!$("lto").value) $("lto").value = store.get("lto","");
+}
+$("lrand").onclick = () => { $("lpay").value = ethers.utils.hexlify(ethers.utils.randomBytes(32)); };
+$("lwrite").onclick = async () => {
+  try{
+    if(!account) throw new Error("Connect a wallet first");
+    await ensureChain();
+    const to = $("lto").value.trim(); if(!isAddr(to)) throw new Error("Invalid receiver");
+    const ph = $("lpay").value.trim(); if(!/^0x[0-9a-fA-F]{64}$/.test(ph)) throw new Error("Payload hash must be 32-byte hex");
+    const md = $("lmeta").value; if (new TextEncoder().encode(md).length>64) throw new Error("Metadata over 64 bytes");
+    const sh = await led.recordStructHash(account,to,ph,md);
+    if (await led.isRecordHashUsed(sh)) throw new Error("This exact record is already on the ledger – use a new payload hash");
+    store.set("lto",to);
+    status("Sign the record in your wallet…");
+    const sig = await signRecord(ethers.utils.getAddress(to),ph,md);
+    const r = await run("Write record", ()=>ledW().recordSignature(account,ethers.utils.getAddress(to),ph,sig,md));
+    if (r){ $("lpay").value = ethers.utils.hexlify(ethers.utils.randomBytes(32)); loadLedger(); }
+  }catch(e){ status(errMsg(e),"err"); }
+};
+
+/* ---------- presets / prefill / persistence ---------- */
+function prefill(){
+  if(!account) return;
+  if(!$("cto").value) $("cto").value = account;
+  if(!$("yseller").value) $("yseller").value = account;
+  if(!$("aaddr").value) $("aaddr").value = account;
+}
+const PRESETS = {
+  S:{kind:"S",slices:10,delay:7200},
+  A1:{kind:"A",slices:10,delay:14400,per:1},
+  A2:{kind:"A",slices:100,delay:50400,per:5}
+};
+document.querySelectorAll("[data-preset]").forEach(b=>b.onclick=()=>{
+  const p = PRESETS[b.dataset.preset];
+  $("ckind").value=p.kind; $("cslices").value=p.slices; $("cdelay").value=p.delay; if(p.per) $("cper").value=p.per;
+  if (p.kind==="S" && account) $("cto").value=account;
+  updateCreate(); saveCreate();
+});
+const CREATE_FIELDS = ["ckind","cslices","cdelay","cper"];
+function saveCreate(){ CREATE_FIELDS.forEach(id=>store.set(id,$(id).value)); }
+CREATE_FIELDS.forEach(id=>$(id).addEventListener("input",saveCreate));
+function restoreSettings(){
+  const a = store.get("addr",""); if(a) $("caddr").value=a;
+  CREATE_FIELDS.forEach(id=>{ const v=store.get(id,""); if(v!=="") $(id).value=v; });
+  const k = store.get("net","");
+  if (k && NETS[k]){ net = NETS[k]; $("net").value=k; if(k==="custom"){ $("customrpc").classList.remove("hide"); $("customrpc").value=store.get("rpc",""); } }
+}
+async function detectNet(){
+  const a = activeAddr(); if(!isAddr(a)) return null;
+  const keys = Object.keys(NETS).filter(k=>k!=="custom");
+  const res = await Promise.all(keys.map(async k=>{
+    for (const u of NETS[k].rpc){
+      try{
+        const p = new ethers.providers.StaticJsonRpcProvider(u,NETS[k].chainId);
+        const c = await Promise.race([p.getCode(a),new Promise((_,r)=>setTimeout(()=>r(new Error("t")),5000))]);
+        return c!=="0x" ? k : null;
+      }catch{}
+    }
+    return null;
+  }));
+  return res.find(Boolean) || null;
+}
+async function autoConnect(){
+  if (!window.ethereum) return;
+  try{ const a = await window.ethereum.request({method:"eth_accounts"}); if (a && a.length) await connect(); }catch{}
+}
+
+/* ---------- boot ---------- */
+(async function(){
+  restoreSettings();
+  showTab("overview");
+  renderConn();
+  updateCreate();
+  if (!store.get("net","")){
+    status("Looking for the contract on common networks…");
+    const k = await detectNet();
+    if (k){ net = NETS[k]; $("net").value = k; store.set("net",k); status("Found the contract on "+net.name,"ok"); }
+    else status("Contract not found on the preset networks – pick the network or a custom RPC.","err");
+  }
+  await setupRead();
+  await autoConnect();
+  refresh();
+  setInterval(()=>{ if(cr && document.visibilityState==="visible" && (tab==="overview"||tab==="offers")) refresh(); },30000);
+})();
+</script>
+</body>
+</html>
