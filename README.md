@@ -1,77 +1,66 @@
-## SOS69069 dSOS
-https://drive.google.com/file/d/1LPFJhzGWkX2znQ4HL_Mw4pHqBzEbNzwM/view?usp=drivesdk
+**dSOS** is a fully permissionless, no-admin smart contract that turns SOS ledger records into redeemable ETH slices (and vice-versa), while also running a shared ETH pool that only staked users can draw from via credits.
 
-https://github.com/Taru8899/SOS69069dSOS/actions/runs/43736338542
+### Core Units
+- 1 **slice** = 1 **dSOS** = **0.001 ETH**
+- 1 **credit** = 0.001 ETH (from the pool)
+- Everything is measured in whole slices. `totalSupply × 0.001 ETH` always equals the ETH currently locked in active offers.
 
-0x7Bd7c427b3c69e2a09603573ac875987c61ECAB8
+### The Four Offer Types
 
-### Part 1 – Simple explanation
+| Type | Who holds the slices at creation? | How do you get ETH out? | Transferable? | Special rules |
+|------|-----------------------------------|--------------------------|---------------|---------------|
+| **S** | Chosen receiver | Free redeem (no records needed) | Yes (while > 1 day left) | Pure timed escrow / gift |
+| **A** | The contract itself (escrow) | Seller confirms records → earns slices → redeems | No | Open to any seller |
+| **B** | The contract itself (escrow) | Only the named address can confirm records | No | Named seller only |
+| **G** | Chosen receiver | Redeem requires the correct PIN | No | Can become a **gate** |
 
-dSOS is a shared ETH pool on Ethereum.  
+### Main Flows
 
-You can lock ETH into offers. Each offer is made of “slices”. One slice is always worth exactly 0.001 ETH. You can put many slices into one offer, so creating a large offer costs almost the same gas as a small one.
+**1. Creating an offer**
+- You send ETH (`msg.value` must be a multiple of 0.001 ETH).
+- The contract mints the corresponding number of slices and locks the ETH (`totalEarmarked`).
+- Delay of 0 becomes 1 block. Expiry is fixed at creation and cannot be changed.
 
-There are two kinds of offers:
+**2. A / B offers (record → slices)**
+1. Creator opens an A or B offer → ETH is escrowed, slices are minted to the contract.
+2. Seller writes records on the external SOS ledger with a very specific payload that includes the offer ID + a salt created at offer creation time.
+3. Seller calls `syncRecords` → contract checks the ledger, moves slices from the escrow into a personal offer belonging to the seller.
+4. Seller redeems those slices for ETH before expiry.
+5. After expiry anyone can `sweepOffer` → remaining unclaimed escrow goes into the pool forever.
 
-- **Normal offers (B, T, P)** – can be sent to other people and redeemed by the holder before they expire.
-- **Gated offers (G)** – locked with a secret PIN. Only the person who knows the PIN can redeem them. These cannot be transferred.
+**3. Redeeming**
+- Before the expiry block, the current holder of an offer can redeem any number of its slices for ETH.
+- G offers also require the correct PIN.
+- A/B redemptions are **capped** by how many slices that user previously funded (`produced` vs `redeemed`). This is the only “allowance” in the system.
+- S and G redemptions have no such cap.
 
-If nobody redeems an offer before the time limit, anyone can “sweep” it. The ETH then stays in the shared pool forever and the original owner loses it.
+**4. Sweeping**
+- After expiry, anyone can call `sweepOffer`.
+- Unredeemed slices / unconfirmed escrow are burned and the ETH goes into the pool.
+- If the offer was flagged as a **gate**, the original donor is permanently **staked**.
 
-To take money out of the pool you must first become **staked**. You do this by creating a special short G-offer (called a gate) and letting it be swept. After that you must wait about two days (14 400 blocks). Then you can turn your SOS trust records into credits and redeem them for ETH (1 credit = 0.001 ETH).
+### Gate & Staking
+- A G offer with the minimum delay (1 block) becomes a gate if its value is **strictly greater** than  
+  `0.001 ETH + current unallocated pool balance`.
+- When that gate offer is later swept, the donor is staked forever.
+- Only staked addresses can form and redeem **credits**.
 
-Important points:
-- Once you are staked you stay staked forever.
-- Gate offers are permanent donations to the pool.
-- Always test with small amounts first.
+### Credits (the only way to withdraw from the pool)
+1. Be staked.
+2. Call `syncCredits` → turns new SOS trust records addressed to you into credits (1 record = 1 credit).
+3. After a 2-day cooldown, call `redeemCredit` → burns credits and receives ETH from the pool (subject to a tiny reserve).
 
----
+Credits cannot be transferred. The pool can only shrink through credit redemptions.
 
-### Part 2 – Technical description
+### Nonce System
+Almost every value-moving function takes an `expectedNonce` as its last argument. It must match the caller’s current `redeemNonce`. On success the nonce increases by 1. This gives strict ordering and prevents accidental double-execution of pending transactions.  
+(The ordinary ERC-20 `transfer` is an exception — it still works for wallets but does not check a nonce.)
 
-**Unit & accounting**  
-- `UNIT = 0.001 ether`  
-- 1 credit = 1 slice = 1 dSOS = `UNIT`  
-- Offers are quantity batches: one storage record holds `count` slices.  
-- `msg.value` must be an exact multiple of `UNIT`.
+### ERC-20 Compatibility (display only)
+- `name`, `symbol`, `decimals(0)`, `totalSupply`, `balanceOf` work.
+- `Transfer` events are emitted correctly.
+- `approve` / `allowance` / `transferFrom` are deliberately disabled.
+- There is a custom `allowanceOf(user)` that only tracks the A/B produced/redeemed remaining quota.
 
-**Offers**  
-- Four types: `G` (gated), `B`, `T`, `P` (transferable).  
-- `createOffer` / `createOfferGated` create a single batch.  
-- Partial redeem (`redeemSlices`) and partial transfer (`transferSlices`) are supported; transferring part of a batch splits it into a new offer id with the same `sweepableAt`.  
-- Wallet `transfer(to, n)` moves exactly `n` slices from the sender’s newest B/T/P offers that still have more than `MIN_SEND_WINDOW` (7200) blocks left.  
-- After `sweepableAt` anyone may call `sweepOffer`; principal becomes unallocated and the slices are burned.
-
-**Gate / Staking**  
-- A G-offer with `delayBlocks == 1` and `msg.value > GATE_FLOOR + unallocatedBalance()` is flagged as a gate.  
-- Sweeping a gate sets `staked[donor] = true` and records `stakedAt`.  
-- `STAKE_COOLDOWN = 14400` blocks must pass before the staker can call `redeemCredit`.
-
-**Credits**  
-- Credits are formed 1:1 from SOS ledger trust records via `syncCredits` (requires stake).  
-- `redeemCredit(creditsToSpend, Rec)` burns credits and pays `creditsToSpend * UNIT`.  
-- Requires valid EIP-712-style payload hash bound to the user’s redeem nonce.  
-- Credits are non-transferable.
-
-**Safety & ledger**  
-- All state-changing functions are `nonReentrant`.  
-- Ledger writes are optional (`try/catch`); failure emits `LedgerRecordSkipped` and does not revert the transaction.  
-- Pool invariant on credit redemption: `balance ≥ totalEarmarked + MIN_RESERVE + payout`.
-
-**ERC-20 view**  
-- `decimals() = 0`  
-- `balanceOf` = number of active slices held  
-- `totalSupply` = total active slices  
-- `approve` / `transferFrom` are disabled.
-
----
-
-**Merged version (ready to use)**
-
-dSOS is a shared ETH pool on Ethereum where value is handled in fixed slices of 0.001 ETH.  
-
-Users create offers that can contain any number of slices in a single storage record. Normal offers (B/T/P) are transferable and can be sent from a wallet; gated offers (G) are protected by a PIN and cannot be transferred. Both kinds can be redeemed by the holder before a deadline. After the deadline anyone may sweep the offer, at which point the ETH stays in the pool permanently.
-
-To withdraw from the pool a user must first become staked by creating and allowing the sweep of a short gate offer (G, delay = 1, value strictly above the current gate requirement). Newly staked addresses must wait 14 400 blocks before they can redeem. Credits are created 1:1 from SOS trust records and are redeemed at the rate of 1 credit = 0.001 ETH. Credits cannot be transferred.
-
-The contract exposes a minimal ERC-20 view (decimals 0) so wallets can display and send slices. Wallet sends only move slices that still have more than 7200 blocks of lifetime left. All critical operations are protected by a reentrancy guard, and interactions with the external SOS ledger are non-blocking.
+### In one sentence
+You lock ETH into timed offers; other people (or yourself) earn those slices by writing the right records on the SOS ledger or by holding a free/gifted S offer; after expiry leftover value goes into a shared pool that only people who have “paid the gate” (by creating a large enough short-lived G offer) can later withdraw from via credits.
