@@ -1,0 +1,84 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare logo (icon + splash)
+        run: |
+          if [ -f assets/logo.png ]; then
+            cp assets/logo.png android/logo.png
+          else
+            echo "::warning::assets/logo.png not found - building with the default icon"
+            sed -i '/logo.png/d;/presplash_color/d' android/buildozer.spec
+          fi
+
+      # ---- wallet link: bundle the WalletConnect client (JavaScript) into android/wc_bundle.js
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Test and bundle the wallet link
+        working-directory: wc
+        run: |
+          npm install --no-audit --no-fund
+          npm test
+          npm run build
+          ls -l ../android/wc_bundle.js
+
+      - name: Package .js files in the APK
+        run: |
+          spec=android/buildozer.spec
+          if grep -q '^source.include_exts' "$spec"; then
+            grep '^source.include_exts' "$spec" | grep -qE '(=|,) *js *(,|$)' || \
+              sed -i '/^source.include_exts/ s/$/,js/' "$spec"
+          else
+            sed -i '/^\[app\]/a source.include_exts = py,png,jpg,kv,atlas,js' "$spec"
+          fi
+          grep '^source.include_exts' "$spec"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: System packages
+        run: |
+          retry() { for i in 1 2 3 4; do "$@" && return 0; echo "retry $i"; sleep 20; done; return 1; }
+          # the default Azure mirror is sometimes unreachable: use the main Ubuntu archive
+          sudo sed -i 's#http://azure.archive.ubuntu.com#http://archive.ubuntu.com#g' \
+            /etc/apt/sources.list /etc/apt/sources.list.d/*.sources 2>/dev/null || true
+          retry sudo apt-get update
+          retry sudo apt-get install -y git zip unzip autoconf automake libtool \
+            pkg-config zlib1g-dev libncurses-dev cmake libffi-dev libssl-dev \
+            libltdl-dev build-essential
+
+      - name: Install Buildozer
+        run: pip install "buildozer==1.5.0" "cython<3" virtualenv
+
+      - name: Cache Buildozer downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.buildozer
+          key: buildozer-v2-${{ hashFiles('android/buildozer.spec') }}
+
+      - name: Build APK
+        working-directory: android
+        run: buildozer -v android debug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dsos-apk
+          path: android/bin/*.apk

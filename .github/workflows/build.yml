@@ -1,0 +1,46 @@
+name: Build app
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: windows
+            sep: ";"
+          - os: macos-latest
+            name: mac
+            sep: ":"
+          - os: ubuntu-latest
+            name: linux
+            sep: ":"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        shell: bash
+        run: |
+          pip install -r requirements.txt pyinstaller
+      - name: Build
+        shell: bash
+        run: |
+          pyinstaller --onefile --name dsos-app \
+            --collect-all streamlit --copy-metadata streamlit \
+            --add-data "app.py${{ matrix.sep }}." \
+            --add-data "dsos${{ matrix.sep }}dsos" \
+            --add-data ".streamlit${{ matrix.sep }}.streamlit" \
+            --add-data "assets${{ matrix.sep }}assets" \
+            run_app.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dsos-app-${{ matrix.name }}
+          path: dist/*
