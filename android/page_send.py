@@ -161,7 +161,7 @@ class SendScreen(Overlay):
             picks, _rest = tx.plan_send(self.offers, n)
             self.dyn.add_widget(label(S.SEND_TAKEN_FROM,
                                       size_hint_y=None, height=dp(30)))
-            badge = {"B": "0033ff", "T": "0b0b0b", "P": "00a82d"}
+            badge = {"S": "0033ff", "A": "00a82d", "B": "0b0b0b", "T": "0b0b0b", "P": "00a82d"}
             for o, take in picks:
                 r = Panel(size_hint_y=None, height=dp(62), spacing=dp(8))
                 r.add_widget(label(f"[color={badge.get(o['kind'], '0b0b0b')}][b]{o['kind']}[/b][/color]",

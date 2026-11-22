@@ -93,6 +93,9 @@ def groups(d):
                 if nxt else S.ECON_NONE))
     you.append((S.ECON_TRUST, "%s / %s / %s" % (d["trust"], d["effective"], d["push"])))
     you.append((S.ECON_NONCE, str(d["redeem_nonce"])))
+    you.append((S.ECON_PRODUCED, _dsos(d.get("produced", 0))))
+    you.append((S.ECON_REDEEMED_AB, _dsos(d.get("redeemed", 0))))
+    you.append((S.ECON_ALLOWANCE, _dsos(d.get("allowance", 0))))
     rules = [
         (S.ECON_UNIT, _eth(core.UNIT)),
         (S.ECON_RESERVE, _eth(d["min_reserve_wei"])),

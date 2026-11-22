@@ -144,6 +144,9 @@ class RedeemScreen(Overlay):
             return S.RO_ERR_NONE
         if not 1 <= self.amount <= self.sel["count"]:
             return S.RO_ERR_AMOUNT
+        allow = self.d.get("allowance", 0)
+        if self.sel.get("capped") and self.amount > allow:
+            return S.OD_NOTE_CAPPED_OVER.format(allow=allow)
         return ""
 
     def refresh(self):
@@ -173,7 +176,7 @@ class RedeemScreen(Overlay):
             return
         o, n = self.sel, self.amount
         try:
-            t = tx.redeem_slices_tx(o["id"], n)
+            t = tx.redeem_slices_tx(o["id"], n, nonce=self.d["redeem_nonce"])
         except Exception as e:  # noqa: BLE001
             self.note.text = str(e)
             return
@@ -181,14 +184,15 @@ class RedeemScreen(Overlay):
         R = S.RO_ROWS
         rows = [(R["id"], p["id"], p["id"]), (R["slices"], p["slices"], p["slices"]),
                 (R["pin"], p["pin"], short(p["pin"])),
-                (R["r"], p["r"], '["' + short(p["payloadHash"]) + '","0x",""]')]
+                (R["nonce"], p["expectedNonce"], p["expectedNonce"])]
         summary = S.RO_SUMMARY.format(n=n, id=o["id"], kind=o["kind"], eth=t["payout_eth"])
         tip = S.RO_TIP.format(wallet=short(self.d["address"]), block=o["sweepable_at"])
         self.app.open_overlay(TxScreen(self.app, t, summary, S.RO_FN, rows, tip, S.RO_WARN))
 
     def on_sweep(self, oid, pos, total):
-        t = tx.sweep_offer_tx(oid)
+        t = tx.sweep_offer_tx(oid, nonce=self.d["redeem_nonce"])
         summary = S.SWEEP_SUMMARY.format(id=oid, pos=pos, total=total)
-        rows = [(S.SWEEP_ROWS["id"], str(oid), str(oid))]
+        rows = [(S.SWEEP_ROWS["id"], str(oid), str(oid)),
+                (S.SWEEP_ROWS["nonce"], t["params"]["expectedNonce"], t["params"]["expectedNonce"])]
         self.app.open_overlay(TxScreen(self.app, t, summary, S.SWEEP_FN, rows,
                                        S.SWEEP_TIP, S.SWEEP_WARN))

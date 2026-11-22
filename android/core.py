@@ -7,7 +7,7 @@ from Crypto.Hash import keccak
 
 import strings as S
 
-DSOS = "0x7Bd7c427b3c69e2a09603573ac875987c61ECAB8".lower()
+DSOS = "0xbD08A73E02BA266f5cC8c4c6a08348d806e61f2C".lower()   # dSOSSystem
 LEDGER = "0x7373DBC24Dcd785896E8Ac3d5372c6ced9B75a8A".lower()
 ES_URL = "https://api.etherscan.io/v2/api"
 PUBLIC_RPCS = [
@@ -19,7 +19,8 @@ PUBLIC_RPCS = [
 UNIT = 10**15
 BLOCK_TIME = 12
 WINDOW = 7200
-KIND = {0: "G", 1: "B", 2: "T", 3: "P"}
+KIND = {0: "G", 1: "S", 2: "A", 3: "B"}   # G gated, S sendable, A open, B named
+CAPPED_KINDS = ("A", "B")                    # redeems of these are capped by your own A/B allowance
 MAX_OFFERS = 40
 
 # every custom error of dSOS and of the SOS ledger (names only; 4-byte selectors are derived)
@@ -28,6 +29,8 @@ REVERT_NAMES = (
     "InvalidValue", "NoCredit", "NotEnoughSendable", "NotHolder", "NotStaked", "NotTransferable",
     "OfferNotActive", "PoolTooThin", "Reentrant", "SelfTransfer", "TooEarly", "TooManyOffers",
     "TransferFailed", "WindowClosed", "ZeroAddress", "ZeroAmount",
+    "BadNonce", "BadRate", "BadTarget", "LedgerMissing", "NoModule", "NotDelegated", "OfferFull",
+    "OverCap", "RecordNotFound", "SendWindowClosed",
     "BatchTooLarge", "DuplicatePayloadHash", "EmptyBatch", "InvalidSignature", "LengthMismatch",
     "MetadataTooLong", "NoETHAccepted",
 )
@@ -331,15 +334,16 @@ class Chain:
 
         offers = []
         for pos, oid in enumerate(ids):   # pos = place in the holder's list (newest = highest)
-            w = c(DSOS, "offers(uint256)", [oid])
+            w = c(DSOS, "offers(uint256)", [oid])   # donor, holder, principal, active, kind, createdAt, sweepableAt, count
             kind = KIND.get(u(w[4]), "?")
-            sweep = u(w[7])
+            sweep = u(w[6])
             left = sweep - blk
             status = "expired" if left <= 0 else ("expiring" if left <= WINDOW else "redeemable")
             offers.append({
-                "id": oid, "pos": pos, "kind": kind, "donor": "0x" + w[0][12:].hex(), "created_at": u(w[6]), "count": u(w[8]), "active": u(w[3]) != 0,
+                "id": oid, "pos": pos, "kind": kind, "donor": "0x" + w[0][12:].hex(), "created_at": u(w[5]), "count": u(w[7]), "active": u(w[3]) != 0,
                 "sweepable_at": sweep, "left": left, "status": status,
-                "sendable": kind != "G" and left > WINDOW,
+                "sendable": kind == "S" and left > WINDOW,
+                "capped": kind in CAPPED_KINDS,
             })
         offers.sort(key=lambda o: o["sweepable_at"])
         live = [o for o in offers if o["left"] > 0]
@@ -360,6 +364,10 @@ class Chain:
         reserve = u(c(DSOS, "MIN_RESERVE()")[0])
         unalloc = u(c(DSOS, "unallocatedBalance()")[0])
         cooldown = u(c(DSOS, "STAKE_COOLDOWN()")[0])
+        produced = u(c(DSOS, "produced(address)", [a])[0])
+        redeemed = u(c(DSOS, "redeemed(address)", [a])[0])
+        allowance = u(c(DSOS, "allowanceOf(address)", [a])[0])
+        next_id = u(c(DSOS, "nextOfferId()")[0])
 
         return {
             "address": address.strip(), "block": blk, "source": self.source,
@@ -373,5 +381,6 @@ class Chain:
             "pool_wei": pool, "supply": supply, "stake_need_wei": need,
             "sweepable_ids": sweepable_ids, "staked_at": staked_at, "redeem_nonce": nonce, "earmarked_wei": earmarked, "unalloc_wei": unalloc,
             "min_reserve_wei": reserve, "cooldown": cooldown,
+            "produced": produced, "redeemed": redeemed, "allowance": allowance, "next_offer_id": next_id,
             "push": u(st[0]), "trust": u(st[1]), "effective": s(st[2]),
         }

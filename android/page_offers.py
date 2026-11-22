@@ -90,6 +90,10 @@ class OffersPage:
             n=len(self.offers), slices=sum(o["count"] for o in self.offers)),
             halign="right", size_hint_x=0.7, font_size="14sp"))
         b.add_widget(head)
+        if d.get("produced") or d.get("redeemed"):
+            b.add_widget(label(S.OFFERS_ALLOWANCE.format(allow=d["allowance"], produced=d["produced"],
+                                                         redeemed=d["redeemed"]),
+                               size_hint_y=None, height=dp(22), font_size="13sp"))
 
         sv = ScrollView(size_hint_y=None, height=dp(44), do_scroll_y=False, bar_width=0)
         chips = BoxLayout(size_hint=(None, 1), spacing=dp(8))
@@ -124,6 +128,8 @@ class OffersPage:
             sub = S.OC_SUB_EXPIRED
         elif o["kind"] == "G":
             sub = S.OC_SUB_GATED.format(eth=eth)
+        elif o.get("capped"):
+            sub = S.OC_SUB_CAPPED.format(eth=eth)
         elif o.get("donor", "").lower() == self.d["address"].lower():
             sub = S.OC_SUB_YOU.format(eth=eth)
         else:
@@ -267,15 +273,21 @@ class OffersPage:
             return
         n, total = self.amount, o["count"]
         gated = o["kind"] == "G"
+        sendable_kind = o["kind"] == "S"
+        capped = bool(o.get("capped"))
+        allow = self.d.get("allowance", 0)
         self.of_mid.text = S.OD_OF.format(n=n, total=total)
         self.redeem_btn.text = S.OD_REDEEM.format(eth=core.eth(n * core.UNIT))
         self.transfer_btn.text = S.OD_TRANSFER.format(n=n)
         self.redeem_btn.set_enabled(True)
-        self.transfer_btn.set_enabled(not gated)
-        set_visible(self.to_row, self.transfer_mode and not gated)
+        self.transfer_btn.set_enabled(sendable_kind)
+        set_visible(self.to_row, self.transfer_mode and sendable_kind)
         s = "" if n == 1 else "s"
         if gated:
             self.note.text = self.pin_msg or S.OD_NOTE_GATED
+        elif capped:
+            self.note.text = (S.OD_NOTE_CAPPED_OVER if n > allow else S.OD_NOTE_CAPPED).format(
+                allow=allow, s="" if allow == 1 else "s")
         elif self.transfer_mode:
             self.note.text = self.transfer_problem() or S.OD_NOTE_TRANSFER.format(n=n, s=s)
         elif n < total:
@@ -328,19 +340,19 @@ class OffersPage:
         self.refresh_detail()
 
     def open_redeem_tx(self, o, n, pin):
-        t = tx.redeem_slices_tx(o["id"], n, pin, o.get("donor"))
+        t = tx.redeem_slices_tx(o["id"], n, pin, o.get("donor"), nonce=self.d["redeem_nonce"])
         p = t["params"]
         R = S.RO_ROWS
         rows = [(R["id"], p["id"], p["id"]), (R["slices"], p["slices"], p["slices"]),
                 (R["pin"], p["pin"], short(p["pin"])),
-                (R["r"], p["r"], '["' + short(p["payloadHash"]) + '","0x",""]')]
+                (R["nonce"], p["expectedNonce"], p["expectedNonce"])]
         summary = S.RO_SUMMARY.format(n=n, id=o["id"], kind=o["kind"], eth=t["payout_eth"])
         tip = (S.RO_TIP_PIN if pin is not None else S.RO_TIP).format(
             wallet=short(self.d["address"]), block=o["sweepable_at"])
         self.app.open_overlay(TxScreen(self.app, t, summary, S.RO_FN, rows, tip, S.RO_WARN))
 
     def on_transfer(self, o):
-        if o["kind"] == "G" or o["left"] <= 0:
+        if o["kind"] != "S" or o["left"] <= 0:
             return
         if not self.transfer_mode:            # first tap: ask for the recipient
             self.transfer_mode = True
@@ -350,20 +362,21 @@ class OffersPage:
             self.refresh_detail()
             return
         n, to = self.amount, self.to_text.strip()
-        t = tx.transfer_slices_tx(o["id"], n, to)
+        t = tx.transfer_slices_tx(o["id"], n, to, nonce=self.d["redeem_nonce"])
         p = t["params"]
         R = S.OT_ROWS
         rows = [(R["id"], p["id"], p["id"]), (R["slices"], p["slices"], p["slices"]),
                 (R["to"], to, short(to)),
-                (R["r"], p["r"], '["' + short(p["payloadHash"]) + '","0x",""]')]
+                (R["nonce"], p["expectedNonce"], p["expectedNonce"])]
         summary = S.OT_SUMMARY.format(n=n, id=o["id"], kind=o["kind"], to=short(to))
         tip = S.OT_TIP.format(wallet=short(self.d["address"]))
         self.app.open_overlay(TxScreen(self.app, t, summary, S.OT_FN, rows, tip, S.OT_WARN))
 
     def on_sweep(self, o):
-        t = tx.sweep_offer_tx(o["id"])
+        t = tx.sweep_offer_tx(o["id"], nonce=self.d["redeem_nonce"])
         summary = S.OD_SWEEP_SUMMARY.format(id=o["id"])
-        rows = [(S.SWEEP_ROWS["id"], str(o["id"]), str(o["id"]))]
+        rows = [(S.SWEEP_ROWS["id"], str(o["id"]), str(o["id"])),
+                (S.SWEEP_ROWS["nonce"], t["params"]["expectedNonce"], t["params"]["expectedNonce"])]
         self.app.open_overlay(TxScreen(self.app, t, summary, S.SWEEP_FN, rows,
                                        S.SWEEP_TIP, S.SWEEP_WARN))
 

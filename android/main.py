@@ -28,6 +28,7 @@ from page_create import CreateScreen
 from page_donate import DonateScreen
 from page_economics import EconomicsScreen
 from page_redeem import RedeemScreen
+from page_sell import SellScreen
 from page_send import SendScreen
 from page_settings import SettingsScreen
 from wallet import Wallet
@@ -350,6 +351,13 @@ class DsosApp(App):
 
     def open_donate(self):
         self.open_overlay(DonateScreen(self))
+
+    def open_sell(self, sale_id=None):
+        """Sell SOS records to an A / B offer (needs the wallet loaded: it reads your next records)."""
+        if not self.data:
+            self.say(S.MSG_LOAD_FIRST_SELL)
+            return
+        self.open_overlay(SellScreen(self, sale_id))
 
     def coming(self, name):
         self.say(S.MSG_COMING.format(name=name))

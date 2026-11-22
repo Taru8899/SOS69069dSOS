@@ -172,7 +172,7 @@ class CreditsPage:
                                           nonce=d["redeem_nonce"])
         R = S.REDEEM_ROWS
         rows = [(R["n"], p["creditsToSpend"], p["creditsToSpend"]),
-                (R["r"], p["r"], '["' + short(p["payloadHash"]) + '","0x",""]')]
+                (R["nonce"], p["expectedNonce"], p["expectedNonce"])]
         tip = S.REDEEM_TIP.format(nonce=d["redeem_nonce"], wallet=short(d["address"]))
         self.app.open_overlay(TxScreen(self.app, t, summary, S.REDEEM_FN, rows, tip,
                                        S.REDEEM_WARN))

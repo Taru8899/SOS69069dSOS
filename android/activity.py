@@ -26,17 +26,22 @@ def topic0(sig):
     return "0x" + keccak256(sig.encode()).hex()
 
 
-T_CREATED = topic0("OfferCreated(uint256,uint8,address,address,uint256)")
-T_TRANSFERRED = topic0("OfferTransferred(uint256,address,address)")
-T_SPLIT = topic0("OfferSplit(uint256,uint256,uint256)")
-T_REDEEMED = topic0("OfferRedeemed(uint256,address,address,uint256)")
-T_SWEPT = topic0("OfferSwept(uint256,address,address,uint256)")
+# dSOSSystem events: every value-moving event ends with the caller's nonce
+T_CREATED = topic0("OfferCreated(uint256,uint8,address,address,uint256,uint256)")
+T_TRANSFERRED = topic0("OfferTransferred(uint256,address,address,uint256)")
+T_SPLIT = topic0("OfferSplit(uint256,uint256,uint256,uint256)")
+T_REDEEMED = topic0("OfferRedeemed(uint256,address,address,uint256,uint256)")
+T_SWEPT = topic0("OfferSwept(uint256,address,address,uint256,address,uint256)")
 T_DONATION = topic0("Donation(address,uint256)")
 T_FORMED = topic0("CreditsFormed(address,uint256,uint256)")
-T_CREDIT_REDEEMED = topic0("CreditRedeemed(address,uint256,uint256)")
+T_CREDIT_REDEEMED = topic0("CreditRedeemed(address,uint256,uint256,uint256)")
+T_SALE_OPENED = topic0("SaleOpened(uint256,address,uint256,uint256,bytes32,uint256)")
+T_SYNCED = topic0("RecordsSynced(uint256,address,uint256,uint256,uint256,uint256,uint256)")
+T_FILLED = topic0("SaleFilled(uint256,address,uint256)")
+T_ALLOWANCE = topic0("AllowanceUpdated(address,uint256,uint256,uint256)")
 T_STAKED = topic0("Staked(address,uint64)")
 T_TRANSFER = topic0("Transfer(address,address,uint256)")
-T_SKIPPED = topic0("LedgerRecordSkipped(address,address,bytes32,bytes)")
+T_SKIPPED = topic0("LedgerRecordSkipped(address,address,bytes32,bytes)")   # the old contract only; never fires now
 T_FLAGGED = topic0("GateFlagged(uint256,bool)")
 T_RECORDED = topic0("SignatureRecorded(address,address,bytes32,bytes,address,uint256,string)")
 
@@ -44,12 +49,13 @@ NAMES = {T_CREATED: "created", T_TRANSFERRED: "transferred", T_SPLIT: "split",
          T_REDEEMED: "redeemed", T_SWEPT: "swept", T_DONATION: "donation",
          T_FORMED: "formed", T_CREDIT_REDEEMED: "credit_redeemed", T_STAKED: "staked",
          T_TRANSFER: "transfer", T_SKIPPED: "skipped", T_FLAGGED: "flagged",
-         T_RECORDED: "recorded"}
+         T_RECORDED: "recorded", T_SALE_OPENED: "sale_opened", T_SYNCED: "synced",
+         T_FILLED: "filled", T_ALLOWANCE: "allowance"}
 
 # filter key -> tag that a row must carry
 FILTER_TAGS = {"created": "created", "received": "received", "sent": "sent",
                "redeemed": "redeemed", "swept": "swept", "stake": "stake",
-               "donation": "donation", "ledger": "ledger", "failed": "failed"}
+               "donation": "donation", "ledger": "ledger", "synced": "synced", "failed": "failed"}
 
 
 def pad_topic(addr):
@@ -123,6 +129,15 @@ def decode(log):
             out.update(signer=_addr(t[1]), intended=_addr(t[2]), submitter=_addr(t[3]))
         elif name in ("skipped",):
             out.update(signer=_addr(t[1]), intended=_addr(t[2]))
+        elif name == "sale_opened":
+            out.update(id=int(t[1], 16), donor=_addr(t[2]), per=w[0], records=w[1])
+        elif name == "synced":
+            out.update(id=int(t[1], 16), seller=_addr(t[2]), records=w[0], slices=w[1],
+                       earned_id=w[2], held=w[3])
+        elif name == "filled":
+            out.update(id=int(t[1], 16), seller=_addr(t[2]))
+        elif name == "allowance":
+            out.update(user=_addr(t[1]), produced=w[0], redeemed=w[1])
         elif name == "flagged":
             out.update(id=int(t[1], 16))
     except (IndexError, ValueError):
@@ -186,7 +201,9 @@ def _describe(txh, lgs, evs, me):
     formed = _first(evs, "formed")
     credit = _first(evs, "credit_redeemed")
     donation = _first(evs, "donation")
-    plain = [e for e in _all(evs, "transfer") if e["frm"] != ZERO and e["to"] != ZERO]
+    synced = _first(evs, "synced")
+    plain = [e for e in _all(evs, "transfer")
+             if e["frm"] not in (ZERO, DSOS) and e["to"] not in (ZERO, DSOS)]
 
     def mine(a):
         return bool(me) and a == me
@@ -200,6 +217,10 @@ def _describe(txh, lgs, evs, me):
         else:
             tags.add("created")
             row["sign"] = -1 if mine(created["donor"]) else 0
+    elif synced:
+        row.update(kind="synced", offer_id=synced["earned_id"], frm=DSOS, to=synced["seller"],
+                   eth=synced["slices"] * UNIT, dsos=synced["slices"])
+        tags.add("synced")
     elif redeemed:
         row.update(kind="redeemed", offer_id=redeemed["id"], frm=redeemed["donor"],
                    to=redeemed["holder"], eth=redeemed["principal"],
@@ -324,6 +345,7 @@ class Store:
         for t0 in (T_CREATED, T_TRANSFERRED, T_REDEEMED, T_SWEPT):      # id, donor/from, to/holder
             q.append((DSOS, [t0, None, me]))
             q.append((DSOS, [t0, None, None, me]))
+        q.append((DSOS, [T_SYNCED, None, me]))                          # you confirmed records
         for t0 in (T_DONATION, T_FORMED, T_CREDIT_REDEEMED, T_STAKED):  # address at topic1
             q.append((DSOS, [t0, me]))
         for t0 in (T_TRANSFER, T_SKIPPED):                              # address at topic1 or 2

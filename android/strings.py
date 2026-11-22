@@ -32,6 +32,7 @@ MSG_LOADING = "Loading..."
 MSG_BLOCK_VIA = "Block {block:,} via {source}"
 MSG_LOAD_FIRST = "Load your wallet first, then tap Send."
 MSG_LOAD_FIRST_REDEEM = "Load your wallet first, then tap Redeem."
+MSG_LOAD_FIRST_SELL = "Load your wallet first, then tap Sell."
 MSG_COMING = "{name} is coming in the next step."
 
 ERROR_CARD = "[b]Error[/b]\n{error}"
@@ -50,7 +51,12 @@ STATUS = {"redeemable": "Redeemable", "expiring": "Expiring", "expired": "Expire
 ERR_BAD_WALLET = "Enter a valid 0x wallet address (42 characters)"
 ERR_ALL_RPC = "All RPCs failed: {error}"
 ERR_EMPTY_RESULT = "Empty result for {sig}"
-ERR_ONLY_BTP = "Only B, T and P offers are supported here"
+ERR_ONLY_BTP = "Only B, T and P offers are supported here"   # old contract, no longer used
+ERR_ONLY_S = "Only S offers are created here (B, T and P became S)"
+ERR_NONCE = "Reload your wallet first: the app needs your current nonce."
+ERR_HOLDER_CONTRACT = "The receiver can't be the dSOS contract itself."
+ERR_RATE = "Slices per record must be at least 1, not above the funded slices, and divide them exactly."
+ERR_MIN_RECORDS = "Confirm at least 1 record."
 ERR_HOLDER_ADDR = "Holder must be a 0x address (42 characters)"
 ERR_MIN_SLICE = "At least 1 slice"
 ERR_MIN_WINDOW = "Window must be at least 1 block"
@@ -84,6 +90,7 @@ ACTION_SEND = "Send"
 ACTION_CREATE = "Create"
 ACTION_REDEEM = "Redeem"
 ACTION_STAKE = "Stake"
+ACTION_SELL = "Sell"
 ICON_SEND = ">"
 ICON_CREATE = "+"
 ICON_REDEEM = "<"
@@ -104,6 +111,7 @@ OC_TITLE = "[b]{count:,} dSOS · #{id}{pin}[/b]"
 OC_SUB_FROM = "{eth} ETH · from {donor}"
 OC_SUB_YOU = "{eth} ETH · created by you"
 OC_SUB_GATED = "{eth} ETH · not sendable"
+OC_SUB_CAPPED = "{eth} ETH · earned by records · capped redeem"
 OC_SUB_EXPIRED = "Expired · anyone can sweep"
 OC_LEFT = "{left} · expires block {block:,}"
 OD_TITLE = "[b]Offer #{id}[/b]\n{count:,} dSOS · {eth} ETH · {left}"
@@ -118,15 +126,21 @@ OD_NOTE_ALL = "This uses the whole offer. Gated offers ask for the PIN."
 OD_NOTE_TRANSFER = "The recipient gets {n} slice{s} with the same expiry."
 OD_NOTE_GATED = ("Enter the PIN, then tap Redeem. The PIN is checked against the chain first, so "
                  "a wrong one never reaches your wallet. Gated offers cannot be sent.")
+OD_NOTE_CAPPED = ("Earned by confirming SOS records (A / B). You can redeem up to your A / B allowance: "
+                  "{allow:,} slice{s} left right now. Not sendable. Unredeemed slices go to the pool "
+                  "at expiry.")
+OD_NOTE_CAPPED_OVER = ("Your A / B allowance is {allow:,}: this redeem would fail. Create an A or B "
+                       "offer to raise it, or redeem fewer slices.")
+OFFERS_ALLOWANCE = "A / B allowance left: {allow:,} slices (funded {produced:,}, redeemed {redeemed:,})"
 OD_NOTE_EXPIRED = ("Expired offers cannot be redeemed or sent. Sweeping moves their ETH into "
                    "the shared pool.")
 OD_SWEEP_SUMMARY = "[b]Sweep offer #{id}[/b]\nMoves its ETH into the shared pool"
 OT_SUMMARY = "[b]Transfer {n} dSOS[/b]\nOffer #{id} - {kind}\nTo {to}"
 OT_ROWS = {"id": "id (uint256)", "slices": "slices (uint256)", "to": "to (address)",
-           "r": "r (tuple: paste as one value)"}
-OT_TIP = ("On Etherscan paste the r value above into the single field called r. If you send "
-          "fewer slices than the offer holds, the recipient gets a new offer with the same "
-          "expiry. Send it from {wallet}.")
+           "nonce": "expectedNonce (uint256)"}
+OT_TIP = ("expectedNonce is your current redeem nonce. If you send fewer slices than the offer "
+          "holds, the recipient gets a new offer with the same expiry. Only S offers with more "
+          "than 7,200 blocks left can be sent. Send it from {wallet}.")
 OT_WARN = "A transfer cannot be undone. Check the recipient address character by character."
 OT_FN = "transferSlices"
 
@@ -156,8 +170,8 @@ STAKE_SWEEP_READY = "{n} offer{s} ready to sweep."
 STAKE_SUMMARY = ("[b]Stake: create a gate offer[/b]\n{eth} ETH ({n:,} slices)\n"
                  "Holder {holder}, window 1 block, gated")
 STAKE_ROWS = {"payable": "payable amount (ETH)", "to": "to (address)", "delay": "delayBlocks",
-              "pin": "pinCommitment_", "hash": "payloadHash", "sig": "signature (bytes)"}
-STAKE_TIP = ("metadata (string): leave it empty. The PIN commitment is random on purpose: "
+              "pin": "pinCommitment_", "nonce": "expectedNonce (uint256)"}
+STAKE_TIP = ("The PIN commitment is random on purpose: "
              "nobody can redeem this offer, so its ETH can only be swept into the pool, and "
              "that is what stakes you. After the transaction is mined, wait one block and "
              "tap Sweep mine.")
@@ -167,9 +181,10 @@ STAKE_WARN = ("The offer only counts as a gate if its value is above the pool's 
 STAKE_FN = "createOfferGated"
 SWEEP_SUMMARY = ("[b]Sweep offer #{id}[/b]\nMoves its ETH into the shared pool\n"
                  "{pos} of {total} ready to sweep")
-SWEEP_ROWS = {"id": "id (uint256)"}
-SWEEP_TIP = ("Anyone can sweep an expired offer. If this was your gate offer, you become "
-             "permanently staked. Sweep the rest one by one.")
+SWEEP_ROWS = {"id": "id (uint256)", "nonce": "expectedNonce (uint256)"}
+SWEEP_TIP = ("Anyone can sweep an expired offer. expectedNonce is the nonce of the wallet that sends "
+             "the sweep. If this was your gate offer, you become permanently staked. Sweep the "
+             "rest one by one.")
 SWEEP_WARN = "Sweeping burns the slices of this offer. Its ETH stays in the pool."
 SWEEP_FN = "sweepOffer"
 
@@ -207,11 +222,10 @@ SYNC_WARN = "Only a staked wallet can sync credits. If the call fails, check the
 SYNC_FN = "syncCredits"
 REDEEM_SUMMARY = ("[b]Redeem {n} {word}[/b]\n= {eth} ETH paid to your wallet\n"
                   "Redeem nonce {nonce}")
-REDEEM_ROWS = {"n": "creditsToSpend (uint256)", "r": "r (tuple: paste as one value)"}
-REDEEM_TIP = ("On Etherscan paste the r value above into the single field called r. "
-              "Its payloadHash only fits redeem nonce {nonce} and this exact amount, and "
-              "the transaction must come from {wallet}. If anything changes first, reload "
-              "the app and build it again.")
+REDEEM_ROWS = {"n": "creditsToSpend (uint256)", "nonce": "expectedNonce (uint256)"}
+REDEEM_TIP = ("expectedNonce must equal your redeem nonce ({nonce}) and the transaction must come "
+              "from {wallet}. If another transaction of yours is mined first the call reverts "
+              "with BadNonce: reload the app and build it again.")
 REDEEM_WARN = "Redeeming burns the credits and cannot be undone."
 REDEEM_FN = "redeemCredit"
 
@@ -224,11 +238,23 @@ ICON_PLUS = "+"
 CREATE_TITLE = "[b]Create offer[/b]"
 CREATE_TYPE = "[b]Type[/b]"
 CREATE_TYPES = (  # code, title, subtitle, color
-    ("B", "Basic", "Sendable", "0033ff"),
-    ("T", "Type T", "Sendable", "0b0b0b"),
-    ("P", "Type P", "Sendable", "00a82d"),
+    ("S", "Sendable", "Free redeem", "0033ff"),
+    ("A", "Open", "Sellers deliver records", "00a82d"),
+    ("B", "Named", "One seller delivers", "0b0b0b"),
     ("G", "Gated", "PIN - not sendable", "0b0b0b"),
 )
+CREATE_PER_RECORD = "[b]Slices paid per SOS record[/b]"
+CREATE_PER_NOTE = ("1 record always earns at least 1 slice (0.001 ETH). You can pay more per record, "
+                   "with no upper limit. {slices} slices at {per} per record = {records} record(s) wanted.")
+CREATE_PER_BAD = "Slices per record must divide the funded slices exactly."
+CREATE_AB_NOTE = ("A / B offers escrow your ETH until expiry. Sellers write SOS records addressed to you "
+                  "and confirm them; each confirmed record gives the seller the slices. Whatever is "
+                  "not confirmed goes to the pool at expiry (no refund). The funded slices count as "
+                  "your A / B allowance at once.")
+HINT_PER_RECORD = "Slices per record (at least 1)"
+HOLDER_SELLER = "[b]Seller[/b]"
+HOLDER_SELLER_DEAD = "empty = nobody (dead address)"
+CREATE_ERR_PER = "Slices per record must be at least 1 and divide the funded slices exactly."
 CREATE_SLICES = "Slices (dSOS)"
 CREATE_EACH = "0.001 ETH each"
 CREATE_SLICES_VALUE = "[size=54sp][b]{n}[/b][/size]\n= {eth} ETH"
@@ -240,6 +266,7 @@ WIN_EXPIRES = " - expires near block {block:,}"
 WIN_RULE_OK = "Windows over 7,200 blocks stay sendable from your wallet."
 WIN_RULE_SHORT = "Windows of 7,200 blocks or less are NOT sendable from a wallet."
 WIN_RULE_GATED = "Gated offers are never sendable. The holder redeems them with the PIN."
+WIN_RULE_AB = "A and B offers are never sendable. Sellers need time to write and confirm their records."
 CREATE_HOLDER = "[b]Holder[/b]"
 HOLDER_ME = "[b]Myself[/b]\n{addr}"
 HOLDER_ME_EMPTY = "add your address (arrow under the logo)"
@@ -247,6 +274,7 @@ HOLDER_OTHER = "[b]Another address[/b]\ntap to use my own address"
 HINT_HOLDER = "Holder address 0x..."
 CREATE_LEDGER = "Ledger record - choose when sending"
 CREATE_LEDGER_SKIPPED = "Optional"
+CREATE_DELAY_NOTE = "The window cannot be changed after creation. The contract default is 1 block, so set a real window."
 CREATE_BUTTON = "Create offer · {eth} ETH"
 CREATE_NOTE = "Offers not redeemed before expiry can be swept into the shared pool."
 CREATE_ERR_PIN = "Enter a PIN for a gated offer."
@@ -255,10 +283,25 @@ CREATE_ERR_OWN_ADDR = "Add your address first: tap the arrow under the logo."
 CREATE_ERR_HOLDER = "Holder needs a valid 0x address."
 CREATE_SUMMARY = ("[b]Create {kind} offer[/b]\n{slices} dSOS = {eth} ETH\n"
                   "Window {blocks:,} blocks\nHolder {holder}")
-CREATE_ROWS = {"payable": "payable amount (ETH)", "kind": "kind (uint8)", "to": "to (address)",
-               "delay": "delayBlocks", "hash": "payloadHash", "sig": "signature (bytes)"}
-CREATE_TIP = "metadata (string): leave it empty."
-CREATE_FN = "createOffer"
+CREATE_ROWS = {"payable": "payable amount (ETH)", "to": "to (address)",
+               "delay": "delayBlocks", "nonce": "expectedNonce (uint256)"}
+CREATE_TIP = "expectedNonce is your current redeem nonce: the call reverts with BadNonce if it changed."
+CREATE_FN = "createOfferS"
+CREATE_A_SUMMARY = ("[b]Create open A offer[/b]\n{slices} dSOS = {eth} ETH\n"
+                    "{per} slice(s) per record, {records} record(s) wanted\nWindow {blocks:,} blocks")
+CREATE_A_ROWS = {"payable": "payable amount (ETH)", "delay": "delayBlocks",
+                 "per": "slicesPerRecord (uint256)", "nonce": "expectedNonce (uint256)"}
+CREATE_A_TIP = ("Any seller can confirm records for this offer, first come first served. Unconfirmed "
+                "ETH goes to the pool at expiry. expectedNonce is your current redeem nonce.")
+CREATE_A_FN = "createOfferA"
+CREATE_B_SUMMARY = ("[b]Create named B offer[/b]\n{slices} dSOS = {eth} ETH\n"
+                    "{per} slice(s) per record, {records} record(s) wanted\n"
+                    "Only {seller} can confirm\nWindow {blocks:,} blocks")
+CREATE_B_ROWS = {"payable": "payable amount (ETH)", "to": "to (address)", "delay": "delayBlocks",
+                 "per": "slicesPerRecord (uint256)", "nonce": "expectedNonce (uint256)"}
+CREATE_B_TIP = ("Only the seller address can confirm records. A zero address becomes the dead address: "
+                "nobody can confirm and the ETH goes to the pool. expectedNonce is your current redeem nonce.")
+CREATE_B_FN = "createOfferB"
 
 # ------------------------------------------------------------------ send page
 SEND_TITLE = "[b]Send dSOS[/b]"
@@ -274,13 +317,13 @@ SEND_ROW_ID = "[b]#{id}[/b]  -  {left}{split}"
 SEND_ROW_SPLIT = "  -  split"
 SEND_ROW_AMOUNT = "[b]{take} dSOS[/b]"
 SEND_BLOCKED = "{stuck} dSOS can't be sent here: {parts}. Send those from My offers."
-SEND_BLOCKED_GATED = "{n} gated offer{s}"
+SEND_BLOCKED_GATED = "{n} gated or A / B offer{s}"
 SEND_BLOCKED_SHORT = "{n} with under a day left"
 SEND_BLOCKED_EXPIRED = "{n} expired"
 SEND_BLOCKED_JOIN = " and "
 SEND_BUTTON = "Send {n} dSOS"
 SEND_BUTTON_EMPTY = "Send"
-SEND_NOTE = "Wallet sends write no ledger record. The recipient gets over a day to redeem."
+SEND_NOTE = "Only S offers with more than a day left can be sent. The recipient gets over a day to redeem."
 SEND_ERR_NO_WALLET = "Load your wallet first: tap the arrow under the logo."
 SEND_ERR_NOTHING = "Nothing can be sent from the wallet right now."
 SEND_ERR_ADDRESS = "Enter a valid 0x recipient address."
@@ -301,6 +344,7 @@ TX_NOT_SENDER = ("This app never holds your keys. Your wallet app signs and send
                  "value first, and test with a small amount. You can also copy the values below "
                  "into any wallet or website.")
 TX_TO = "To (dSOS contract)"
+TX_TO_LEDGER = "To (SOS69069 ledger)"
 TX_VALUE = "Value (ETH)"
 TX_VALUE_SHOWN = "{eth} ETH"
 TX_DATA = "Data (hex)"
@@ -337,9 +381,9 @@ RO_SWEEP_ROW_UNKNOWN = "[b]#{id}[/b]"
 RO_SWEEP_BTN = "Sweep"
 RO_SUMMARY = "[b]Redeem {n} dSOS[/b]\nOffer #{id} - {kind}\n= {eth} ETH paid to your wallet"
 RO_ROWS = {"id": "id (uint256)", "slices": "slices (uint256)", "pin": "pin (bytes32)",
-           "r": "r (tuple: paste as one value)"}
-RO_TIP = ("On Etherscan paste the r value above into the single field called r. The pin is all "
-          "zeros because this offer has no PIN. Send it from {wallet} before block {block:,}.")
+           "nonce": "expectedNonce (uint256)"}
+RO_TIP = ("The pin is all zeros because this offer has no PIN. expectedNonce is your current "
+          "redeem nonce. Send it from {wallet} before block {block:,}.")
 RO_WARN = "Redeemed slices are burned and the ETH is paid out. This cannot be undone."
 RO_FN = "redeemSlices"
 
@@ -365,10 +409,10 @@ REVERT_TEXT = {
     "InsufficientSlices": "The offer has fewer slices than you asked for.",
     "InvalidValue": "The ETH amount must be a whole number of slices (0.001 ETH each).",
     "NoCredit": "No credit available.",
-    "NotEnoughSendable": "Fewer sendable slices than that. Gated, expiring and expired offers cannot be wallet-sent.",
+    "NotEnoughSendable": "Fewer sendable slices than that. Only S offers with more than a day left can be wallet-sent.",
     "NotHolder": "This wallet does not hold that offer.",
     "NotStaked": "This wallet is not staked yet.",
-    "NotTransferable": "That cannot be sent (gated offers and the contract itself are blocked).",
+    "NotTransferable": "That cannot be sent (only S offers can be sent).",
     "OfferNotActive": "That offer is no longer active.",
     "PoolTooThin": "The pool cannot pay this amount right now.",
     "Reentrant": "The contract is busy. Try again.",
@@ -384,6 +428,16 @@ REVERT_TEXT = {
     "DuplicatePayloadHash": "That ledger record already exists.",
     "MetadataTooLong": "The metadata is too long (64 characters at most).",
     "revert": "The contract would reject this transaction.",
+    "BadNonce": "Your nonce changed (another transaction of yours was mined first). Reload and build it again.",
+    "BadRate": "Slices per record must be at least 1, not above the funded slices, and divide them exactly.",
+    "BadTarget": "The receiver cannot be the dSOS contract itself.",
+    "LedgerMissing": "The SOS ledger was not found at its address on this chain.",
+    "NoModule": "The offer module has no code at its address.",
+    "NotDelegated": "The offer module was called directly. Use the dSOSSystem address.",
+    "OfferFull": "Nothing left to confirm: this offer already has all the records it wanted.",
+    "OverCap": "A / B redeems are capped by the slices you funded in your own A / B offers.",
+    "RecordNotFound": "One of your next records is not on the SOS ledger yet. Write the records first.",
+    "SendWindowClosed": "Less than a day is left on this offer: it can no longer be sent.",
 }
 REVERT_UNKNOWN = "The contract would reject this transaction ({name})."
 
@@ -448,9 +502,9 @@ CREATE_GATE_WARN = ("A gated offer with a 1-block window above {eth} ETH counts 
 CREATE_GATED_SUMMARY = ("[b]Create gated offer[/b]\n{slices} dSOS = {eth} ETH\n"
                         "Window {blocks:,} blocks\nHolder {holder}\nProtected by your PIN")
 CREATE_GATED_ROWS = {"payable": "payable amount (ETH)", "to": "to (address)",
-                     "delay": "delayBlocks", "pin": "pinCommitment_", "hash": "payloadHash",
-                     "sig": "signature (bytes)"}
-CREATE_GATED_TIP = ("metadata (string): leave it empty. Give the PIN to the holder privately: it "
+                     "delay": "delayBlocks", "pin": "pinCommitment_",
+                     "nonce": "expectedNonce (uint256)"}
+CREATE_GATED_TIP = ("Give the PIN to the holder privately: it "
                     "is not part of this data. Only that holder can redeem, with the PIN.")
 CREATE_GATED_FN = "createOfferGated"
 OD_PIN_HINT = "PIN for this offer"
@@ -460,7 +514,7 @@ OD_PIN_BAD = "That PIN does not match this offer. Nothing was built."
 OD_PIN_ERROR = "Could not read the offer's PIN hash: {error}"
 OD_NOTE_GATED_ACTIVE = "The PIN is checked against the chain before anything is sent."
 RO_TIP_PIN = ("The pin value is the 32-byte form of your PIN that matches this offer's on-chain "
-              "hash. Send it from {wallet} before block {block:,}.")
+              "hash. expectedNonce is your current redeem nonce. Send it from {wallet} before block {block:,}.")
 
 # ------------------------------------------------------------------ wallet link metadata (shown in the wallet)
 WC_APP_NAME = "dSOS"
@@ -515,7 +569,7 @@ ACT_SCOPES = [("contract", "Contract"), ("mine", "Mine")]
 ACT_FILTERS = [("all", "All"), ("created", "Created"), ("received", "Received"),
                ("sent", "Sent"), ("redeemed", "Redeemed"), ("swept", "Swept"),
                ("stake", "Stake & Credits"), ("donation", "Donations"),
-               ("ledger", "Ledger"), ("failed", "Failed")]
+               ("ledger", "Ledger"), ("synced", "Records"), ("failed", "Failed")]
 ACT_LOADING = "Loading activity..."
 ACT_EMPTY = "No activity found in this range."
 ACT_NEED_ADDRESS = "Load your wallet first to see your activity."
@@ -535,7 +589,7 @@ ACT_ICONS = {"created": ("+", ICON_GREEN), "received": ("<", BLUE),
              "staked": ("o", BLUE), "formed": ("c", BLUE),
              "credit_redeemed": ("$", ICON_GREEN),
              "donation": ("d", ICON_PURPLE), "ledger": ("L", ICON_PURPLE),
-             "failed": ("!", RED)}
+             "synced": ("r", ICON_GREEN), "failed": ("!", RED)}
 ACT_TITLE = {
     "created": "Created {amt} · #{id}",
     "received": "Received {amt}{idpart}",
@@ -549,6 +603,7 @@ ACT_TITLE = {
     "donation": "Donation",
     "ledger": "Ledger record",
     "failed": "Failed · {fn}",
+    "synced": "Records confirmed · {amt}{idpart}",
 }
 ACT_AMT_DSOS = "{n} dSOS"
 ACT_AMT_UNKNOWN = "dSOS"
@@ -616,6 +671,9 @@ ECON_COOLDOWN_END = "Cooldown ends"
 ECON_NEXT_EXPIRY = "Next expiry"
 ECON_TRUST = "Trust / effective / pushes"
 ECON_NONCE = "Redeem nonce"
+ECON_PRODUCED = "A / B funded (allowance in)"
+ECON_REDEEMED_AB = "A / B redeemed"
+ECON_ALLOWANCE = "A / B allowance left"
 ECON_UNIT = "1 dSOS"
 ECON_RESERVE = "Minimum reserve"
 ECON_COOLDOWN = "Stake cooldown"
@@ -659,3 +717,70 @@ REC_CANCELLED = "Ledger record cancelled in the wallet. The dSOS transaction abo
 REC_TIMEOUT = ("The wallet has not answered the ledger record {step} request after 2 minutes.\n"
                "The dSOS transaction above is not affected.")
 BTN_REC_RETRY = "Record in ledger again"
+
+
+# ------------------------------------------------------------------ v10: sell SOS records (A / B offers)
+SELL_TITLE = "Sell records"
+SELL_INTRO = ("[b]Sell SOS records to an A or B offer[/b]\n"
+              "1. Write your records to the SOS ledger. You sign each one in your wallet. The creator of "
+              "the offer is the receiver.\n"
+              "2. Confirm them in dSOS (Sync). Every confirmed record moves its slices into your own "
+              "offer, first come first served.\n"
+              "3. Redeem in the Offers tab before expiry. dSOS never writes to the ledger itself.")
+HINT_SELL_ID = "A / B offer id"
+BTN_SELL_LOAD = "Load"
+SELL_BAD_ID = "Enter the id of an A or B offer."
+SELL_LOADING = "Reading offer #{id}..."
+SELL_PLANNING = "Reading your next record hashes..."
+SELL_ERROR = "Could not read it: {error}"
+SELL_NOT_SALE = "That id is not an A or B offer. S and G offers are not sold with records."
+SELL_OPEN_TITLE = "[b]Open offers[/b] (newest first)"
+SELL_OPEN_LOADING = "Looking for open offers..."
+SELL_OPEN_NONE = "No open A or B offer found among the newest ids. Enter an id above."
+SELL_OPEN_ROW = "#{id} {kind} · {per} slice(s) per record · {records} record(s) wanted · {time}"
+SELL_STATE_OPEN = "open"
+SELL_STATE_CLOSED = "closed"
+SELL_INFO = ("[b]Offer #{id}[/b] · type {kind} · {state}\n"
+             "Creator (receives the records) {donor}{named}\n"
+             "{per} slice(s) per record · {records} record(s) still wanted · {slices} slices left\n"
+             "Expires at block {block:,} ({time})")
+SELL_INFO_NAMED = "\nOnly {target} can confirm records"
+SELL_MINE = ("[b]You[/b]\nNext record index {nxt} · on the ledger, not yet confirmed: {ready}{capped}\n{earned}")
+SELL_MINE_CAPPED = " (checked the next {n} only)"
+SELL_EARNED_ID = "Your earned slices are in offer #{id}"
+SELL_EARNED_NONE = "You have no earned slices from this offer yet"
+SELL_WHY = {
+    "full": "This offer has no records left to confirm.",
+    "expired": "This offer has expired. Anyone can sweep it into the pool.",
+    "named": "Only the named seller can sell to this B offer.",
+}
+SELL_HOW_MANY = "[b]Records to write[/b]"
+HINT_SELL_K = "How many (up to {max})"
+BTN_SELL_WRITE_NONE = "Write records to the ledger"
+HINT_SELL_N = "Records to confirm in dSOS"
+BTN_SELL_SYNC_NONE = "Sync records (confirm in dSOS)"
+BTN_SELL_SWEEP = "Sweep expired offer"
+SELL_ERR_NOTHING_WRITE = "Nothing to write: your next records are already on the ledger. Sync them first."
+SELL_ERR_K = "Enter how many records to write."
+SELL_ERR_N = "Enter how many records to confirm, up to the number already on the ledger."
+SELL_WRITE_SUMMARY = ("[b]Write {n} record(s) to the SOS ledger[/b]\nFor offer #{id}\n"
+                      "Addressed to {donor}, signed by you")
+SELL_WRITE_ROWS = {"signer": "signer (address)", "to": "intendedTo (address)", "n": "records"}
+SELL_WRITE_TIP = ("Your wallet signs each record (no gas), then one transaction sends them all to the "
+                  "ledger. This transaction goes to the SOS69069 ledger, not to dSOS. After it is "
+                  "confirmed, come back and press Sync.")
+SELL_WRITE_WARN = ("Each record is +1 Push for you and +1 Trust for the offer creator. It cannot be "
+                   "undone and counts for this offer only.")
+SELL_SIM_LATER = "[b]Dry run later[/b]\n{n} record(s) are signed first, then the batch is checked against the ledger."
+SELL_SIGNING = "Approve signature {i} of {n} in {wallet}..."
+SELL_SIGNED = "All {n} signature(s) received. Checking them against the ledger..."
+SELL_SIGN_BAD = "The ledger would not accept these records ({reason}). Nothing was sent."
+SELL_WROTE_NEXT = "Records written. Next: open Sell records again and press Sync."
+SYNC_RECORDS_FN = "syncRecords"
+SYNC_RECORDS_SUMMARY = "[b]Confirm {n} record(s)[/b]\nOffer #{id} · {per} slice(s) per record"
+SYNC_RECORDS_ROWS = {"id": "id (uint256)", "n": "n (uint256)", "nonce": "expectedNonce (uint256)"}
+SYNC_RECORDS_TIP = ("dSOS checks that each record is on the ledger and moves its slices into your own "
+                    "offer. If the offer fills up first, only the records still wanted count. "
+                    "expectedNonce is your current redeem nonce.")
+SYNC_RECORDS_WARN = ("The slices you earn follow the A / B rules: they expire with the offer and you can "
+                     "redeem them up to your A / B allowance.")

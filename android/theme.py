@@ -24,7 +24,7 @@ HAS_START = os.path.exists(START)
 WORDMARK = os.path.join(HERE, "wordmark.png")
 HAS_WORDMARK = os.path.exists(WORDMARK)
 
-APP_VERSION = "v9.10"
+APP_VERSION = "v10.0"
 try:                                   # build_info.py is written by the CI workflow
     import build_info
     if build_info.NUMBER == "dev":
@@ -33,12 +33,12 @@ try:                                   # build_info.py is written by the CI work
 except Exception:  # noqa: BLE001
     BUILD = f"{APP_VERSION} \u00b7 dev build"
 
-DSOS_ADDR = "0x7Bd7c427b3c69e2a09603573ac875987c61ECAB8"
+DSOS_ADDR = "0xbD08A73E02BA266f5cC8c4c6a08348d806e61f2C"   # dSOSSystem: the one address users call (it runs dSOSOffers by delegatecall)
 LEDGER_ADDR = "0x7373DBC24Dcd785896E8Ac3d5372c6ced9B75a8A"
 ETHERSCAN_ADDR = "https://etherscan.io/address/"
 GITHUB_URL = "https://github.com/Taru8899/SOS69069dSOS"
 ETHERSCAN_WRITE = "https://etherscan.io/address/" + DSOS_ADDR + "#writeContract"
-DAPP_URL = "https://taru8899.github.io/SOS69069dSOS/dsos-dapp-v29.html"
+DAPP_URL = "https://taru8899.github.io/SOS69069dSOS/dsos-dapp-v30.html"
 ETHERSCAN_TX = "https://etherscan.io/tx/"
 WINDOWS = {"1 day": 7200, "2 days": 14400, "7 days": 50400}
 

@@ -13,8 +13,8 @@ import strings as S
 import tx
 import util
 from design import FONT_TITLE
-from theme import (BLACK, BLUE, DAPP_URL, DARK_GREEN, DSOS_ADDR, ETHERSCAN_TX, ETHERSCAN_WRITE,
-                   LIGHT, LIGHT_GREEN, RED, WHITE, short)
+from theme import (BLACK, BLUE, DAPP_URL, DARK_GREEN, DSOS_ADDR, ETHERSCAN_ADDR, ETHERSCAN_TX,
+                   ETHERSCAN_WRITE, LEDGER_ADDR, LIGHT, LIGHT_GREEN, RED, WHITE, short)
 from widgets import PullScroll, Card, Choice, Overlay, Panel, IconBtn, Tap, label
 
 POLL_SECONDS = 4
@@ -99,7 +99,7 @@ class TxScreen(Overlay):
         box.add_widget(Card(S.TX_NOT_SENDER, bg=BLACK, fg=WHITE))
         box.add_widget(label(S.TX_COPY_ROWS_HEAD, size_hint_y=None, height=dp(30)))
         data = t["data"]
-        box.add_widget(self.copy_row(S.TX_TO, DSOS_ADDR, short(DSOS_ADDR)))
+        box.add_widget(self.copy_row(S.TX_TO_LEDGER if t.get("ledger") else S.TX_TO, t["to"], short(t["to"])))
         if t["value_wei"]:
             box.add_widget(self.copy_row(S.TX_VALUE, t["value_eth"],
                                          S.TX_VALUE_SHOWN.format(eth=t["value_eth"])))
@@ -116,7 +116,8 @@ class TxScreen(Overlay):
         if not t.get("plain"):
             b1 = Choice(base=BLUE, fg=WHITE, text=S.TX_BTN_ETHERSCAN,
                         size_hint_y=None, height=dp(52), bold=True)
-            b1.bind(on_release=lambda *_: self.open(ETHERSCAN_WRITE))
+            b1.bind(on_release=lambda *_: self.open(ETHERSCAN_ADDR + LEDGER_ADDR + "#writeContract"
+                                                if t.get("ledger") else ETHERSCAN_WRITE))
             box.add_widget(b1)
         b2 = Choice(base=BLACK, fg=WHITE, text=S.TX_BTN_DAPP,
                     size_hint_y=None, height=dp(52), bold=True)

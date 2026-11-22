@@ -94,6 +94,7 @@ def build(app, b, d):
     acts.add_widget(action_btn("plus", S.ACTION_CREATE, app.open_create))
     acts.add_widget(action_btn("recv", S.ACTION_REDEEM, app.open_redeem))
     acts.add_widget(action_btn("lock", S.ACTION_STAKE, lambda: app.set_page("stake")))
+    acts.add_widget(action_btn("credits", S.ACTION_SELL, app.open_sell))
     b.add_widget(acts)
     if d["next_expiry"]:
         b.add_widget(next_expiry_card(app, d))

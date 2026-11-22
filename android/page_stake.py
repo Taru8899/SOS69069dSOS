@@ -109,7 +109,7 @@ class StakePage:
             return
         holder = self.d["address"]
         try:
-            t = tx.stake_tx(holder, self.need)
+            t = tx.stake_tx(holder, self.need, nonce=self.d["redeem_nonce"])
         except Exception as e:  # noqa: BLE001
             self.note.text = str(e)
             return
@@ -119,8 +119,7 @@ class StakePage:
                 (R["to"], p["to"], short(p["to"])),
                 (R["delay"], p["delayBlocks"], p["delayBlocks"]),
                 (R["pin"], p["pinCommitment_"], short(p["pinCommitment_"])),
-                (R["hash"], p["payloadHash"], short(p["payloadHash"])),
-                (R["sig"], "0x", "0x")]
+                (R["nonce"], p["expectedNonce"], p["expectedNonce"])]
         summary = S.STAKE_SUMMARY.format(eth=t["value_eth"], n=self.need // core.UNIT,
                                          holder=short(holder))
         self.app.open_overlay(TxScreen(self.app, t, summary, S.STAKE_FN, rows,
@@ -130,9 +129,10 @@ class StakePage:
         if not self.sweep_ids:
             return
         oid = self.sweep_ids[0]
-        t = tx.sweep_offer_tx(oid)
+        t = tx.sweep_offer_tx(oid, nonce=self.d["redeem_nonce"])
         summary = S.SWEEP_SUMMARY.format(id=oid, pos=1, total=len(self.sweep_ids))
-        rows = [(S.SWEEP_ROWS["id"], str(oid), str(oid))]
+        rows = [(S.SWEEP_ROWS["id"], str(oid), str(oid)),
+                (S.SWEEP_ROWS["nonce"], t["params"]["expectedNonce"], t["params"]["expectedNonce"])]
         self.app.open_overlay(TxScreen(self.app, t, summary, S.SWEEP_FN, rows,
                                        S.SWEEP_TIP, S.SWEEP_WARN))
 

@@ -27,7 +27,7 @@ class CreateScreen(Overlay):
     def __init__(self, app, **kw):
         super().__init__(**kw)
         self.app = app
-        self.kind = "B"
+        self.kind = "S"
         self.slices = 5
         self.window = "2 days"
         self.holder_mode = "me"
@@ -86,6 +86,15 @@ class CreateScreen(Overlay):
         sl.add_widget(chips)
         form.add_widget(sl)
 
+        # slices paid per SOS record (A and B offers only)
+        self.per_title = label(S.CREATE_PER_RECORD, size_hint_y=None, height=dp(26))
+        form.add_widget(self.per_title)
+        self.per_in = make_input(S.HINT_PER_RECORD, "1", filt="int")
+        self.per_in.bind(text=lambda *_: self.refresh())
+        form.add_widget(self.per_in)
+        self.per_note = label("", size_hint_y=None, height=dp(190), valign="top", font_size="13sp")
+        form.add_widget(self.per_note)
+
         # redeem window
         form.add_widget(label(S.CREATE_WINDOW, size_hint_y=None, height=dp(26)))
         wrow = BoxLayout(size_hint_y=None, height=dp(52), spacing=dp(8))
@@ -117,7 +126,8 @@ class CreateScreen(Overlay):
         form.add_widget(self.pin_note)
 
         # holder
-        form.add_widget(label(S.CREATE_HOLDER, size_hint_y=None, height=dp(26)))
+        self.holder_title = label(S.CREATE_HOLDER, size_hint_y=None, height=dp(26))
+        form.add_widget(self.holder_title)
         hold = Panel(orientation="vertical", size_hint_y=None, height=dp(150), spacing=dp(6))
         self.holder_btn = IconRow("user", size_hint_y=None, height=dp(56))
         self.holder_btn.bind(on_release=lambda *_: self.toggle_holder())
@@ -195,6 +205,20 @@ class CreateScreen(Overlay):
             return int(t) if t.isdigit() else 0
         return WINDOWS[self.window]
 
+    def per(self):
+        t = self.per_in.text.strip()
+        return int(t) if t.isdigit() else 0
+
+    def per_ok(self):
+        p = self.per()
+        return p >= 1 and p <= self.slices and self.slices % p == 0
+
+    @staticmethod
+    def _show(w, h, show):
+        w.height = h if show else 0
+        w.opacity = 1 if show else 0
+        w.disabled = not show
+
     def holder_addr(self):
         if self.holder_mode == "me":
             return self.app.addr.text.strip()
@@ -203,7 +227,9 @@ class CreateScreen(Overlay):
     def problem(self):
         if self.blocks() < 1:
             return S.CREATE_ERR_WINDOW
-        if not tx.valid_address(self.holder_addr()):
+        if self.kind in ("A", "B") and not self.per_ok():
+            return S.CREATE_ERR_PER
+        if self.kind != "A" and not tx.valid_address(self.holder_addr()):
             if self.holder_mode == "me":
                 return S.CREATE_ERR_OWN_ADDR
             return S.CREATE_ERR_HOLDER
@@ -228,26 +254,38 @@ class CreateScreen(Overlay):
         b = self.blocks()
         data = self.app.data
         gated = self.kind == "G"
+        sale = self.kind in ("A", "B")
         note = S.WIN_NOTE.format(
             blocks=b,
             expires=S.WIN_EXPIRES.format(block=data["block"] + b) if data else "",
             rule=(S.WIN_RULE_GATED if gated else
+                  S.WIN_RULE_AB if sale else
                   S.WIN_RULE_OK if b > core.WINDOW else S.WIN_RULE_SHORT))
+        note += "\n" + S.CREATE_DELAY_NOTE
         gate_risk = (gated and b == 1 and data is not None
                      and self.slices * core.UNIT >= data["stake_need_wei"])
         if gate_risk:
             note += "\n" + S.CREATE_GATE_WARN.format(eth=core.eth(data["stake_need_wei"]))
         self.win_note.text = note
-        self.win_note.height = dp(150 if gate_risk else 60)
+        self.win_note.height = dp(190 if gate_risk else 96)
+        self._show(self.per_title, dp(26), sale)
+        self._show(self.per_in, dp(44), sale)
+        p_ = self.per()
+        self.per_note.text = ((S.CREATE_PER_NOTE.format(slices=self.slices, per=p_, records=self.slices // p_)
+                               if self.per_ok() else S.CREATE_PER_BAD) + "\n" + S.CREATE_AB_NOTE) if sale else ""
+        self._show(self.per_note, dp(190), sale)
         set_visible(self.pin_row, gated)
         set_visible(self.pin_note, gated)
 
         me = self.holder_mode == "me"
         mine = self.app.addr.text.strip()
+        has_holder = self.kind != "A"                  # A is open: the contract itself is the receiver
+        self.holder_title.text = S.HOLDER_SELLER if self.kind == "B" else S.CREATE_HOLDER
+        self._show(self.holder_title, dp(26), has_holder)
         self.holder_btn.text = (S.HOLDER_ME.format(addr=short(mine) or S.HOLDER_ME_EMPTY)
                                 if me else S.HOLDER_OTHER)
         set_visible(self.other_row, not me)
-        self.hold_panel.height = dp(84) if me else dp(150)
+        self._show(self.hold_panel, dp(84) if me else dp(150), has_holder)
 
         p = self.problem()
         self.btn.text = S.CREATE_BUTTON.format(eth=eth)
@@ -277,11 +315,16 @@ class CreateScreen(Overlay):
         if p:
             self.show_error(p)
             return
+        data_ = self.app.data
+        if not data_:
+            self.show_error(S.ERR_NONCE)
+            return
+        nonce = data_["redeem_nonce"]
         try:
             if self.kind == "G":
                 donor = self.app.addr.text.strip()
                 t = tx.create_gated_tx(donor, self.holder_addr(), self.slices, self.blocks(),
-                                       self.pin_in.text)
+                                       self.pin_in.text, nonce=nonce)
                 summary = S.CREATE_GATED_SUMMARY.format(
                     slices=self.slices, eth=t["value_eth"], blocks=self.blocks(),
                     holder=short(self.holder_addr()))
@@ -290,21 +333,43 @@ class CreateScreen(Overlay):
                         (R["to"], pp["to"], short(pp["to"])),
                         (R["delay"], pp["delayBlocks"], pp["delayBlocks"]),
                         (R["pin"], pp["pinCommitment_"], short(pp["pinCommitment_"])),
-                        (R["hash"], pp["payloadHash"], short(pp["payloadHash"])),
-                        (R["sig"], "0x", "0x")]
+                        (R["nonce"], pp["expectedNonce"], pp["expectedNonce"])]
                 shown = (summary, S.CREATE_GATED_FN, rows, S.CREATE_GATED_TIP)
+            elif self.kind == "A":
+                per = self.per()
+                t = tx.create_a_tx(self.slices, per, self.blocks(), nonce)
+                summary = S.CREATE_A_SUMMARY.format(
+                    slices=self.slices, eth=t["value_eth"], per=per, records=self.slices // per,
+                    blocks=self.blocks())
+                pp, R = t["params"], S.CREATE_A_ROWS
+                rows = [(R["payable"], t["value_eth"], t["value_eth"]),
+                        (R["delay"], pp["delayBlocks"], pp["delayBlocks"]),
+                        (R["per"], pp["slicesPerRecord"], pp["slicesPerRecord"]),
+                        (R["nonce"], pp["expectedNonce"], pp["expectedNonce"])]
+                shown = (summary, S.CREATE_A_FN, rows, S.CREATE_A_TIP)
+            elif self.kind == "B":
+                per = self.per()
+                t = tx.create_b_tx(self.holder_addr(), self.slices, per, self.blocks(), nonce)
+                summary = S.CREATE_B_SUMMARY.format(
+                    slices=self.slices, eth=t["value_eth"], per=per, records=self.slices // per,
+                    seller=short(self.holder_addr()), blocks=self.blocks())
+                pp, R = t["params"], S.CREATE_B_ROWS
+                rows = [(R["payable"], t["value_eth"], t["value_eth"]),
+                        (R["to"], pp["to"], short(pp["to"])),
+                        (R["delay"], pp["delayBlocks"], pp["delayBlocks"]),
+                        (R["per"], pp["slicesPerRecord"], pp["slicesPerRecord"]),
+                        (R["nonce"], pp["expectedNonce"], pp["expectedNonce"])]
+                shown = (summary, S.CREATE_B_FN, rows, S.CREATE_B_TIP)
             else:
-                t = tx.create_offer_tx(self.kind, self.holder_addr(), self.slices, self.blocks())
+                t = tx.create_offer_tx(self.kind, self.holder_addr(), self.slices, self.blocks(), nonce=nonce)
                 summary = S.CREATE_SUMMARY.format(
                     kind=self.kind, slices=self.slices, eth=t["value_eth"],
                     blocks=self.blocks(), holder=short(self.holder_addr()))
                 pp, R = t["params"], S.CREATE_ROWS
                 rows = [(R["payable"], t["value_eth"], t["value_eth"]),
-                        (R["kind"], pp["kind"], pp["kind"]),
                         (R["to"], pp["to"], short(pp["to"])),
                         (R["delay"], pp["delayBlocks"], pp["delayBlocks"]),
-                        (R["hash"], pp["payloadHash"], short(pp["payloadHash"])),
-                        (R["sig"], "0x", "0x")]
+                        (R["nonce"], pp["expectedNonce"], pp["expectedNonce"])]
                 shown = (summary, S.CREATE_FN, rows, S.CREATE_TIP)
         except Exception as e:  # noqa: BLE001
             self.show_error(str(e) or e.__class__.__name__)

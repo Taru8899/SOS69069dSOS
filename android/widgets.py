@@ -447,8 +447,9 @@ class Tappable(ButtonBehavior, Panel):
 
 
 class Badge(Label):
-    """Rounded square with the offer type letter (B, T, P, G)."""
-    STYLE = {"B": (BLUE, WHITE), "T": (BLACK, WHITE), "P": (GREEN, WHITE), "G": (WHITE, BLACK)}
+    """Rounded square with the offer type letter (S, A, B, G; T and P are the old types)."""
+    STYLE = {"S": (BLUE, WHITE), "A": (GREEN, WHITE), "B": (BLACK, WHITE), "T": (BLACK, WHITE),
+             "P": (GREEN, WHITE), "G": (WHITE, BLACK)}
 
     def __init__(self, kind, **kw):
         kw.setdefault("size_hint", (None, None))
