@@ -24,9 +24,24 @@ DSOS_SPEC = {
     "offerIdsOf": (["address"], ["uint256[]"]),
     "offerCountOf": (["address"], ["uint256"]),
     "sweepableOffers": (["address"], ["uint256[]"]),
-    # donor, holder, principal, active, kind, recordHash, createdAt, sweepableAt, count
+    # donor, holder, principal, active, kind, createdAt, sweepableAt, count
+    # kind: 0 G gated, 1 S sendable, 2 A open, 3 B named
     "offers": (["uint256"], ["address", "address", "uint256", "bool", "uint8",
-                             "bytes32", "uint64", "uint64", "uint256"]),
+                             "uint64", "uint64", "uint256"]),
+    # A / B escrow: donor, target, kind, active, slicesLeft, slicesPerRecord, recordsLeft,
+    #               createdAt, sweepableAt, salt
+    "sales": (["uint256"], ["address", "address", "uint8", "bool", "uint256", "uint256",
+                            "uint256", "uint64", "uint64", "bytes32"]),
+    "recordPayloadHash": (["uint256", "address", "uint256"], ["bytes32"]),
+    "redeemPayloadHash": (["address", "uint8", "uint256"], ["bytes32"]),
+    "earnedOffer": (["uint256", "address"], ["uint256"]),
+    "nextRecord": (["uint256", "address"], ["uint256"]),
+    "produced": (["address"], ["uint256"]),
+    "redeemed": (["address"], ["uint256"]),
+    "allowanceOf": (["address"], ["uint256"]),
+    "MIN_RESERVE": ([], ["uint256"]),
+    "DEFAULT_DELAY": ([], ["uint256"]),
+    "OFFERS_MODULE": ([], ["address"]),
     "staked": (["address"], ["bool"]),
     "stakedAt": (["address"], ["uint64"]),
     "canRedeem": (["address"], ["bool"]),
@@ -45,6 +60,8 @@ LEDGER_SPEC = {
     "pushCountOf": (["address"], ["uint256"]),
     "effectiveOf": (["address"], ["int256"]),
     "statsOf": (["address"], ["uint256", "uint256", "int256"]),
+    "isRecordHashUsed": (["bytes32"], ["bool"]),
+    "recordStructHash": (["address", "address", "bytes32", "string"], ["bytes32"]),
 }
 
 
