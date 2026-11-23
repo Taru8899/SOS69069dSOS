@@ -60,7 +60,7 @@ class TxScreen(Overlay):
         col.add_widget(self.status)
 
         sv = PullScroll()
-        box = BoxLayout(orientation="vertical", spacing=dp(10), size_hint_y=None,
+        box = BoxLayout(orientation="vertical", spacing=dp(6), size_hint_y=None,
                         padding=[dp(14), 0, dp(14), dp(20)])
         box.bind(minimum_height=box.setter("height"))
         self.box = box
@@ -81,23 +81,21 @@ class TxScreen(Overlay):
             self.sign_btn.bind(on_release=lambda *_: self.toggle_sign())
             box.add_widget(self.sign_btn)
             box.add_widget(Card(S.TX_LEDGER_HELP))
-        self.out_box = BoxLayout(orientation="vertical", spacing=dp(8), size_hint_y=None)
-        self.out_box.bind(minimum_height=self.out_box.setter("height"))
-        box.add_widget(self.out_box)
-        self.rec_box = BoxLayout(orientation="vertical", spacing=dp(8), size_hint_y=None)
-        self.rec_box.bind(minimum_height=self.rec_box.setter("height"))
-        box.add_widget(self.rec_box)
-        self.log_box = BoxLayout(orientation="vertical", spacing=dp(8), size_hint_y=None)
-        self.log_box.bind(minimum_height=self.log_box.setter("height"))
-        box.add_widget(self.log_box)
+        # message areas + disconnect: an empty area is taken out, so it leaves no gap
+        self.stack = BoxLayout(orientation="vertical", spacing=dp(6), size_hint_y=None)
+        self.stack.bind(minimum_height=self.stack.setter("height"))
+        self.out_box = self._msg_box()
+        self.rec_box = self._msg_box()
+        self.log_box = self._msg_box()
         self.disc_btn = Choice(base=LIGHT, fg=BLACK, text=S.TX_DISCONNECT, size_hint_y=None,
                                height=dp(40))
         self.disc_btn.bind(on_release=lambda *_: self.on_disconnect())
-        box.add_widget(self.disc_btn)
+        box.add_widget(self.stack)
+        self._sync_stack()
 
         # ---- copy values for another wallet
         box.add_widget(Card(S.TX_NOT_SENDER, bg=BLACK, fg=WHITE))
-        box.add_widget(label(S.TX_COPY_ROWS_HEAD, size_hint_y=None, height=dp(30)))
+        box.add_widget(label(S.TX_COPY_ROWS_HEAD, size_hint_y=None, height=dp(24)))
         data = t["data"]
         box.add_widget(self.copy_row(S.TX_TO_LEDGER if t.get("ledger") else S.TX_TO, t["to"], short(t["to"])))
         if t["value_wei"]:
@@ -106,9 +104,9 @@ class TxScreen(Overlay):
         if not t.get("plain"):
             box.add_widget(self.copy_row(S.TX_DATA, data, f"{data[:22]}...{data[-8:]}"))
             box.add_widget(label(S.TX_ETHERSCAN_HEAD.format(fn=fn_name),
-                                 size_hint_y=None, height=dp(30)))
+                                 size_hint_y=None, height=dp(24)))
         else:
-            box.add_widget(label(S.TX_NO_ETHERSCAN_FN, size_hint_y=None, height=dp(30)))
+            box.add_widget(label(S.TX_NO_ETHERSCAN_FN, size_hint_y=None, height=dp(24)))
         for title, value, shown in rows:
             box.add_widget(self.copy_row(title, value, shown))
         if tip:
@@ -141,6 +139,19 @@ class TxScreen(Overlay):
             pass
         return a if tx.valid_address(a) else ""
 
+    def _msg_box(self):
+        b = BoxLayout(orientation="vertical", spacing=dp(6), size_hint_y=None)
+        b.bind(minimum_height=b.setter("height"))
+        b.bind(children=lambda *_: self._sync_stack())
+        return b
+
+    def _sync_stack(self):
+        want = [b for b in (self.out_box, self.rec_box, self.log_box) if b.children] + [self.disc_btn]
+        if list(reversed(self.stack.children)) != want:
+            self.stack.clear_widgets()
+            for w in want:
+                self.stack.add_widget(w)
+
     def close(self):
         self.alive = False
         if self.wallet:
@@ -148,10 +159,10 @@ class TxScreen(Overlay):
         self.app.close_top()
 
     def copy_row(self, title, value, shown):
-        row = Panel(size_hint_y=None, height=dp(68), spacing=dp(8))
+        row = Panel(size_hint_y=None, height=dp(56), spacing=dp(8))
         row.add_widget(label(f"[size=12sp]{escape_markup(title)}[/size]\n[b]{escape_markup(shown)}[/b]"))
         btn = Choice(base=BLUE, fg=WHITE, text=S.BTN_COPY, size_hint=(None, None),
-                     size=(dp(72), dp(40)), pos_hint={"center_y": 0.5}, bold=True)
+                     size=(dp(72), dp(36)), pos_hint={"center_y": 0.5}, bold=True)
         btn.bind(on_release=lambda *_: self.copy(title, value))
         row.add_widget(btn)
         return row

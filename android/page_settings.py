@@ -36,21 +36,26 @@ class SettingsScreen(Overlay):
         box.add_widget(Card(S.SETTINGS_INTRO))
         box.add_widget(self.address_row(S.SETTINGS_DSOS, DSOS_ADDR))
         box.add_widget(self.address_row(S.SETTINGS_LEDGER, LEDGER_ADDR))
+        mine = app.addr.text.strip()
+        box.add_widget(self.address_row(S.SETTINGS_MINE, mine, S.SETTINGS_MINE_EMPTY))
         box.add_widget(Card(S.SETTINGS_VERSION.format(build=escape_markup(BUILD))))
         box.add_widget(self.layout_row())
         sv.add_widget(box)
         col.add_widget(sv)
         self.add_widget(col)
 
-    def address_row(self, title, addr):
+    def address_row(self, title, addr, empty=""):
+        valid = len(addr) == 42 and addr.startswith("0x") and all(c in "0123456789abcdefABCDEF" for c in addr[2:])
         p = Panel(orientation="vertical", size_hint_y=None, height=dp(124), spacing=dp(6))
-        p.add_widget(label(f"[b]{title}[/b]\n[size=12sp]{short(addr)}[/size]",
+        p.add_widget(label(f"[b]{title}[/b]\n[size=12sp]{short(addr) if valid or not empty else empty}[/size]",
                            size_hint_y=None, height=dp(44)))
         btns = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(8))
         for text, fn in ((S.BTN_COPY, lambda: self.copy(title, addr)),
                          (S.BTN_OPEN, lambda: self.open(ETHERSCAN_ADDR + addr))):
             b = Choice(base=BLUE, fg=WHITE, text=text, bold=True)
             b.bind(on_release=lambda *_, f=fn: f())
+            if not valid:
+                b.set_enabled(False)
             btns.add_widget(b)
         p.add_widget(btns)
         return p

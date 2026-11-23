@@ -36,9 +36,9 @@ except Exception:  # noqa: BLE001
 DSOS_ADDR = "0xbD08A73E02BA266f5cC8c4c6a08348d806e61f2C"   # dSOSSystem: the one address users call (it runs dSOSOffers by delegatecall)
 LEDGER_ADDR = "0x7373DBC24Dcd785896E8Ac3d5372c6ced9B75a8A"
 ETHERSCAN_ADDR = "https://etherscan.io/address/"
-GITHUB_URL = "https://github.com/Taru8899/SOS69069dSOS"
+GITHUB_URL = "https://github.com/Taru8899/SOS69069dSOSV23"
 ETHERSCAN_WRITE = "https://etherscan.io/address/" + DSOS_ADDR + "#writeContract"
-DAPP_URL = "https://taru8899.github.io/SOS69069dSOS/dsos-dapp-v30.html"
+DAPP_URL = "https://taru8899.github.io/SOS69069dSOSV23/dsos-dapp-v30.html"
 ETHERSCAN_TX = "https://etherscan.io/tx/"
 WINDOWS = {"1 day": 7200, "2 days": 14400, "7 days": 50400}
 

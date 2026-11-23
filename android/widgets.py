@@ -291,6 +291,17 @@ def label(text, **kw):
     return lab
 
 
+def text_label(text="", **kw):
+    """Label that is exactly as tall as its text (no fixed slot, no empty space)."""
+    kw.setdefault("color", BLACK)
+    kw.setdefault("halign", "left")
+    kw.setdefault("valign", "top")
+    lab = Label(text=text, markup=True, size_hint_y=None, height=0, **kw)
+    lab.bind(width=lambda i, w: setattr(i, "text_size", (w, None)))
+    lab.bind(texture_size=lambda i, ts: setattr(i, "height", ts[1] + dp(2)))
+    return lab
+
+
 def offer_card(o):
     colors = {"redeemable": "00a82d", "expiring": "0b0b0b", "expired": "b00021"}
     return Card(S.OFFER_CARD.format(

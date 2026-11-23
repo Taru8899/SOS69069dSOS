@@ -14,7 +14,7 @@ import tx
 from design import FONT_TITLE
 from page_tx import TxScreen
 from theme import BLACK, BLUE, LEDGER_ADDR, LIGHT, WHITE, left_text, short
-from widgets import Card, Choice, IconBtn, Overlay, PullScroll, label, make_input
+from widgets import Card, Choice, IconBtn, Overlay, PullScroll, label, make_input, text_label
 
 
 class RecordsTxScreen(TxScreen):
@@ -119,11 +119,11 @@ class SellScreen(Overlay):
         col.add_widget(head)
 
         sv = PullScroll()
-        form = BoxLayout(orientation="vertical", spacing=dp(10), size_hint_y=None,
+        form = BoxLayout(orientation="vertical", spacing=dp(8), size_hint_y=None,
                          padding=[dp(14), 0, dp(14), dp(20)])
         form.bind(minimum_height=form.setter("height"))
         self.form = form
-        form.add_widget(Card(S.SELL_INTRO))
+        self.intro = Card(S.SELL_INTRO)
 
         row = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(6))
         self.id_in = make_input(S.HINT_SELL_ID, str(sale_id) if sale_id else "", filt="int")
@@ -131,14 +131,14 @@ class SellScreen(Overlay):
         go.bind(on_release=lambda *_: self.load())
         row.add_widget(self.id_in)
         row.add_widget(go)
-        form.add_widget(row)
+        self.row = row
 
-        self.msg = label("", size_hint_y=None, height=dp(44), valign="top", font_size="13sp")
-        form.add_widget(self.msg)
+        # message / offer info / open offers: an empty one is taken out, so it leaves no gap
+        self.msg = text_label("", font_size="13sp")
+        self.msg.bind(text=lambda *_: self._sync())
         self.info = self._box()
-        form.add_widget(self.info)
         self.open_box = self._box()
-        form.add_widget(self.open_box)
+        self._sync()
 
         sv.add_widget(form)
         col.add_widget(sv)
@@ -148,11 +148,21 @@ class SellScreen(Overlay):
         if sale_id:
             self.load()
 
-    @staticmethod
-    def _box():
+    def _box(self):
         b = BoxLayout(orientation="vertical", spacing=dp(8), size_hint_y=None)
         b.bind(minimum_height=b.setter("height"))
+        b.bind(children=lambda *_: self._sync())
         return b
+
+    def _sync(self):
+        want = [self.intro, self.row]
+        if self.msg.text:
+            want.append(self.msg)
+        want += [b for b in (self.info, self.open_box) if b.children]
+        if list(reversed(self.form.children)) != want:
+            self.form.clear_widgets()
+            for w in want:
+                self.form.add_widget(w)
 
     def close(self):
         self.alive = False
@@ -254,10 +264,11 @@ class SellScreen(Overlay):
         b.add_widget(Card(S.SELL_MINE.format(nxt=st["next"], ready=st["ready"], capped=capped, earned=earned)))
 
         if not ok:
-            b.add_widget(Card(S.SELL_WHY[why], bg=BLACK, fg=WHITE))
+            dead = why == "named" and s["kind"] == "B" and s["target"].lower() == tx.DEAD.lower()
+            b.add_widget(Card(S.SELL_WHY_DEAD if dead else S.SELL_WHY[why], bg=BLACK, fg=WHITE))
         need = max(0, s["records_left"] - st["ready"])
         if ok:
-            b.add_widget(label(S.SELL_HOW_MANY, size_hint_y=None, height=dp(26)))
+            b.add_widget(label(S.SELL_HOW_MANY, size_hint_y=None, height=dp(24)))
             self.k_in = make_input(S.HINT_SELL_K.format(max=tx.SELL_BATCH_MAX),
                                    str(max(1, min(need, tx.SELL_BATCH_MAX))), filt="int")
             b.add_widget(self.k_in)

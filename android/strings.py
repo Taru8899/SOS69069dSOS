@@ -480,8 +480,11 @@ TX_NO_ETHERSCAN_FN = "[b]Plain ETH transfer (no function)[/b]"
 # ------------------------------------------------------------------ donate page
 DONATE_TITLE = "[b]Donate to the pool[/b]"
 DONATE_INTRO = "ETH sent here joins the shared pool and cannot be taken back."
-DONATE_HINT = "Amount in ETH, e.g. 0.01"
-DONATE_AMOUNTS = ("0.001", "0.01", "0.1")
+DONATE_HINT = "Number of slices (whole number)"
+DONATE_SLICES = "Slices to donate"
+DONATE_AMOUNTS = (1, 5, 10, 50)
+DONATE_VALUE = "[size=54sp][b]{n}[/b][/size]\n= {eth} ETH"
+DONATE_BAD = "Enter a whole number of slices, at least 1"
 DONATE_BUTTON = "Donate {eth} ETH"
 DONATE_BUTTON_EMPTY = "Donate"
 DONATE_NOTE = ("A donation raises the pool's unallocated balance, so the stake requirement "
@@ -534,6 +537,8 @@ SETTINGS_INTRO = ("[b]Contracts[/b]\nBoth are on Ethereum mainnet. Copy an addre
                   "Etherscan.")
 SETTINGS_DSOS = "dSOS contract"
 SETTINGS_LEDGER = "SOS69069 ledger"
+SETTINGS_MINE = "My address"
+SETTINGS_MINE_EMPTY = "No address saved yet"
 SETTINGS_VERSION = "[b]App version[/b]\n{build}"
 SETTINGS_COPIED = "{title} copied"
 SETTINGS_OPEN_FAILED = "Could not open the link. Copy it instead."
@@ -749,6 +754,8 @@ SELL_MINE = ("[b]You[/b]\nNext record index {nxt} · on the ledger, not yet conf
 SELL_MINE_CAPPED = " (checked the next {n} only)"
 SELL_EARNED_ID = "Your earned slices are in offer #{id}"
 SELL_EARNED_NONE = "You have no earned slices from this offer yet"
+SELL_WHY_DEAD = ("This B offer names the dead address as its seller, so nobody can sell to it. "
+                 "It can only expire and be swept into the pool.")
 SELL_WHY = {
     "full": "This offer has no records left to confirm.",
     "expired": "This offer has expired. Anyone can sweep it into the pool.",
