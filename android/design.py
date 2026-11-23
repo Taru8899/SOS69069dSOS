@@ -74,11 +74,11 @@ FONT_RING = "16sp"         # "%" in the ring
 FONT_ETH_LINE = "15sp"     # "≈ 0.004 ETH redeemable"
 FONT_BAL_BIG = "40sp"      # big dSOS number on the Wallet card
 FONT_ECON_TITLE = "18.5sp" # Economics group titles
-FONT_ECON_ROW = "15sp"     # Economics row names
+FONT_ECON_ROW = "16sp"     # Economics row names
 FONT_ECON_ROW_BIG = "18.75sp"   # names of "Your dSOS" / "Your credits": 25% bigger
 FONT_ECON_ETH = "18sp"     # ETH amounts on the Economics page
 FONT_ECON_VALUE = "14sp"   # the rest of a value ("· 4 dSOS", "(pool too thin)")
-ECON_ROW_MIN_H = 44        # minimum row height (grows when a text wraps)
+ECON_ROW_MIN_H = 52        # minimum row height (grows when a text wraps)
 FONT_HELD = "18.75sp"      # held-by-contract amount (bold): 25% bigger than the redeemable line
 
 # ============================================================== INPUT FIELD LOOK

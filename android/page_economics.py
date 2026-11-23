@@ -1,5 +1,6 @@
 """Economics page: the numbers of the contract and of the wallet at the block that was read."""
 from kivy.metrics import dp
+from kivy.uix.anchorlayout import AnchorLayout
 from kivy.uix.boxlayout import BoxLayout
 
 import re
@@ -8,7 +9,7 @@ from kivy.uix.label import Label
 
 import core
 import strings as S
-from design import (ECON_ROW_MIN_H, FONT_ECON_ETH, FONT_ECON_ROW, FONT_ECON_ROW_BIG, FONT_ECON_TITLE,
+from design import (ECON_ROW_MIN_H, FONT_ECON_ETH, FONT_ECON_ROW, FONT_ECON_TITLE,
                     FONT_ECON_VALUE, FONT_TITLE)
 from theme import BLACK, WHITE
 from widgets import Divider, IconBtn, Overlay, Panel, PullScroll, label
@@ -122,20 +123,23 @@ class EconomicsScreen(Overlay):
                         padding=[dp(14), 0, dp(14), dp(20)])
         box.bind(minimum_height=box.setter("height"))
         for title, rows in groups(app.data):
-            p = Panel(orientation="vertical", size_hint_y=None, spacing=dp(2))
+            p = Panel(orientation="vertical", size_hint_y=None, spacing=dp(0))
             p.bind(minimum_height=p.setter("height"))
             p.add_widget(label(title, size_hint_y=None, height=dp(34), font_size=FONT_ECON_TITLE))
-            for k, v in rows:
-                big = k in (S.ECON_BALANCE, S.ECON_CREDITS)
+            for i, (k, v) in enumerate(rows):
                 r = BoxLayout(size_hint_y=None, height=dp(ECON_ROW_MIN_H), spacing=dp(8))
-                name = wrap_label(k, FONT_ECON_ROW_BIG if big else FONT_ECON_ROW, "left", 0.38)
-                val = wrap_label(style_value(v), FONT_ECON_VALUE, "right", 0.62)
-                for w in (name, val):
+                name = wrap_label(k, FONT_ECON_ROW, "left", 1)
+                val = wrap_label(style_value(v), FONT_ECON_VALUE, "right", 1)
+                for w, anchor in ((name, "left"), (val, "right")):
+                    cell = AnchorLayout(anchor_x=anchor, anchor_y="center", size_hint_x=0.5)
+                    cell.add_widget(w)
+                    r.add_widget(cell)
+                    # the row grows with the taller of the two texts, both stay centred
                     w.bind(height=lambda *_, r=r, a=name, b=val:
-                           setattr(r, "height", max(dp(ECON_ROW_MIN_H), a.height + dp(10), b.height + dp(10))))
-                r.add_widget(name)
-                r.add_widget(val)
+                           setattr(r, "height", max(dp(ECON_ROW_MIN_H), a.height + dp(16), b.height + dp(16))))
                 p.add_widget(r)
+                if i < len(rows) - 1:
+                    p.add_widget(Divider())
             box.add_widget(p)
         sv.add_widget(box)
         col.add_widget(sv)

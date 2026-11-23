@@ -11,7 +11,7 @@ from page_tx import TxScreen
 from design import NOTE_GRAY
 from design import FONT_TITLE
 from theme import BLACK, BLUE, LIGHT, WHITE
-from widgets import PullScroll, Card, Choice, Overlay, IconBtn, label, make_input
+from widgets import PullScroll, Card, Choice, Overlay, Panel, IconBtn, label, make_input
 
 
 class DonateScreen(Overlay):
