@@ -11,13 +11,30 @@ import core
 import sell
 import strings as S
 import tx
-from design import FONT_TITLE
+from design import BTN_OFF_DARK, FONT_TITLE, TRACK_GRAY
+from page_offers import STATUS_STYLE
 from page_tx import TxScreen
-from theme import BLACK, BLUE, LEDGER_ADDR, LIGHT, WHITE, left_text, short
-from widgets import Card, Choice, IconBtn, Overlay, PullScroll, label, make_input, text_label
+from theme import (BLACK, BLUE, BROWN, CREAM, DARK_GREEN, GRAY, GREEN, LEDGER_ADDR, LIGHT, PILL_BG,
+                   WHITE, left_text, short)
+from widgets import (Badge, Card, Choice, IconBtn, Overlay, Pill, PullScroll, Tappable, ThinBar, label,
+                     make_input, text_label, title_row)
 
 
-class RecordsTxScreen(TxScreen):
+class DoneHook:
+    """Mixin for a TxScreen: calls `on_ok()` once the transaction is confirmed (the page refreshes)."""
+    on_ok = None
+
+    def confirmed(self, h, ok, block, reason):
+        super().confirmed(h, ok, block, reason)
+        if ok and self.on_ok:
+            self.on_ok()
+
+
+class SyncTxScreen(DoneHook, TxScreen):
+    pass
+
+
+class RecordsTxScreen(DoneHook, TxScreen):
     """A TxScreen whose transaction does not exist yet: the wallet first signs every record
     (eth_signTypedData_v4), then the batch is checked against the ledger and sent."""
 
@@ -157,6 +174,9 @@ class SellScreen(Overlay):
         self.state = None
         self.block = self.d.get("block", 0)
         self.alive = True
+        self.gen = 0                       # a newer list load makes older answers stale
+        self.found, self.marks, self.sold = [], None, None
+        self.open_done, self.open_err = False, ""
 
         col = BoxLayout(orientation="vertical")
         head = BoxLayout(size_hint_y=None, height=dp(72), padding=[dp(14), dp(10)], spacing=dp(14))
@@ -166,7 +186,7 @@ class SellScreen(Overlay):
         head.add_widget(label(S.SELL_TITLE, font_size=FONT_TITLE))
         col.add_widget(head)
 
-        sv = PullScroll()
+        sv = PullScroll(on_pull=self.pull)
         form = BoxLayout(orientation="vertical", spacing=dp(8), size_hint_y=None,
                          padding=[dp(14), 0, dp(14), dp(20)])
         form.bind(minimum_height=form.setter("height"))
@@ -221,38 +241,160 @@ class SellScreen(Overlay):
 
     # ------------------------------------------------------------ open offers list
     def load_open(self):
-        self.open_box.clear_widgets()
-        self.open_box.add_widget(label(S.SELL_OPEN_LOADING, size_hint_y=None, height=dp(28)))
+        self.gen += 1
+        gen = self.gen
+        self.found, self.marks, self.sold = [], None, None
+        self.open_done, self.open_err = False, ""
+        self.draw_open()
 
         def work():
+            ch = self.chain()
             try:
-                found = sell.open_sales(self.chain(), self.block)
-                err = ""
+                try:
+                    blk = ch.block()
+                except Exception:  # noqa: BLE001
+                    blk = 0
+                now = blk or self.block
+                scan = sell.scan_sales(ch)
+                found = [s for s in scan if sell.is_open(s, now)][:sell.OPEN_LIMIT]
             except Exception as e:  # noqa: BLE001
-                found, err = [], str(e) or e.__class__.__name__
-            Clock.schedule_once(lambda dt: self.open_loaded(found, err))
+                err = str(e) or e.__class__.__name__
+                Clock.schedule_once(lambda dt: self.open_loaded(gen, 0, [], err))
+                return
+            Clock.schedule_once(lambda dt: self.open_loaded(gen, blk, found, ""))
+            try:                           # second pass: what you did on each one
+                marks, sold = sell.my_view(ch, scan, self.me, now)
+            except Exception:  # noqa: BLE001
+                marks, sold = {}, []
+            Clock.schedule_once(lambda dt: self.marks_loaded(gen, marks, sold))
         threading.Thread(target=work, daemon=True).start()
 
-    def open_loaded(self, found, err):
-        if not self.alive:
+    def open_loaded(self, gen, blk, found, err):
+        if not self.alive or gen != self.gen:
             return
+        if blk:
+            self.block = blk
+        self.found, self.open_err, self.open_done = found, err, True
+        self.draw_open()
+
+    def marks_loaded(self, gen, marks, sold):
+        if not self.alive or gen != self.gen:
+            return
+        self.marks, self.sold = marks, sold
+        self.draw_open()
+
+    def draw_open(self):
         b = self.open_box
         b.clear_widgets()
-        b.add_widget(label(S.SELL_OPEN_TITLE, size_hint_y=None, height=dp(28)))
-        if err:
-            b.add_widget(Card(S.SELL_ERROR.format(error=escape_markup(err))))
-        elif not found:
+        b.add_widget(title_row(S.SELLC_OPEN_H))
+        if not self.open_done:
+            b.add_widget(label(S.SELL_OPEN_LOADING, size_hint_y=None, height=dp(28)))
+            return
+        if self.open_err:
+            b.add_widget(Card(S.SELL_ERROR.format(error=escape_markup(self.open_err))))
+            return
+        if not self.found:
             b.add_widget(label(S.SELL_OPEN_NONE, size_hint_y=None, height=dp(60), valign="top",
                                font_size="13sp"))
-        for s in found:
-            btn = Choice(base=WHITE, size_hint_y=None, height=dp(60), halign="left", padding_x=dp(14),
-                         font_size="13sp",
-                         text=S.SELL_OPEN_ROW.format(id=s["id"], kind=s["kind"], per=s["per_record"],
-                                                     records=s["records_left"],
-                                                     time=left_text(s["sweepable_at"] - self.block)))
-            btn.bind(size=lambda i, sz: setattr(i, "text_size", (sz[0] - dp(28), sz[1])))
-            btn.bind(on_release=lambda _w, i=s["id"]: self.pick(i))
-            b.add_widget(btn)
+        for s in self.found:
+            b.add_widget(self.sale_card(s))
+        b.add_widget(title_row(S.SELLC_SOLD_H))
+        if self.sold is None:
+            b.add_widget(label(S.SELLC_SOLD_LOADING, size_hint_y=None, height=dp(28)))
+        elif not self.sold:
+            b.add_widget(label(S.SELLC_SOLD_NONE, size_hint_y=None, height=dp(40), valign="top",
+                               font_size="13sp"))
+        for r in self.sold or []:
+            b.add_widget(self.sold_card(r))
+
+    def pill(self, text, bg, fg):
+        return Pill(text=text, bg=bg, color=fg, bold=True, font_size="13sp", size_hint=(None, None),
+                    size=(dp(104), dp(30)), pos_hint={"center_y": 0.5})
+
+    def card_row(self, kind, title, sub, pill):
+        row = BoxLayout(size_hint_y=None, height=dp(52), spacing=dp(12))
+        row.add_widget(Badge(kind, pos_hint={"center_y": 0.5}))
+        mid = BoxLayout(orientation="vertical")
+        mid.add_widget(label(title, font_size="17sp"))
+        mid.add_widget(label(sub, font_size="13sp"))
+        row.add_widget(mid)
+        row.add_widget(pill)
+        return row
+
+    def sale_card(self, s):
+        """One open A / B offer, drawn like the cards of the Offers tab; the pill says what you did."""
+        m = (self.marks or {}).get(s["id"])
+        state = m["state"] if m else ("loading" if self.marks is None else "open")
+        n = m["next"] if m else 0
+        text, bg, fg = {
+            "open": (S.MARK_OPEN, PILL_BG, DARK_GREEN),
+            "written": (S.MARK_WRITTEN, CREAM, BROWN),
+            "synced": (S.MARK_SYNCED.format(n=n), DARK_GREEN, WHITE),
+            "named": (S.MARK_NAMED, WHITE, BTN_OFF_DARK),
+            "loading": (S.MARK_LOADING, TRACK_GRAY, BTN_OFF_DARK),
+        }[state]
+        left = s["sweepable_at"] - self.block
+        grey = state in ("written", "named")          # still tappable: "written" is the one to Sync
+        c = Tappable(orientation="vertical", padding=dp(12), spacing=dp(6), size_hint_y=None,
+                     height=dp(118), bg=GRAY if grey else WHITE)
+        c.bind(on_release=lambda *_, i=s["id"]: self.pick(i))
+        if s["kind"] == "B":
+            you = s["target"].lower() == self.me.lower()
+            sub = S.SELLC_SUB_YOU if you else S.SELLC_SUB_NAMED.format(target=short(s["target"]))
+        else:
+            sub = S.SELLC_SUB
+        c.add_widget(self.card_row(s["kind"], S.SELLC_TITLE.format(id=s["id"], records=s["records_left"]),
+                                   sub.format(per=s["per_record"]), self.pill(text, bg, fg)))
+        window = max(s["sweepable_at"] - s["created_at"], 1)
+        c.add_widget(ThinBar(left / window, BLACK if left <= core.WINDOW else GREEN))
+        c.add_widget(label(S.SELLC_LEFT.format(left=left_text(left), block=s["sweepable_at"]),
+                           size_hint_y=None, height=dp(20), font_size="13sp"))
+        return c
+
+    def sold_card(self, r):
+        """An offer you already sold records to, with the state of the offer that holds your slices."""
+        earned = r["earned"]
+        o = next((x for x in (self.app.data or {}).get("offers", []) if earned and x["id"] == earned), None)
+        slices = r["records"] * r["per"]
+        sub = S.SOLD_SUB.format(slices=slices, earned=earned) if earned else S.SOLD_SUB_NONE.format(slices=slices)
+        if o:
+            bg, fg, bar = STATUS_STYLE.get(o["status"], STATUS_STYLE["redeemable"])
+            text = S.STATUS.get(o["status"], o["status"])
+        else:
+            bg, fg, bar, text = TRACK_GRAY, BTN_OFF_DARK, GREEN, S.STATUS["closed"]
+        live = bool(o) and o["left"] > 0
+        c = Tappable(orientation="vertical", padding=dp(12), spacing=dp(6), size_hint_y=None,
+                     height=dp(118 if live else 76))
+        c.bind(on_release=lambda *_, rr=r: self.open_sold(rr))
+        c.add_widget(self.card_row(r["kind"], S.SOLD_TITLE.format(id=r["id"], n=r["records"]), sub,
+                                   self.pill(text, bg, fg)))
+        if live:
+            window = max(o.get("sweepable_at", 0) - o.get("created_at", 0), 1)
+            c.add_widget(ThinBar(o["left"] / window, bar))
+            c.add_widget(label(S.OC_LEFT.format(left=left_text(o["left"]), block=o["sweepable_at"]),
+                               size_hint_y=None, height=dp(20), font_size="13sp"))
+        return c
+
+    def open_sold(self, r):
+        earned = r["earned"]
+        if earned and any(x["id"] == earned and x["left"] > 0 for x in self.app.data.get("offers", [])):
+            self.alive = False
+            self.app.go_offer(earned)          # your earned offer, in the Offers tab
+        else:
+            self.pick(r["id"])
+
+    def pull(self):
+        """Pull down: read the list (and the open offer) again."""
+        self.load_open()
+        if self.sale:
+            self.load()
+
+    def after_tx(self):
+        """A write / sync / sweep was confirmed: read the lists again a moment later."""
+        def again(_dt):
+            if self.alive:
+                self.pull()
+        Clock.schedule_once(again, 3)
 
     def pick(self, sale_id):
         self.id_in.text = str(sale_id)
@@ -380,8 +522,9 @@ class SellScreen(Overlay):
         R = S.SELL_WRITE_ROWS
         rows = [(R["signer"], self.me, short(self.me)), (R["to"], s["donor"], short(s["donor"])),
                 (R["n"], str(n), str(n))]
-        self.app.open_overlay(RecordsTxScreen(self.app, plan, summary, rows, S.SELL_WRITE_TIP,
-                                              S.SELL_WRITE_WARN))
+        scr = RecordsTxScreen(self.app, plan, summary, rows, S.SELL_WRITE_TIP, S.SELL_WRITE_WARN)
+        scr.on_ok = self.after_tx
+        self.app.open_overlay(scr)
 
     def on_sync(self):
         s, st = self.sale, self.state
@@ -398,13 +541,17 @@ class SellScreen(Overlay):
         rows = [(R["id"], p["id"], p["id"]), (R["n"], p["n"], p["n"]),
                 (R["nonce"], p["expectedNonce"], p["expectedNonce"])]
         summary = S.SYNC_RECORDS_SUMMARY.format(n=n, id=s["id"], per=s["per_record"])
-        self.app.open_overlay(TxScreen(self.app, t, summary, S.SYNC_RECORDS_FN, rows,
-                                       S.SYNC_RECORDS_TIP, S.SYNC_RECORDS_WARN))
+        scr = SyncTxScreen(self.app, t, summary, S.SYNC_RECORDS_FN, rows, S.SYNC_RECORDS_TIP,
+                           S.SYNC_RECORDS_WARN)
+        scr.on_ok = self.after_tx
+        self.app.open_overlay(scr)
 
     def on_sweep(self):
         s = self.sale
         t = tx.sweep_offer_tx(s["id"], nonce=self.d["redeem_nonce"])
         rows = [(S.SWEEP_ROWS["id"], str(s["id"]), str(s["id"])),
                 (S.SWEEP_ROWS["nonce"], t["params"]["expectedNonce"], t["params"]["expectedNonce"])]
-        self.app.open_overlay(TxScreen(self.app, t, S.OD_SWEEP_SUMMARY.format(id=s["id"]), S.SWEEP_FN, rows,
-                                       S.SWEEP_TIP, S.SWEEP_WARN))
+        scr = SyncTxScreen(self.app, t, S.OD_SWEEP_SUMMARY.format(id=s["id"]), S.SWEEP_FN, rows,
+                           S.SWEEP_TIP, S.SWEEP_WARN)
+        scr.on_ok = self.after_tx
+        self.app.open_overlay(scr)

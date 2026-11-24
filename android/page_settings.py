@@ -28,7 +28,7 @@ class SettingsScreen(Overlay):
                             padding=(dp(14), 0))
         col.add_widget(self.status)
 
-        sv = PullScroll()
+        sv = PullScroll(on_pull=lambda: None)      # no reload on this page
         box = BoxLayout(orientation="vertical", spacing=dp(10), size_hint_y=None,
                         padding=[dp(14), 0, dp(14), dp(20)])
         box.bind(minimum_height=box.setter("height"))

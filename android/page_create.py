@@ -38,7 +38,7 @@ class CreateScreen(Overlay):
         col.add_widget(page_head(app, S.CREATE_TITLE))
 
         # scrolling form
-        sv = PullScroll()
+        sv = PullScroll(on_pull=lambda: None)      # no reload on this page
         self.sv = sv
         form = BoxLayout(orientation="vertical", spacing=dp(6), size_hint_y=None,
                          padding=[dp(14), 0, dp(14), dp(14)])

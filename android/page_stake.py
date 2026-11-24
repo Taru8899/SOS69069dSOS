@@ -8,9 +8,11 @@ import core
 import strings as S
 import tx
 from page_tx import TxScreen
+from design import FONT_TITLE
 from theme import (BLACK, BLUE, BROWN, CREAM, DARK_GREEN, LIGHT_GREEN, PILL_BG, WHITE,
                    short)
-from widgets import Card, Check, Choice, Divider, Dot, LockIcon, Panel, Pill, StakePill, Steps, label
+from widgets import (Card, Check, Choice, Divider, Dot, IconBtn, LockIcon, Panel, Pill, StakePill, Steps,
+                     label)
 
 
 class StakePage:
@@ -23,8 +25,11 @@ class StakePage:
         cool_ok = staked and d["block"] >= d["staked_at"] + d["cooldown"]
 
         # ---- title + status pill
-        head = BoxLayout(size_hint_y=None, height=dp(48))
-        head.add_widget(label(S.STAKE_TITLE, font_size="30sp"))
+        head = BoxLayout(size_hint_y=None, height=dp(64), padding=[0, dp(8)], spacing=dp(14))
+        back = IconBtn(icon="back", bg=WHITE, color=BLACK, size_hint=(None, 1), width=dp(52))
+        back.bind(on_release=lambda *_: app.go_home())          # same round button as the other pages
+        head.add_widget(back)
+        head.add_widget(label(S.STAKE_TITLE, font_size=FONT_TITLE))
         pill = StakePill(
             S.STAKE_PILL_STAKED if staked else S.STAKE_PILL_NOT_STAKED,
             PILL_BG if staked else WHITE, DARK_GREEN if staked else BLACK, down=True,

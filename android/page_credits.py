@@ -8,6 +8,7 @@ import core
 import strings as S
 import tx
 from page_tx import TxScreen
+from design import FONT_TITLE
 from theme import (BLACK, BLUE, DARK_GREEN, DARK_GREEN_HEX, LIGHT_BLUE, LIGHT_GREEN, PILL_BG,
                    RED, WHITE, short)
 from widgets import Choice, Divider, Panel, Pill, IconBtn, StakePill, label
@@ -32,8 +33,11 @@ class CreditsPage:
         self.cool_ok = d["staked"] and left <= 0
 
         # ---- title + staked pill
-        head = BoxLayout(size_hint_y=None, height=dp(48))
-        head.add_widget(label(S.CREDITS_TITLE, font_size="30sp"))
+        head = BoxLayout(size_hint_y=None, height=dp(64), padding=[0, dp(8)], spacing=dp(14))
+        back = IconBtn(icon="back", bg=WHITE, color=BLACK, size_hint=(None, 1), width=dp(52))
+        back.bind(on_release=lambda *_: app.go_home())          # same round button as the other pages
+        head.add_widget(back)
+        head.add_widget(label(S.CREDITS_TITLE, font_size=FONT_TITLE))
         pill = StakePill(
             S.CREDITS_PILL_STAKED if d["staked"] else S.CREDITS_PILL_NOT_STAKED,
             PILL_BG, DARK_GREEN, size_hint=(None, None),

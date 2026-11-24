@@ -17,6 +17,7 @@ from core import DSOS, LEDGER, u
 SCAN_MAX = 20          # records checked on the ledger per refresh
 OPEN_SCAN = 60         # newest offer ids looked at when listing open A / B offers
 OPEN_LIMIT = 15        # open offers shown
+SOLD_LIMIT = 10        # "sold by me" offers shown
 
 
 def _addr(w):
@@ -35,8 +36,8 @@ def load_sale(chain, sale_id):
             "salt": "0x" + w[9].hex()}
 
 
-def open_sales(chain, block, limit=OPEN_LIMIT, scan=OPEN_SCAN):
-    """The newest open escrows (A and B) that can still take records. Newest first."""
+def scan_sales(chain, scan=OPEN_SCAN):
+    """Every A / B escrow among the newest `scan` offer ids, open or closed. Newest first."""
     nxt = u(chain.call(DSOS, "nextOfferId()")[0])
     ids = list(range(nxt - 1, max(0, nxt - 1 - scan), -1))
 
@@ -47,8 +48,65 @@ def open_sales(chain, block, limit=OPEN_LIMIT, scan=OPEN_SCAN):
             return None
     with ThreadPoolExecutor(max_workers=6) as ex:
         found = list(ex.map(one, ids))
-    live = [s for s in found if s and s["active"] and s["sweepable_at"] > block and s["records_left"] > 0]
-    return live[:limit]
+    return [s for s in found if s]
+
+
+def is_open(s, block):
+    """The escrow can still take records."""
+    return bool(s["active"] and s["sweepable_at"] > block and s["records_left"] > 0)
+
+
+def open_sales(chain, block, limit=OPEN_LIMIT, scan=OPEN_SCAN):
+    """The newest open escrows (A and B) that can still take records. Newest first."""
+    return [s for s in scan_sales(chain, scan) if is_open(s, block)][:limit]
+
+
+def my_view(chain, sales, me, block, limit=OPEN_LIMIT, sold_limit=SOLD_LIMIT):
+    """What `me` did on the escrows of scan_sales(), cheaply (no full record scan):
+       marks  {offer id: {"state", "next", "earned"}} for the open escrows (first `limit`)
+              state: "open" | "written" (on the ledger, press Sync) | "synced" | "named" (not for you)
+       sold   the newest `sold_limit` escrows where you have confirmed records, newest first:
+              {"id", "kind", "per", "records", "earned", "sale"}"""
+    def nxt(s):
+        try:
+            return u(chain.call(DSOS, "nextRecord(uint256,address)", [s["id"], me])[0])
+        except Exception:  # noqa: BLE001
+            return None
+    with ThreadPoolExecutor(max_workers=6) as ex:
+        nexts = list(ex.map(nxt, sales))
+
+    open_ids = [s["id"] for s in [x for x in sales if is_open(x, block)][:limit]]
+    sold_ids = [s["id"] for s, n in zip(sales, nexts) if n][:sold_limit]
+    todo = [(s, n) for s, n in zip(sales, nexts) if n is not None and (s["id"] in open_ids or s["id"] in sold_ids)]
+
+    def detail(item):
+        s, n = item
+        try:
+            earned = u(chain.call(DSOS, "earnedOffer(uint256,address)", [s["id"], me])[0]) if n else 0
+        except Exception:  # noqa: BLE001
+            earned = 0
+        ready = False
+        ok, _why = can_sell(s, me, block)
+        if s["id"] in open_ids and ok:
+            try:
+                ph = payload_hash(chain, s["id"], me, n)
+                ready = on_ledger(chain, me, s["donor"], ph)
+            except Exception:  # noqa: BLE001
+                ready = False
+        return s, n, earned, ready, ok
+    with ThreadPoolExecutor(max_workers=6) as ex:
+        rows = list(ex.map(detail, todo))
+
+    marks, sold = {}, []
+    for s, n, earned, ready, ok in rows:
+        if s["id"] in open_ids:
+            state = "named" if not ok else "written" if ready else "synced" if n else "open"
+            marks[s["id"]] = {"state": state, "next": n, "earned": earned}
+        if s["id"] in sold_ids:
+            sold.append({"id": s["id"], "kind": s["kind"], "per": s["per_record"], "records": n,
+                         "earned": earned, "sale": s})
+    sold.sort(key=lambda r: r["id"], reverse=True)
+    return marks, sold
 
 
 def payload_hash(chain, sale_id, seller, index):

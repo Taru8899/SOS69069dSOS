@@ -122,7 +122,7 @@ class EconomicsScreen(Overlay):
         pill.bind(on_release=lambda *_: app.close_top())      # triangle down = Economics is open
         head.add_widget(pill)
         col.add_widget(head)
-        sv = PullScroll()
+        sv = PullScroll(on_pull=app.pull_overlay)
         box = BoxLayout(orientation="vertical", spacing=dp(10), size_hint_y=None,
                         padding=[dp(14), 0, dp(14), dp(20)])
         box.bind(minimum_height=box.setter("height"))

@@ -38,7 +38,7 @@ class RedeemScreen(Overlay):
         head.add_widget(label(S.RO_TITLE, font_size=FONT_TITLE))
         col.add_widget(head)
 
-        sv = PullScroll()
+        sv = PullScroll(on_pull=app.pull_overlay)
         form = BoxLayout(orientation="vertical", spacing=dp(10), size_hint_y=None,
                          padding=[dp(14), 0, dp(14), dp(14)])
         form.bind(minimum_height=form.setter("height"))

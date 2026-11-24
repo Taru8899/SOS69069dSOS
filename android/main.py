@@ -419,6 +419,9 @@ class DsosApp(App):
         if key == 27 and self.overlays:   # Android back button
             self.close_top()
             return True
+        if key == 27 and self.page in ("credits", "stake"):
+            self.go_home()
+            return True
         return False
 
     def on_pause(self):
@@ -575,11 +578,35 @@ class DsosApp(App):
         """Pull-to-reload: wallet data again, and the Activity lists with it."""
         if not self.addr.text.strip():
             self.msg.text = S.MSG_NEED_ADDRESS
-            self.set_drawer(True)
+            if not self.overlays:              # opening the panel would close the page the person is on
+                self.set_drawer(True)
             return
         self.activity.clear()
         self.msg.text = S.MSG_RELOADING
         self.load()
+
+    def pull_overlay(self):
+        """Pull down on Send / Redeem / Donate / Economics: read the wallet again, then build that page
+        again from the new data."""
+        top = self.overlays[-1] if self.overlays else None
+        if top is None or not self.addr.text.strip():
+            self.reload()
+            return
+        self._after_load = lambda cls=type(top): self._reopen(cls)
+        self.reload()
+
+    def _reopen(self, cls):
+        if not self.overlays or type(self.overlays[-1]) is not cls:
+            return                              # the person went somewhere else meanwhile
+        self.close_top()
+        if cls is SendScreen:
+            self.open_send()
+        elif cls is RedeemScreen:
+            self.open_redeem()
+        elif cls is DonateScreen:
+            self.open_donate()
+        elif cls is EconomicsScreen:
+            self.open_economics()
 
     def _work(self, addr, key):
         try:
@@ -594,6 +621,7 @@ class DsosApp(App):
         self.loaded_once = True
         self.msg.text = ""
         self.err = m
+        self._after_load = None
         self.set_drawer(True)                  # let the person fix the address / key
         self.render()
 
@@ -605,6 +633,9 @@ class DsosApp(App):
         self.msg.text = S.MSG_BLOCK_VIA.format(block=d["block"], source=d["source"])
         self.sub.text = self._head_text(short(d["address"]))
         self.render()
+        again, self._after_load = getattr(self, "_after_load", None), None
+        if again:
+            again()
 
     # ---------------------------------------------------------- pages
     def render(self):
