@@ -64,6 +64,13 @@ class RecordsTxScreen(TxScreen):
     def sign_typed(self, typed, methods):
         """Ask for a typed-data signature; when the wallet refuses the method, try the next one.
         (The record has no arrays, so v3 signs exactly the same message as v4.)"""
+        granted = list(getattr(self.wallet, "methods", []) or [])
+        if methods is not None and len(methods) == 2:
+            self.note("wallet session allows: %s" % (", ".join(granted) or "(unknown)"))
+        if granted and not any(m in granted for m in methods):
+            self.note("signing was not granted in this session")
+            self.no_typed_sign()
+            return
         method, rest = methods[0], methods[1:]
 
         def on_err(text, code=None):
@@ -71,10 +78,29 @@ class RecordsTxScreen(TxScreen):
                 self.note("%s refused, trying %s" % (method, rest[0]))
                 self.sign_typed(typed, rest)
             elif self._unsupported(text, code):
-                self.fail_final(S.SELL_NO_TYPED_SIGN, code)
+                self.no_typed_sign()
             else:
                 self.fail(text, code)
         self.request(method, [self.frm, typed], self.got_sig, S.TX_STEP_SIGN, on_err=on_err)
+
+    def no_typed_sign(self):
+        """The wallet session has no typed-data signing: offer one fresh, strict connection."""
+        self.busy = False
+        if getattr(self.wallet, "_strict", False):          # already asked strictly: nothing more to try
+            self.fail_final(S.SELL_NO_TYPED_SIGN)
+            return
+        self.show(S.SELL_NO_TYPED_SIGN, actions=[(S.SELL_RECONNECT_BTN, self.reconnect_strict)])
+        self.refresh_buttons()
+
+    def reconnect_strict(self):
+        self.sigs = []
+        self.busy = True
+        self.show(S.SELL_RECONNECTING.format(wallet=self.wallet.label()))
+        self.wallet.connect(self.after_reconnect, self.fail_final, strict=True)
+
+    def after_reconnect(self):
+        if self.alive:
+            self.sign_next()
 
     def got_sig(self, result):
         if not self.alive:

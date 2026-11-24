@@ -193,6 +193,7 @@ SWEEP_WARN = "Sweeping burns the slices of this offer. Its ETH stays in the pool
 SWEEP_FN = "sweepOffer"
 
 # ------------------------------------------------------------------ credits tab
+CREDITS_PILL_ECON = "Economics"
 CREDITS_TITLE = "[b]Credits[/b]"
 CREDITS_PILL_STAKED = "Staked"
 CREDITS_PILL_NOT_STAKED = "Not staked"
@@ -762,6 +763,8 @@ SELL_EARNED_ID = "Your earned slices are in offer #{id}"
 SELL_EARNED_NONE = "You have no earned slices from this offer yet"
 SELL_NO_TYPED_SIGN = ("Your wallet cannot sign typed data (eth_signTypedData), which a ledger record "
                       "needs. Use a wallet that supports it, or write the records from the dApp.")
+SELL_RECONNECT_BTN = "Reconnect wallet for signing"
+SELL_RECONNECTING = "Reconnecting {wallet}: approve the new connection in your wallet, then the signing starts."
 SELL_WHY_DEAD = ("This B offer names the dead address as its seller, so nobody can sell to it. "
                  "It can only expire and be swept into the pool.")
 SELL_WHY = {

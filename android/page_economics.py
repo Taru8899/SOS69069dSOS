@@ -11,8 +11,8 @@ import core
 import strings as S
 from design import (ECON_ROW_MIN_H, FONT_ECON_ETH, FONT_ECON_ROW, FONT_ECON_TITLE,
                     FONT_ECON_VALUE, FONT_TITLE)
-from theme import BLACK, WHITE
-from widgets import Divider, IconBtn, Overlay, Panel, PullScroll, label
+from theme import BLACK, DARK_GREEN, PILL_BG, WHITE
+from widgets import Divider, IconBtn, Overlay, Panel, PullScroll, StakePill, label
 
 DAY_BLOCKS = 7200
 _ETH_PART = re.compile(r"(\d[\d.,]* ETH)")
@@ -117,6 +117,10 @@ class EconomicsScreen(Overlay):
         back.bind(on_release=lambda *_: app.close_top())
         head.add_widget(back)
         head.add_widget(label(S.ECON_TITLE, font_size=FONT_TITLE))
+        pill = StakePill(S.CREDITS_PILL_ECON, PILL_BG, DARK_GREEN, down=True, size_hint=(None, None),
+                         size=(dp(160), dp(34)), pos_hint={"center_y": 0.5})
+        pill.bind(on_release=lambda *_: app.close_top())      # triangle down = Economics is open
+        head.add_widget(pill)
         col.add_widget(head)
         sv = PullScroll()
         box = BoxLayout(orientation="vertical", spacing=dp(10), size_hint_y=None,

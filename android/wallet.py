@@ -55,6 +55,8 @@ class Wallet:
         self.name = ""
         self.native = ""
         self.universal = ""
+        self.methods = []               # RPC methods the wallet granted for this session
+        self._strict = False
         self.listener = None            # fn(text): progress notes from the link
         self._webview = None
         self._poll_ev = None
@@ -93,13 +95,18 @@ class Wallet:
                 pass
 
     # ------------------------------------------------------------ public calls
-    def connect(self, on_ok, on_err):
-        """Make sure a wallet session exists. on_ok() / on_err(text)."""
+    def connect(self, on_ok, on_err, strict=False):
+        """Make sure a wallet session exists. on_ok() / on_err(text).
+        strict=True: drop the current session and open a new one that REQUIRES typed-data signing."""
         why = self.unavailable()
         if why:
             on_err(why)
             return
-        if self.connected:
+        if strict:
+            self._strict = True
+            if self.connected:
+                self.disconnect()
+        elif self.connected:
             on_ok()
             return
         self._connect_cbs.append((on_ok, on_err))
@@ -212,7 +219,7 @@ class Wallet:
             return
         if self._connecting and self.booted and not self._connect_sent:
             self._connect_sent = True
-            self._js("window.DsosWC.connect()")
+            self._js("window.DsosWC.connect(%s)" % ("true" if self._strict else "false"))
         self._js("window.DsosWC ? window.DsosWC.drain() : []", self._on_drain)
 
     def _on_drain(self, value):
@@ -244,6 +251,7 @@ class Wallet:
             self.name = m.get("wallet") or ""
             self.native = m.get("native") or ""
             self.universal = m.get("universal") or ""
+            self.methods = list(m.get("methods") or [])
             self.connected = bool(self.accounts)
             self._connecting = False
             cbs, self._connect_cbs = self._connect_cbs, []

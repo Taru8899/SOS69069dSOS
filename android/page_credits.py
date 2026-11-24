@@ -2,6 +2,7 @@
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
+from kivy.uix.widget import Widget
 
 import core
 import strings as S
@@ -54,7 +55,6 @@ class CreditsPage:
         sync.set_enabled(bool(d["staked"] and self.formable > 0))
         sync.bind(on_release=lambda *_: self.on_sync())
         c1.add_widget(sync)
-        b.add_widget(c1)
 
         # ---- card 2: staking facts
         c2 = Panel(orientation="vertical", size_hint_y=None, height=dp(4 * 52 + 3 + 28))
@@ -81,7 +81,6 @@ class CreditsPage:
             c2.add_widget(r)
             if i < len(rows) - 1:
                 c2.add_widget(Divider())
-        b.add_widget(c2)
 
         # ---- card 3: redeem
         c3 = Panel(orientation="vertical", size_hint_y=None, height=dp(272), spacing=dp(6))
@@ -110,7 +109,18 @@ class CreditsPage:
                           size_hint_y=None, height=dp(30), halign="center", valign="middle")
         self.warn.bind(size=lambda i, s: setattr(i, "text_size", s))
         c3.add_widget(self.warn)
+
+        # ---- order on the page: redeem, credits held, staking facts, Economics chip
         b.add_widget(c3)
+        b.add_widget(c1)
+        b.add_widget(c2)
+        econ = BoxLayout(size_hint_y=None, height=dp(48))
+        econ.add_widget(Widget())
+        econ_pill = StakePill(S.CREDITS_PILL_ECON, PILL_BG, DARK_GREEN, size_hint=(None, None),
+                              size=(dp(160), dp(34)), pos_hint={"center_y": 0.5})
+        econ_pill.bind(on_release=lambda *_: app.open_economics())
+        econ.add_widget(econ_pill)
+        b.add_widget(econ)
 
         b.add_widget(label(S.CREDITS_FOOTNOTE, size_hint_y=None, height=dp(44),
                            halign="center", font_size="13sp"))
