@@ -265,6 +265,7 @@ def stake_tx(holder, need_wei, nonce=None):
 # ---------------------------------------------------------------- send (ERC-20 style transfer)
 TRANSFER_SIG = "transfer(address,uint256)"
 MIN_SEND_WINDOW = 7200
+SEND_WINDOW = MIN_SEND_WINDOW + 30     # blocks that must remain, with a safety margin
 ZERO_ADDR = "0x" + "0" * 40
 
 
@@ -279,16 +280,16 @@ def transfer_tx(to, n):
             "params": {"to": to.strip(), "n": str(int(n))}}
 
 
-def is_sendable(o, window=MIN_SEND_WINDOW):
+def is_sendable(o, window=SEND_WINDOW):
     """Same rule as the contract: only S offers, and only with more than `window` blocks left."""
     return o["kind"] == "S" and o["left"] > window
 
 
-def sendable_total(offers, window=MIN_SEND_WINDOW):
+def sendable_total(offers, window=SEND_WINDOW):
     return sum(o["count"] for o in offers if is_sendable(o, window))
 
 
-def plan_send(offers, n, window=MIN_SEND_WINDOW):
+def plan_send(offers, n, window=SEND_WINDOW):
     """Mirror of dSOS.transfer(): walk the holder's offer list from the newest entry
     (highest `pos`) to the oldest, skipping G / A / B and short-window offers, splitting the
     last one if needed. Returns (picks, remaining) with picks = [(offer, slices)]."""
@@ -303,7 +304,7 @@ def plan_send(offers, n, window=MIN_SEND_WINDOW):
     return picks, remaining
 
 
-def blocked_summary(offers, window=MIN_SEND_WINDOW):
+def blocked_summary(offers, window=SEND_WINDOW):
     """Slices that wallet send cannot move: (gated / A / B, short window, expired), each (offers, slices)."""
     g = [o for o in offers if o["kind"] != "S" and o["left"] > 0]
     s = [o for o in offers if o["kind"] == "S" and 0 < o["left"] <= window]

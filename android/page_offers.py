@@ -209,9 +209,9 @@ class OffersPage:
             p.add_widget(pin_row)
 
         btns = BoxLayout(size_hint_y=None, height=dp(56), spacing=dp(10))
-        self.redeem_btn = Choice(base=BLUE, fg=WHITE, bold=True, font_size="16sp")
+        self.redeem_btn = Choice(base=LIGHT, fg=BLACK, sel=BLUE, sel_fg=WHITE, bold=True, font_size="16sp")
         self.redeem_btn.bind(on_release=lambda *_: self.on_redeem(o))
-        self.transfer_btn = Choice(base=LIGHT, fg=BLACK, bold=True, font_size="16sp")
+        self.transfer_btn = Choice(base=LIGHT, fg=BLACK, sel=BLUE, sel_fg=WHITE, bold=True, font_size="16sp")
         self.transfer_btn.bind(on_release=lambda *_: self.on_transfer(o))
         btns.add_widget(self.redeem_btn)
         btns.add_widget(self.transfer_btn)
@@ -281,6 +281,9 @@ class OffersPage:
         self.transfer_btn.text = S.OD_TRANSFER.format(n=n)
         self.redeem_btn.set_enabled(True)
         self.transfer_btn.set_enabled(sendable_kind)
+        tm = self.transfer_mode and sendable_kind        # the chosen action is blue, the other grey
+        self.redeem_btn.set_selected(not tm)
+        self.transfer_btn.set_selected(tm)
         set_visible(self.to_row, self.transfer_mode and sendable_kind)
         s = "" if n == 1 else "s"
         if gated:

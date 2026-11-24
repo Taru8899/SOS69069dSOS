@@ -51,7 +51,30 @@ class RecordsTxScreen(TxScreen):
             return
         typed = tx.ledger_typed_data(self.frm, self.plan["donor"], self.plan["hashes"][i], "")
         self.show(S.SELL_SIGNING.format(i=i + 1, n=n, wallet=self.wallet.label()))
-        self.request("eth_signTypedData_v4", [self.frm, typed], self.got_sig, S.TX_STEP_SIGN)
+        self.sign_typed(typed, ("eth_signTypedData_v4", "eth_signTypedData_v3"))
+
+    @staticmethod
+    def _unsupported(text, code):
+        """True when the wallet says it does not offer this signing method."""
+        t = (text or "").lower()
+        return code == -32601 or any(k in t for k in (
+            "not exist", "not available", "method not found", "not supported", "unsupported",
+            "not allowed", "invalid method"))
+
+    def sign_typed(self, typed, methods):
+        """Ask for a typed-data signature; when the wallet refuses the method, try the next one.
+        (The record has no arrays, so v3 signs exactly the same message as v4.)"""
+        method, rest = methods[0], methods[1:]
+
+        def on_err(text, code=None):
+            if rest and self._unsupported(text, code):
+                self.note("%s refused, trying %s" % (method, rest[0]))
+                self.sign_typed(typed, rest)
+            elif self._unsupported(text, code):
+                self.fail_final(S.SELL_NO_TYPED_SIGN, code)
+            else:
+                self.fail(text, code)
+        self.request(method, [self.frm, typed], self.got_sig, S.TX_STEP_SIGN, on_err=on_err)
 
     def got_sig(self, result):
         if not self.alive:

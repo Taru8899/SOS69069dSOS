@@ -177,7 +177,7 @@ class DsosApp(App):
         nav.bind(pos=lambda i, p: setattr(nav_bg, "pos", p),
                  size=lambda i, s: setattr(nav_bg, "size", s))
         self.nav_btns = {}
-        for name, lab, ic in (("wallet", S.TAB_WALLET, "wallet"), ("offers", S.TAB_OFFERS, "list")):
+        for name, lab, ic in (("wallet", S.TAB_WALLET, "wallet"), ("send", S.TAB_SEND, "send")):
             nav.add_widget(self._tab(name, lab, ic))
         # the "+" circle: PLUS_OUT (10 %) of it sticks out above the top edge of the bar
         plus_cell = FloatLayout(size_hint_x=0.9)
@@ -193,7 +193,7 @@ class DsosApp(App):
         plus_cell.add_widget(plus)
         place_plus()
         nav.add_widget(plus_cell)
-        for name, lab, ic in (("stake", S.TAB_STAKE, "lock"), ("credits", S.TAB_CREDITS, "credits")):
+        for name, lab, ic in (("sell", S.TAB_SELL, "list"), ("redeem", S.TAB_REDEEM, "credits")):
             nav.add_widget(self._tab(name, lab, ic))
         main.add_widget(nav)
         root.add_widget(main)
@@ -311,12 +311,21 @@ class DsosApp(App):
         return b
 
     def _mark_tabs(self):
+        # Send and Sell open overlays (no highlight); Redeem also covers the Stake page
+        on = {"wallet": "wallet", "credits": "redeem", "stake": "redeem"}.get(self.page, "")
         for name, b in self.nav_btns.items():
-            b.set_active(name == self.page)
+            b.set_active(name == on)
 
     def tab_tap(self, name):
         self.close_all()
-        self.set_page(name)
+        if name == "send":
+            self.open_send()
+        elif name == "sell":
+            self.open_sell()
+        elif name == "redeem":
+            self.set_page("credits")
+        else:
+            self.set_page(name)
 
     def set_page(self, name):
         if self.msg.text and self.data:
@@ -337,10 +346,35 @@ class DsosApp(App):
         self.close_all()
         self.open_overlay(CreateScreen(self))
 
+    def refresh_lefts(self, blk):
+        """Re-measure every offer's time left against a fresh block (the data was read earlier)."""
+        d = self.data
+        if not d or not blk or blk < d.get("block", 0):
+            return
+        d["block"] = blk
+        for o in d["offers"]:
+            o["left"] = o["sweepable_at"] - blk
+            o["sendable"] = o["kind"] == "S" and o["left"] > core.WINDOW + core.SEND_MARGIN
+
     def open_send(self):
         if not self.data:
             self.say(S.MSG_LOAD_FIRST)
             return
+        if getattr(self, "_send_opening", False):
+            return
+        self._send_opening = True
+
+        def work():
+            try:
+                blk = core.Chain(self.key.text).block()
+            except Exception:  # noqa: BLE001
+                blk = 0
+            Clock.schedule_once(lambda dt: self._open_send(blk))
+        threading.Thread(target=work, daemon=True).start()
+
+    def _open_send(self, blk):
+        self._send_opening = False
+        self.refresh_lefts(blk)
         self.open_overlay(SendScreen(self))
 
     def open_redeem(self):

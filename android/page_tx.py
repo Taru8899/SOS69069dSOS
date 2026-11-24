@@ -74,13 +74,8 @@ class TxScreen(Overlay):
                                font_size="18sp", size_hint_y=None, height=dp(58))
         self.send_btn.bind(on_release=lambda *_: self.on_wallet_send())
         box.add_widget(self.send_btn)
-        self.sign_btn = None
-        if t.get("rec"):
-            self.sign_btn = Choice(base=LIGHT, fg=BLACK, text=S.TX_LEDGER_OFF, bold=True,
-                                   size_hint_y=None, height=dp(46))
-            self.sign_btn.bind(on_release=lambda *_: self.toggle_sign())
-            box.add_widget(self.sign_btn)
-            box.add_widget(Card(S.TX_LEDGER_HELP))
+        self.sign_btn = None          # no "ledger record after success" button or help card
+        self.sign_on = False
         # message areas + disconnect: an empty area is taken out, so it leaves no gap
         self.stack = BoxLayout(orientation="vertical", spacing=dp(6), size_hint_y=None)
         self.stack.bind(minimum_height=self.stack.setter("height"))

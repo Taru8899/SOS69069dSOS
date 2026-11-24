@@ -141,6 +141,39 @@ class Pill(Label):
         self._r.radius = [rad(self.width, self.height, dp(RADIUS))]
 
 
+class StakePill(ButtonBehavior, Label):
+    """Tappable status chip with a small black triangle: pointing right = opens the Stake page,
+    pointing down (down=True) = you are on it. Turns blue with white text while pressed."""
+
+    def __init__(self, text, bg, fg, down=False, **kw):
+        kw.setdefault("padding", [dp(10), 0, dp(30), 0])
+        super().__init__(text=text, color=fg, bold=True, **kw)
+        self._bg, self._fg, self._down = bg, fg, down
+        with self.canvas.before:
+            self._c = Color(*bg)
+            self._r = RoundedRectangle(radius=[dp(RADIUS)])
+        with self.canvas.after:
+            Color(*BLACK)
+            self._tri = Triangle()
+        settle(self, self._upd)
+        self.bind(state=lambda *_: self._paint())
+
+    def _paint(self):
+        on = self.state == "down"
+        self._c.rgba = BLUE if on else self._bg
+        self.color = WHITE if on else self._fg
+
+    def _upd(self, *_):
+        self._r.pos = self.pos
+        self._r.size = self.size
+        self._r.radius = [rad(self.width, self.height, dp(RADIUS))]
+        cx, cy, s = self.right - dp(17), self.center_y, dp(5)
+        if self._down:      # pointing down
+            self._tri.points = [cx - s, cy + s * 0.6, cx + s, cy + s * 0.6, cx, cy - s * 0.8]
+        else:               # pointing right
+            self._tri.points = [cx - s * 0.6, cy + s, cx - s * 0.6, cy - s, cx + s * 0.8, cy]
+
+
 class PillBtn(ButtonBehavior, Pill):
     """The 'Ethereum' chip as a tap target: green status dot, thin white border and a 3x3 grid
     icon so that it looks like something to press."""

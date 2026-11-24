@@ -19,6 +19,7 @@ PUBLIC_RPCS = [
 UNIT = 10**15
 BLOCK_TIME = 12
 WINDOW = 7200
+SEND_MARGIN = 30      # an offer counts as sendable only with this many blocks to spare
 KIND = {0: "G", 1: "S", 2: "A", 3: "B"}   # G gated, S sendable, A open, B named
 CAPPED_KINDS = ("A", "B")                    # redeems of these are capped by your own A/B allowance
 MAX_OFFERS = 40
@@ -240,14 +241,23 @@ class Chain:
         return int(r["timestamp"], 16) if r else 0
 
     def block(self):
+        """The newest block any source reports (a lagging node must not understate it)."""
+        best, src, err = 0, "", None
         if self.api_key:
             try:
-                r = self._es("eth_blockNumber")
-                self.source = "etherscan"
-                return int(r, 16)
+                best, src = int(self._es("eth_blockNumber"), 16), "etherscan"
             except Exception:  # noqa: BLE001
                 pass
-        return int(self._pub("eth_blockNumber", []), 16)
+        try:
+            n = int(self._pub("eth_blockNumber", []), 16)
+            if n > best:
+                best, src = n, self.source
+        except Exception as e:  # noqa: BLE001
+            err = e
+        if not best:
+            raise err or RuntimeError("no block number")
+        self.source = src
+        return best
 
     def call(self, to, sig, args=()):
         data = "0x" + (selector(sig) + b"".join(enc(a) for a in args)).hex()
@@ -342,7 +352,7 @@ class Chain:
             offers.append({
                 "id": oid, "pos": pos, "kind": kind, "donor": "0x" + w[0][12:].hex(), "created_at": u(w[5]), "count": u(w[7]), "active": u(w[3]) != 0,
                 "sweepable_at": sweep, "left": left, "status": status,
-                "sendable": kind == "S" and left > WINDOW,
+                "sendable": kind == "S" and left > WINDOW + SEND_MARGIN,
                 "capped": kind in CAPPED_KINDS,
             })
         offers.sort(key=lambda o: o["sweepable_at"])

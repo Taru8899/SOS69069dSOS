@@ -10,7 +10,7 @@ import tx
 from page_tx import TxScreen
 from theme import (BLACK, BLUE, BROWN, CREAM, DARK_GREEN, LIGHT_GREEN, PILL_BG, WHITE,
                    short)
-from widgets import Card, Check, Choice, Divider, Dot, LockIcon, Panel, Pill, Steps, label
+from widgets import Card, Check, Choice, Divider, Dot, LockIcon, Panel, Pill, StakePill, Steps, label
 
 
 class StakePage:
@@ -25,10 +25,12 @@ class StakePage:
         # ---- title + status pill
         head = BoxLayout(size_hint_y=None, height=dp(48))
         head.add_widget(label(S.STAKE_TITLE, font_size="30sp"))
-        head.add_widget(Pill(
-            text=S.STAKE_PILL_STAKED if staked else S.STAKE_PILL_NOT_STAKED,
-            bg=PILL_BG if staked else WHITE, color=DARK_GREEN if staked else BLACK, bold=True,
-            size_hint=(None, None), size=(dp(120), dp(34)), pos_hint={"center_y": 0.5}))
+        pill = StakePill(
+            S.STAKE_PILL_STAKED if staked else S.STAKE_PILL_NOT_STAKED,
+            PILL_BG if staked else WHITE, DARK_GREEN if staked else BLACK, down=True,
+            size_hint=(None, None), size=(dp(150), dp(34)), pos_hint={"center_y": 0.5})
+        pill.bind(on_release=lambda *_: app.set_page("credits"))
+        head.add_widget(pill)
         b.add_widget(head)
 
         # ---- card: what staking gives + required amount

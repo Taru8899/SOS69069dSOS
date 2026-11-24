@@ -75,6 +75,17 @@ def action_btn(icon, name, on_release, bg=WHITE, fg=BLACK):
     return box
 
 
+def stake_need_card(app, d):
+    """Black card under the round chips: the ETH needed to stake at the block that was read."""
+    c = Tappable(bg=BLACK, padding=[dp(16), dp(10)], spacing=dp(14), size_hint_y=None, height=dp(78))
+    c.add_widget(Icon("lock", color=WHITE, size=(dp(30), dp(30)), pos_hint={"center_y": 0.5}))
+    c.add_widget(label(S.WALLET_STAKE_NEED.format(eth=core.eth(d["stake_need_wei"]), block=d["block"]),
+                       color=WHITE, font_size="15sp"))
+    c.add_widget(Icon("chevron", color=WHITE, size=(dp(24), dp(24)), pos_hint={"center_y": 0.5}))
+    c.bind(on_release=lambda *_: app.set_page("stake"))
+    return c
+
+
 def next_expiry_card(app, d):
     n = sum(o["count"] for o in d["offers"] if o["sweepable_at"] == d["next_expiry"])
     left = d["next_expiry"] - d["block"]
@@ -92,12 +103,11 @@ def build(app, b, d):
     acts = BoxLayout(size_hint_y=None, height=dp(104), spacing=dp(8))
     acts.add_widget(action_btn("send", S.ACTION_SEND, app.open_send, bg=BLUE, fg=WHITE))
     acts.add_widget(action_btn("plus", S.ACTION_CREATE, app.open_create))
-    acts.add_widget(action_btn("recv", S.ACTION_REDEEM, app.open_redeem))
-    acts.add_widget(action_btn("lock", S.ACTION_STAKE, lambda: app.set_page("stake")))
-    acts.add_widget(action_btn("credits", S.ACTION_SELL, app.open_sell))
+    acts.add_widget(action_btn("recv", S.ACTION_RECEIVE, app.open_redeem))
+    acts.add_widget(action_btn("list", S.ACTION_SELL, app.open_sell))
+    acts.add_widget(action_btn("credits", S.ACTION_REDEEM, lambda: app.set_page("credits")))
     b.add_widget(acts)
-    if d["next_expiry"]:
-        b.add_widget(next_expiry_card(app, d))
+    b.add_widget(stake_need_card(app, d))
     b.add_widget(title_row(S.ACTIVE_OFFERS, S.LINK_SEE_ALL, lambda: app.set_page("offers")))
     if not d["offers"]:
         b.add_widget(Card(S.NO_ACTIVE_OFFERS))

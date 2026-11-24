@@ -9,7 +9,7 @@ import tx
 from page_tx import TxScreen
 from theme import (BLACK, BLUE, DARK_GREEN, DARK_GREEN_HEX, LIGHT_BLUE, LIGHT_GREEN, PILL_BG,
                    RED, WHITE, short)
-from widgets import Choice, Divider, Panel, Pill, IconBtn, label
+from widgets import Choice, Divider, Panel, Pill, IconBtn, StakePill, label
 
 
 def word(n):
@@ -33,10 +33,12 @@ class CreditsPage:
         # ---- title + staked pill
         head = BoxLayout(size_hint_y=None, height=dp(48))
         head.add_widget(label(S.CREDITS_TITLE, font_size="30sp"))
-        head.add_widget(Pill(
-            text=S.CREDITS_PILL_STAKED if d["staked"] else S.CREDITS_PILL_NOT_STAKED,
-            bg=PILL_BG, color=DARK_GREEN, bold=True, size_hint=(None, None),
-            size=(dp(110), dp(34)), pos_hint={"center_y": 0.5}))
+        pill = StakePill(
+            S.CREDITS_PILL_STAKED if d["staked"] else S.CREDITS_PILL_NOT_STAKED,
+            PILL_BG, DARK_GREEN, size_hint=(None, None),
+            size=(dp(140), dp(34)), pos_hint={"center_y": 0.5})
+        pill.bind(on_release=lambda *_: app.set_page("stake"))
+        head.add_widget(pill)
         b.add_widget(head)
 
         # ---- card 1: held + ready to form + sync

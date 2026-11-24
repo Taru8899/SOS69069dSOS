@@ -5,6 +5,10 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 
+import threading
+
+from kivy.clock import Clock
+
 import core
 import strings as S
 import tx
@@ -193,6 +197,29 @@ class SendScreen(Overlay):
         if self.problem():
             return
         to = self.to_in.text.strip()
+        self.btn.set_enabled(False)
+
+        def work():
+            try:
+                blk = core.Chain(self.app.key.text).block()
+            except Exception:  # noqa: BLE001
+                blk = 0
+            Clock.schedule_once(lambda dt: self.after_check(blk, to))
+        threading.Thread(target=work, daemon=True).start()
+
+    def after_check(self, blk, to):
+        """Re-measure the offers against the newest block; reopen the page if the numbers moved."""
+        self.app.refresh_lefts(blk)
+        now = tx.sendable_total(self.app.data["offers"]) if self.app.data else 0
+        if now != self.avail:
+            self.app.close_top()
+            self.app.open_send()
+            self.app.say(S.SEND_UPDATED.format(n=now))
+            return
+        self.btn.set_enabled(True)
+        self.go(to)
+
+    def go(self, to):
         try:
             t = tx.transfer_tx(to, self.amount)
         except Exception as e:  # noqa: BLE001
