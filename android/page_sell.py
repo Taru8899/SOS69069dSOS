@@ -57,7 +57,7 @@ class RecordsTxScreen(TxScreen):
     def _unsupported(text, code):
         """True when the wallet says it does not offer this signing method."""
         t = (text or "").lower()
-        return code == -32601 or any(k in t for k in (
+        return code in (-32601, 4200) or any(k in t for k in (
             "not exist", "not available", "method not found", "not supported", "unsupported",
             "not allowed", "invalid method"))
 
@@ -89,8 +89,7 @@ class RecordsTxScreen(TxScreen):
         if getattr(self.wallet, "_strict", False):          # already asked strictly: nothing more to try
             self.fail_final(S.SELL_NO_TYPED_SIGN)
             return
-        self.show(S.SELL_NO_TYPED_SIGN, actions=[(S.SELL_RECONNECT_BTN, self.reconnect_strict)])
-        self.refresh_buttons()
+        self.reconnect_strict()                             # once, automatically: no extra button press
 
     def reconnect_strict(self):
         self.sigs = []
