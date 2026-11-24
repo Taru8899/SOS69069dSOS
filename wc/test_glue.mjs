@@ -49,4 +49,12 @@ if (q[0].t !== "error" || !/not connected/.test(q[0].error)) throw new Error("no
 const g2 = createGlue({ async init() { throw new Error("bad project id"); } }, win);
 await g2.connect(); q = g2.drain(); if (q[0].t !== "error" || q[0].error !== "bad project id" || q[0].id !== "connect") throw new Error("init error");
 await g.resume();   // must not throw without relayer
+// strict connect: typed-data signing becomes a required method of a NEW session
+const g3 = createGlue(EP, win);
+await g3.connect(); g3.drain();
+if (EP.opts.methods.includes("eth_signTypedData_v4")) throw new Error("default must not require signing");
+await g3.connect(true); const q3 = g3.drain();
+if (!EP.opts.methods.includes("eth_signTypedData_v4")) throw new Error("strict methods");
+if (q3[q3.length - 1].t !== "session") throw new Error("strict session");
+if (!Array.isArray(q3[q3.length - 1].methods)) throw new Error("session methods");
 console.log("JS glue OK");
