@@ -21,7 +21,7 @@ export function createGlue(EthereumProvider, win) {
         const p = await EthereumProvider.init({
           projectId: cfg.projectId,
           chains: [1],
-          optionalMethods: ["eth_signTypedData_v4", "eth_signTypedData", "personal_sign"],
+          optionalMethods: ["eth_signTypedData_v4", "eth_signTypedData_v3", "eth_signTypedData", "personal_sign"],
           showQrModal: false,
           metadata: {
             name: cfg.name,
