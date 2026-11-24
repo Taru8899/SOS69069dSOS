@@ -46,6 +46,15 @@ export function createGlue(EthereumProvider, win) {
     return initPromise;
   }
 
+  // false only when the session lists its approved methods and this one is missing
+  function approves(p, method) {
+    try {
+      const ns = p.session && p.session.namespaces && p.session.namespaces.eip155;
+      if (!ns || !Array.isArray(ns.methods)) return true;
+      return ns.methods.includes(method);
+    } catch (e) { return true; }
+  }
+
   function sessionInfo(p) {
     const peer = (p.session && p.session.peer && p.session.peer.metadata) || {};
     const red = peer.redirect || {};
@@ -83,10 +92,21 @@ export function createGlue(EthereumProvider, win) {
     try {
       const p = await getProvider();
       if (!p.session) throw new Error("not connected");
+      // typed-data signing (Sell records screen): when the session lists its methods and this one is
+      // missing, stop here. Otherwise the provider sends it to the public RPC node, which answers
+      // "method does not exist". Code 4200 lets the Sell screen reconnect with signing required.
+      if (method === "eth_signTypedData_v4" && !approves(p, method)) {
+        const e = new Error("The wallet did not approve " + method);
+        e.code = 4200;
+        throw e;
+      }
       const result = await p.request({ method, params: JSON.parse(paramsJson) });
       out({ t: "result", id, result });
     } catch (e) {
-      out({ t: "error", id, error: msg(e), code: e && e.code });
+      const text = msg(e);
+      // public node answer for a method the session did not list: report it as 4200 too
+      const code = (method === "eth_signTypedData_v4" && /does not exist|not available/i.test(text)) ? 4200 : (e && e.code);
+      out({ t: "error", id, error: text, code });
     }
   }
 
