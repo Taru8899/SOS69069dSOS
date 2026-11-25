@@ -350,7 +350,7 @@ def title_row(text, link_text=None, on_link=None):
     row = BoxLayout(size_hint_y=None, height=dp(34))
     row.add_widget(label(f"[b]{text}[/b]", font_size="18sp"))
     if link_text:
-        btn = NavBtn(text=f"[u]{link_text}[/u]", markup=True, color=BLACK,
+        btn = NavBtn(text=f"[b]{link_text}[/b]", markup=True, color=BLACK,
                      size_hint_x=None, width=dp(90))
         btn.bind(on_release=lambda *_: on_link())
         row.add_widget(btn)

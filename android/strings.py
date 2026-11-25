@@ -192,7 +192,7 @@ SWEEP_WARN = "Sweeping burns the slices of this offer. Its ETH stays in the pool
 SWEEP_FN = "sweepOffer"
 
 # ------------------------------------------------------------------ credits tab
-CREDITS_PILL_ECON = "Economics"
+CREDITS_PILL_ECON = "Details"
 CREDITS_TITLE = "[b]Credits[/b]"
 CREDITS_PILL_STAKED = "Staked"
 CREDITS_PILL_NOT_STAKED = "Not staked"
@@ -655,7 +655,7 @@ TX_PENDING = "[b]Still pending[/b] after 3 minutes. Check the link below.\nTrans
 TX_HASH_LINK = "[u]{hash}[/u]  [b]\u203a[/b]"
 TX_ERR_COPY = "Copy error"
 BAL_RING_CENTER = "%"
-ECON_TITLE = "[b]Economics[/b]"
+ECON_TITLE = "[b]Details[/b]"
 ECON_NEED_DATA = "Load your wallet first."
 ECON_G_CONTRACT = "[b]Contract[/b]"
 ECON_G_YOU = "[b]You[/b]"

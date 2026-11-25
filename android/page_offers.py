@@ -84,14 +84,6 @@ class OffersPage:
         b = self.b
         b.clear_widgets()
         d = self.d
-        b.add_widget(label(S.OFFERS_SUMMARY.format(
-            n=len(self.offers), slices=sum(o["count"] for o in self.offers)),
-            size_hint_y=None, height=dp(24), font_size=FONT_HELPER, bold=True))
-        if d.get("produced") or d.get("redeemed"):
-            b.add_widget(label(S.OFFERS_ALLOWANCE.format(allow=d["allowance"], produced=d["produced"],
-                                                         redeemed=d["redeemed"]),
-                               size_hint_y=None, height=dp(24), font_size=FONT_HELPER, bold=True))
-
         sv = ScrollView(size_hint_y=None, height=dp(44), do_scroll_y=False, bar_width=0)
         chips = BoxLayout(size_hint=(None, 1), spacing=dp(8))
         chips.bind(minimum_width=chips.setter("width"))
@@ -103,6 +95,10 @@ class OffersPage:
             chips.add_widget(ch)
         sv.add_widget(chips)
         b.add_widget(sv)
+        if d.get("produced") or d.get("redeemed"):      # allowance line sits under the filter chips
+            b.add_widget(label(S.OFFERS_ALLOWANCE.format(allow=d["allowance"], produced=d["produced"],
+                                                         redeemed=d["redeemed"]),
+                               size_hint_y=None, height=dp(24), font_size=FONT_HELPER, bold=True))
 
         vis = self.visible()
         if not vis:
