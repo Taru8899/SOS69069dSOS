@@ -8,10 +8,10 @@ import core
 import strings as S
 import tx
 from page_tx import TxScreen
-from design import NOTE_GRAY
+from design import NOTE_GRAY, FONT_HELPER
 from design import FONT_TITLE
 from theme import BLACK, BLUE, LIGHT, WHITE
-from widgets import PullScroll, Card, Choice, Overlay, Panel, IconBtn, label, make_input
+from widgets import home_btn, PullScroll, Card, Choice, Overlay, Panel, IconBtn, label, make_input
 
 
 class DonateScreen(Overlay):
@@ -22,10 +22,11 @@ class DonateScreen(Overlay):
         self.app = app
         col = BoxLayout(orientation="vertical")
 
-        head = BoxLayout(size_hint_y=None, height=dp(72), padding=[dp(14), dp(10)], spacing=dp(14))
+        head = BoxLayout(size_hint_y=None, height=dp(64), padding=[dp(14), dp(8)], spacing=dp(6))
         back = IconBtn(icon="back", bg=WHITE, color=BLACK,
-                        size_hint=(None, 1), width=dp(56))
+                        size_hint=(None, 1), width=dp(44))
         back.bind(on_release=lambda *_: app.close_top())
+        head.add_widget(home_btn(app))
         head.add_widget(back)
         head.add_widget(label(S.DONATE_TITLE, font_size=FONT_TITLE))
         col.add_widget(head)
@@ -86,7 +87,7 @@ class DonateScreen(Overlay):
                           font_size="18sp", size_hint_y=None, height=dp(58))
         self.btn.bind(on_release=lambda *_: self.on_donate())
         foot.add_widget(self.btn)
-        self.note = Label(text="", color=NOTE_GRAY, font_size="13sp",
+        self.note = Label(text="", color=NOTE_GRAY, font_size=FONT_HELPER, bold=True,
                           halign="center", valign="middle")
         self.note.bind(size=lambda i, s: setattr(i, "text_size", s))
         foot.add_widget(self.note)

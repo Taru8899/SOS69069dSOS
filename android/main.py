@@ -32,7 +32,7 @@ from page_sell import SellScreen
 from page_send import SendScreen
 from page_settings import SettingsScreen
 from wallet import Wallet
-from design import PLUS_D, PLUS_OUT, HEADER_LINE_H, HEADER_H, LOGO_W, NAV_H, FONT_BODY
+from design import PLUS_D, PLUS_OUT, HEADER_LINE_H, HEADER_H, LOGO_W, NAV_H, FONT_BODY, FONT_HELPER
 from theme import (BLACK, BUILD, BLUE, GREEN, HAS_LOGO, LOGO, LIGHT, WHITE, WELCOME_MAX, WELCOME_MIN,
                    WELCOME_NO_WALLET, short)
 from widgets import (Chevron, Card, Choice, ErrorBanner, IconBtn, LogoBtn, NavTab, Panel, PillBtn, PullScroll,
@@ -92,7 +92,7 @@ class DsosApp(App):
         self.loading = False
         self.drawer_open = False
         # page state that must survive a reload
-        self.ui = {"offers_tab": "activity", "act_scope": "contract", "act_filter": "all",
+        self.ui = {"offers_tab": "offers", "act_scope": "contract", "act_filter": "all",
                    "offer_sel": None, "act_sel": None, "offers_filter": None}
         self.activity = {}        # scope -> activity.Store (cleared by reload)
 
@@ -134,7 +134,7 @@ class DsosApp(App):
         head.add_widget(pill)
         main.add_widget(head)
 
-        self.msg = Label(text="", size_hint_y=None, height=dp(18), color=BLACK, font_size="13sp")
+        self.msg = Label(text="", size_hint_y=None, height=dp(20), color=BLACK, font_size=FONT_HELPER, bold=True)
         main.add_widget(self.msg)
 
         # ---- drawer (Etherscan key + wallet address + Load): a panel that floats over the top
@@ -177,7 +177,7 @@ class DsosApp(App):
         nav.bind(pos=lambda i, p: setattr(nav_bg, "pos", p),
                  size=lambda i, s: setattr(nav_bg, "size", s))
         self.nav_btns = {}
-        for name, lab, ic in (("wallet", S.TAB_WALLET, "wallet"), ("send", S.TAB_SEND, "send")):
+        for name, lab, ic in (("send", S.TAB_SEND, "send"), ("receive", S.ACTION_RECEIVE, "recv")):
             nav.add_widget(self._tab(name, lab, ic))
         # the "+" circle: PLUS_OUT (10 %) of it sticks out above the top edge of the bar
         plus_cell = FloatLayout(size_hint_x=0.9)
@@ -311,8 +311,8 @@ class DsosApp(App):
         return b
 
     def _mark_tabs(self):
-        # Send and Sell open overlays (no highlight); Redeem also covers the Stake page
-        on = {"wallet": "wallet", "credits": "redeem", "stake": "redeem"}.get(self.page, "")
+        # Send, Receive and Sell open overlays (no highlight); Redeem also covers the Stake page
+        on = {"credits": "redeem", "stake": "redeem"}.get(self.page, "")
         for name, b in self.nav_btns.items():
             b.set_active(name == on)
 
@@ -320,6 +320,8 @@ class DsosApp(App):
         self.close_all()
         if name == "send":
             self.open_send()
+        elif name == "receive":
+            self.open_redeem()
         elif name == "sell":
             self.open_sell()
         elif name == "redeem":

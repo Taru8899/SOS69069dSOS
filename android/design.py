@@ -66,7 +66,10 @@ RADIUS = 16                # standard corner radius
 RADIUS_PANEL = 18          # white panels
 
 # ============================================================== FONTS (sp)
-FONT_TITLE = "24sp"        # page titles
+FONT_TITLE = "24sp"        # page titles (bold)
+FONT_SECTION = "18sp"      # section headings inside a page (bold)
+FONT_ROW = "17sp"          # title line of a list row / card (bold)
+FONT_HELPER = "14sp"       # helper text: notes, sub-lines, footers, status lines (always bold, never smaller)
 FONT_BIG = "18sp"          # big buttons
 FONT_BODY = "17sp"         # header address, main text
 FONT_SMALL = "13sp"        # notes

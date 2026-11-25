@@ -15,9 +15,9 @@ import tx
 import util
 from page_tx import TxScreen
 from design import NOTE_GRAY
-from design import FONT_TITLE
+from design import FONT_HELPER, FONT_SECTION, FONT_TITLE
 from theme import BLACK, BLUE, DSOS_ADDR, LIGHT, WHITE, left_text, short
-from widgets import PullScroll, Card, Choice, Overlay, Panel, IconBtn, label, make_input
+from widgets import home_btn, PullScroll, Card, Choice, Overlay, Panel, IconBtn, label, make_input
 
 
 class SendScreen(Overlay):
@@ -34,10 +34,11 @@ class SendScreen(Overlay):
 
         col = BoxLayout(orientation="vertical")
 
-        head = BoxLayout(size_hint_y=None, height=dp(72), padding=[dp(14), dp(10)], spacing=dp(14))
+        head = BoxLayout(size_hint_y=None, height=dp(64), padding=[dp(14), dp(8)], spacing=dp(6))
         back = IconBtn(icon="back", bg=WHITE, color=BLACK,
-                        size_hint=(None, 1), width=dp(56))
+                        size_hint=(None, 1), width=dp(44))
         back.bind(on_release=lambda *_: app.close_top())
+        head.add_widget(home_btn(app))
         head.add_widget(back)
         head.add_widget(label(S.SEND_TITLE, font_size=FONT_TITLE))
         col.add_widget(head)
@@ -55,7 +56,7 @@ class SendScreen(Overlay):
         form.add_widget(av)
 
         # recipient
-        form.add_widget(label(S.SEND_TO, size_hint_y=None, height=dp(26)))
+        form.add_widget(label(S.SEND_TO, size_hint_y=None, height=dp(30), font_size=FONT_SECTION))
         row = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(6))
         self.to_in = make_input(S.HINT_RECIPIENT)
         self.to_in.bind(text=lambda *_: self.refresh())
@@ -114,7 +115,7 @@ class SendScreen(Overlay):
                           font_size="18sp", size_hint_y=None, height=dp(58))
         self.btn.bind(on_release=lambda *_: self.on_send())
         foot.add_widget(self.btn)
-        self.note = Label(text="", color=NOTE_GRAY, font_size="13sp",
+        self.note = Label(text="", color=NOTE_GRAY, font_size=FONT_HELPER, bold=True,
                           halign="center", valign="middle")
         self.note.bind(size=lambda i, s: setattr(i, "text_size", s))
         foot.add_widget(self.note)
@@ -164,7 +165,7 @@ class SendScreen(Overlay):
         if n:
             picks, _rest = tx.plan_send(self.offers, n)
             self.dyn.add_widget(label(S.SEND_TAKEN_FROM,
-                                      size_hint_y=None, height=dp(30)))
+                                      size_hint_y=None, height=dp(30), font_size=FONT_SECTION))
             badge = {"S": "0033ff", "A": "00a82d", "B": "0b0b0b", "T": "0b0b0b", "P": "00a82d"}
             for o, take in picks:
                 r = Panel(size_hint_y=None, height=dp(62), spacing=dp(8))

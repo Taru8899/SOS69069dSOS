@@ -5,7 +5,7 @@ from kivy.uix.label import Label
 
 import core
 import strings as S
-from design import BAL_CHIP_H, BAL_CARD_H, BAL_TOP_H, BAL_LINE_H, RING_SIZE, FONT_RING, FONT_ETH_LINE, FONT_HELD
+from design import BAL_CHIP_H, BAL_CARD_H, BAL_TOP_H, BAL_LINE_H, RING_SIZE, FONT_RING, FONT_ETH_LINE, FONT_HELD, FONT_HELPER
 from theme import BLACK, BLUE, GRAY, LIGHT, RED, WHITE
 from widgets import (Card, Choice, Dot, Icon, IconBtn, Panel, Ring, Tap, TapFloat, Tappable, label,
                      offer_row, title_row)
@@ -15,7 +15,7 @@ def chip(color, title, value, on_tap=None):
     """Small grey box that is a link: underlined title, then dot + bold value. Tap = open Offers
     with that filter."""
     p = Tappable(orientation="vertical", bg=LIGHT, padding=[dp(10), dp(8)], spacing=dp(2))
-    p.add_widget(label(f"[u]{title}[/u]", font_size="12sp", size_hint_y=None, height=dp(22)))
+    p.add_widget(label(f"[u]{title}[/u]", font_size=FONT_HELPER, bold=True, size_hint_y=None, height=dp(22)))
     row = BoxLayout(spacing=dp(6))
     row.add_widget(Dot(bg=color, text="", size=(dp(10), dp(10)), pos_hint={"center_y": 0.5}))
     row.add_widget(label(S.WALLET_CHIP_VALUE.format(n=value), font_size="17sp"))
@@ -102,8 +102,8 @@ def build(app, b, d):
     b.add_widget(BalanceCard(d, app))
     acts = BoxLayout(size_hint_y=None, height=dp(104), spacing=dp(8))
     acts.add_widget(action_btn("send", S.ACTION_SEND, app.open_send, bg=BLUE, fg=WHITE))
-    acts.add_widget(action_btn("plus", S.ACTION_CREATE, app.open_create))
     acts.add_widget(action_btn("recv", S.ACTION_RECEIVE, app.open_redeem))
+    acts.add_widget(action_btn("plus", S.ACTION_CREATE, app.open_create))
     acts.add_widget(action_btn("list", S.ACTION_SELL, app.open_sell))
     acts.add_widget(action_btn("credits", S.ACTION_REDEEM, lambda: app.set_page("credits")))
     b.add_widget(acts)

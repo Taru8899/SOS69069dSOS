@@ -11,10 +11,10 @@ import core
 import strings as S
 import tx
 from page_tx import TxScreen
-from design import RED_BG
+from design import RED_BG, FONT_HELPER, FONT_ROW, FONT_TITLE
 from theme import (BLACK, BLUE, BROWN, CREAM, DARK_GREEN, GREEN, LIGHT, PILL_BG,
                    RED, WHITE, left_text, set_visible, short)
-from widgets import (Badge, Choice, Panel, Pill, ThinBar, IconBtn, Tappable, label,
+from widgets import (home_btn, StakePill, Badge, Choice, Panel, Pill, ThinBar, IconBtn, Tappable, label,
                      make_input)
 
 # status -> (pill background, pill text, progress bar color)
@@ -84,16 +84,13 @@ class OffersPage:
         b = self.b
         b.clear_widgets()
         d = self.d
-        head = BoxLayout(size_hint_y=None, height=dp(48))
-        head.add_widget(label(S.OFFERS_TITLE, font_size="30sp"))
-        head.add_widget(label(S.OFFERS_SUMMARY.format(
+        b.add_widget(label(S.OFFERS_SUMMARY.format(
             n=len(self.offers), slices=sum(o["count"] for o in self.offers)),
-            halign="right", size_hint_x=0.7, font_size="14sp"))
-        b.add_widget(head)
+            size_hint_y=None, height=dp(24), font_size=FONT_HELPER, bold=True))
         if d.get("produced") or d.get("redeemed"):
             b.add_widget(label(S.OFFERS_ALLOWANCE.format(allow=d["allowance"], produced=d["produced"],
                                                          redeemed=d["redeemed"]),
-                               size_hint_y=None, height=dp(22), font_size="13sp"))
+                               size_hint_y=None, height=dp(24), font_size=FONT_HELPER, bold=True))
 
         sv = ScrollView(size_hint_y=None, height=dp(44), do_scroll_y=False, bar_width=0)
         chips = BoxLayout(size_hint=(None, 1), spacing=dp(8))
@@ -120,7 +117,7 @@ class OffersPage:
         expired = o["left"] <= 0
         bg, fg, bar = STATUS_STYLE.get(o["status"], STATUS_STYLE["redeemable"])
         c = Tappable(orientation="vertical", padding=dp(12), spacing=dp(6), size_hint_y=None,
-                     height=dp(76 if expired else 118))
+                     height=dp(80 if expired else 128))
         c.set_selected(o["id"] == self.sel_id)
         c.bind(on_release=lambda *_, i=o["id"]: self.select(i))
         eth = core.eth(o["count"] * core.UNIT)
@@ -134,13 +131,13 @@ class OffersPage:
             sub = S.OC_SUB_YOU.format(eth=eth)
         else:
             sub = S.OC_SUB_FROM.format(eth=eth, donor=short(o.get("donor", "")))
-        row = BoxLayout(size_hint_y=None, height=dp(52), spacing=dp(12))
+        row = BoxLayout(size_hint_y=None, height=dp(58), spacing=dp(12))
         row.add_widget(Badge(o["kind"], pos_hint={"center_y": 0.5}))
         mid = BoxLayout(orientation="vertical")
         mid.add_widget(label(S.OC_TITLE.format(
             count=o["count"], id=o["id"], pin=S.OFFER_PIN_TAG if o["kind"] == "G" else ""),
-            font_size="17sp"))
-        mid.add_widget(label(sub, font_size="13sp"))
+            font_size=FONT_ROW))
+        mid.add_widget(label(sub, font_size=FONT_HELPER, bold=True))
         row.add_widget(mid)
         row.add_widget(Pill(text=S.STATUS.get(o["status"], o["status"]), bg=bg, color=fg,
                             bold=True, font_size="13sp", size_hint=(None, None),
@@ -150,7 +147,7 @@ class OffersPage:
             window = max(o.get("sweepable_at", 0) - o.get("created_at", 0), 1)
             c.add_widget(ThinBar(o["left"] / window, bar))
             c.add_widget(label(S.OC_LEFT.format(left=left_text(o["left"]), block=o["sweepable_at"]),
-                               size_hint_y=None, height=dp(20), font_size="13sp"))
+                               size_hint_y=None, height=dp(22), font_size=FONT_HELPER, bold=True))
         return c
 
     def detail(self, o):
@@ -161,7 +158,7 @@ class OffersPage:
         p.add_widget(label(S.OD_TITLE.format(id=o["id"], count=o["count"], eth=eth,
                                              left=left_text(o["left"])),
                            size_hint_y=None, height=dp(54)))
-        self.note = Label(text="", color=BLACK, font_size="13sp", halign="left", valign="top")
+        self.note = Label(text="", color=BLACK, font_size=FONT_HELPER, bold=True, halign="left", valign="top")
         self.note.bind(size=lambda i, s: setattr(i, "text_size", s))
 
         if expired:
@@ -388,13 +385,19 @@ def build(app, b, d):
     """Offers page with an Offers | Activity switch on top."""
     import page_activity
     tab = app.ui["offers_tab"]
-    sw = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(8))
-    for key, text in S.OFFERS_SWITCH:
-        ch = Choice(base=WHITE, text=text, bold=True, font_size="16sp")
-        ch.set_selected(key == tab)
-        ch.bind(on_release=lambda _w, k=key: app.set_offers_tab(k))
-        sw.add_widget(ch)
-    b.add_widget(sw)
+    # title + the Activity pill: the Activity tab stays hidden under it (triangle right = closed,
+    # down = open), like the Staked pill on the Credits page
+    head = BoxLayout(size_hint_y=None, height=dp(64), padding=[0, dp(8)], spacing=dp(6))
+    back = IconBtn(icon="back", bg=WHITE, color=BLACK, size_hint=(None, 1), width=dp(44))
+    back.bind(on_release=lambda *_: app.go_home())          # same round button as the other pages
+    head.add_widget(home_btn(app, width=44))
+    head.add_widget(back)
+    head.add_widget(label(S.OFFERS_TITLE, font_size=FONT_TITLE))
+    pill = StakePill(dict(S.OFFERS_SWITCH)["activity"], PILL_BG, DARK_GREEN, down=(tab == "activity"),
+                     size_hint=(None, None), size=(dp(112), dp(34)), pos_hint={"center_y": 0.5})
+    pill.bind(on_release=lambda *_: app.set_offers_tab("offers" if tab == "activity" else "activity"))
+    head.add_widget(pill)
+    b.add_widget(head)
     body = BoxLayout(orientation="vertical", spacing=dp(10), size_hint_y=None)
     body.bind(minimum_height=body.setter("height"))
     b.add_widget(body)

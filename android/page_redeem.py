@@ -9,9 +9,9 @@ import strings as S
 import tx
 from page_tx import TxScreen
 from design import NOTE_GRAY
-from design import FONT_TITLE
+from design import FONT_HELPER, FONT_SECTION, FONT_TITLE
 from theme import BLACK, BLUE, LIGHT, WHITE, left_text, short
-from widgets import PullScroll, Card, Choice, Overlay, Panel, IconBtn, label
+from widgets import home_btn, PullScroll, Card, Choice, Overlay, Panel, IconBtn, label
 
 
 class RedeemScreen(Overlay):
@@ -30,10 +30,11 @@ class RedeemScreen(Overlay):
         self.row_btns = {}
 
         col = BoxLayout(orientation="vertical")
-        head = BoxLayout(size_hint_y=None, height=dp(72), padding=[dp(14), dp(10)], spacing=dp(14))
+        head = BoxLayout(size_hint_y=None, height=dp(64), padding=[dp(14), dp(8)], spacing=dp(6))
         back = IconBtn(icon="back", bg=WHITE, color=BLACK,
-                        size_hint=(None, 1), width=dp(56))
+                        size_hint=(None, 1), width=dp(44))
         back.bind(on_release=lambda *_: app.close_top())
+        head.add_widget(home_btn(app))
         head.add_widget(back)
         head.add_widget(label(S.RO_TITLE, font_size=FONT_TITLE))
         col.add_widget(head)
@@ -50,7 +51,7 @@ class RedeemScreen(Overlay):
         form.add_widget(av)
 
         if self.rows:
-            form.add_widget(label(S.RO_PICK, size_hint_y=None, height=dp(26)))
+            form.add_widget(label(S.RO_PICK, size_hint_y=None, height=dp(30), font_size=FONT_SECTION))
             for o in self.rows:
                 btn = Choice(base=WHITE, text=S.RO_ROW.format(
                     kind=o["kind"], id=o["id"], left=left_text(o["left"]), count=o["count"]),
@@ -89,9 +90,9 @@ class RedeemScreen(Overlay):
         # expired offers: sweep
         ids = d["sweepable_ids"]
         if ids:
-            form.add_widget(label(S.RO_SWEEP_TITLE, size_hint_y=None, height=dp(30)))
+            form.add_widget(label(S.RO_SWEEP_TITLE, size_hint_y=None, height=dp(30), font_size=FONT_SECTION))
             form.add_widget(label(S.RO_SWEEP_HELP, size_hint_y=None, height=dp(44),
-                                  valign="top", font_size="13sp"))
+                                  valign="top", font_size=FONT_HELPER, bold=True))
             known = {o["id"]: o for o in offers}
             for i, oid in enumerate(ids[:10]):
                 o = known.get(oid)
@@ -119,7 +120,7 @@ class RedeemScreen(Overlay):
                           font_size="18sp", size_hint_y=None, height=dp(58))
         self.btn.bind(on_release=lambda *_: self.on_redeem())
         foot.add_widget(self.btn)
-        self.note = Label(text="", color=NOTE_GRAY, font_size="13sp",
+        self.note = Label(text="", color=NOTE_GRAY, font_size=FONT_HELPER, bold=True,
                           halign="center", valign="middle")
         self.note.bind(size=lambda i, s: setattr(i, "text_size", s))
         foot.add_widget(self.note)

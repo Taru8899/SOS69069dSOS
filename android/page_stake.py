@@ -8,10 +8,10 @@ import core
 import strings as S
 import tx
 from page_tx import TxScreen
-from design import FONT_TITLE
+from design import FONT_HELPER, FONT_TITLE
 from theme import (BLACK, BLUE, BROWN, CREAM, DARK_GREEN, LIGHT_GREEN, PILL_BG, WHITE,
                    short)
-from widgets import (Card, Check, Choice, Divider, Dot, IconBtn, LockIcon, Panel, Pill, StakePill, Steps,
+from widgets import (home_btn, Card, Check, Choice, Divider, Dot, IconBtn, LockIcon, Panel, Pill, StakePill, Steps,
                      label)
 
 
@@ -25,15 +25,16 @@ class StakePage:
         cool_ok = staked and d["block"] >= d["staked_at"] + d["cooldown"]
 
         # ---- title + status pill
-        head = BoxLayout(size_hint_y=None, height=dp(64), padding=[0, dp(8)], spacing=dp(14))
-        back = IconBtn(icon="back", bg=WHITE, color=BLACK, size_hint=(None, 1), width=dp(52))
+        head = BoxLayout(size_hint_y=None, height=dp(64), padding=[0, dp(8)], spacing=dp(6))
+        back = IconBtn(icon="back", bg=WHITE, color=BLACK, size_hint=(None, 1), width=dp(44))
         back.bind(on_release=lambda *_: app.go_home())          # same round button as the other pages
+        head.add_widget(home_btn(app, width=44))
         head.add_widget(back)
         head.add_widget(label(S.STAKE_TITLE, font_size=FONT_TITLE))
         pill = StakePill(
             S.STAKE_PILL_STAKED if staked else S.STAKE_PILL_NOT_STAKED,
             PILL_BG if staked else WHITE, DARK_GREEN if staked else BLACK, down=True,
-            size_hint=(None, None), size=(dp(150), dp(34)), pos_hint={"center_y": 0.5})
+            size_hint=(None, None), size=(dp(128), dp(34)), pos_hint={"center_y": 0.5})
         pill.bind(on_release=lambda *_: app.set_page("credits"))
         head.add_widget(pill)
         b.add_widget(head)
@@ -48,7 +49,7 @@ class StakePage:
         c1.add_widget(label(S.STAKE_REQUIRED_BOX.format(eth=core.eth(self.need)),
                             size_hint_y=None, height=dp(88)))
         c1.add_widget(label(S.STAKE_REQUIRED_NOTE.format(n=self.need // core.UNIT),
-                            size_hint_y=None, height=dp(44), valign="top", font_size="13sp"))
+                            size_hint_y=None, height=dp(44), valign="top", font_size=FONT_HELPER, bold=True))
         b.add_widget(c1)
 
         # ---- numbered steps
@@ -94,7 +95,7 @@ class StakePage:
         btns.add_widget(self.sweep_btn)
         b.add_widget(btns)
 
-        self.note = Label(text="", color=BLACK, font_size="13sp", size_hint_y=None,
+        self.note = Label(text="", color=BLACK, font_size=FONT_HELPER, bold=True, size_hint_y=None,
                           height=dp(30), halign="center", valign="middle")
         self.note.bind(size=lambda i, s: setattr(i, "text_size", s))
         b.add_widget(self.note)

@@ -12,7 +12,7 @@ import strings as S
 from design import (ECON_ROW_MIN_H, FONT_ECON_ETH, FONT_ECON_ROW, FONT_ECON_TITLE,
                     FONT_ECON_VALUE, FONT_TITLE)
 from theme import BLACK, DARK_GREEN, PILL_BG, WHITE
-from widgets import Divider, IconBtn, Overlay, Panel, PullScroll, StakePill, label
+from widgets import home_btn, Divider, IconBtn, Overlay, Panel, PullScroll, StakePill, label
 
 DAY_BLOCKS = 7200
 _ETH_PART = re.compile(r"(\d[\d.,]* ETH)")
@@ -111,10 +111,10 @@ class EconomicsScreen(Overlay):
         super().__init__(**kw)
         self.app = app
         col = BoxLayout(orientation="vertical")
-        head = BoxLayout(size_hint_y=None, height=dp(64), padding=[dp(14), dp(4), dp(14), dp(6)],
-                         spacing=dp(14))
-        back = IconBtn(icon="back", bg=WHITE, color=BLACK, size_hint=(None, 1), width=dp(52))
+        head = BoxLayout(size_hint_y=None, height=dp(64), padding=[dp(14), dp(8)], spacing=dp(6))
+        back = IconBtn(icon="back", bg=WHITE, color=BLACK, size_hint=(None, 1), width=dp(44))
         back.bind(on_release=lambda *_: app.close_top())
+        head.add_widget(home_btn(app))
         head.add_widget(back)
         head.add_widget(label(S.ECON_TITLE, font_size=FONT_TITLE))
         pill = StakePill(S.CREDITS_PILL_ECON, PILL_BG, DARK_GREEN, down=True, size_hint=(None, None),

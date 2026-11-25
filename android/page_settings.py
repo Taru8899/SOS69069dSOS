@@ -6,10 +6,10 @@ from kivy.utils import escape_markup
 
 import strings as S
 import util
-from design import FONT_TITLE
+from design import FONT_HELPER, FONT_TITLE
 from theme import BLACK, BLUE, BUILD, DSOS_ADDR, ETHERSCAN_ADDR, LEDGER_ADDR, WHITE, short
 from page_links import build_grid
-from widgets import Card, Choice, Overlay, Panel, PullScroll, IconBtn, label
+from widgets import home_btn, Card, Choice, Overlay, Panel, PullScroll, IconBtn, label
 
 
 class SettingsScreen(Overlay):
@@ -17,14 +17,15 @@ class SettingsScreen(Overlay):
         super().__init__(**kw)
         self.app = app
         col = BoxLayout(orientation="vertical")
-        head = BoxLayout(size_hint_y=None, height=dp(64), padding=[dp(14), dp(6)], spacing=dp(14))
+        head = BoxLayout(size_hint_y=None, height=dp(64), padding=[dp(14), dp(8)], spacing=dp(6))
         back = IconBtn(icon="back", bg=WHITE, color=BLACK,
-                        size_hint=(None, 1), width=dp(56))
+                        size_hint=(None, 1), width=dp(44))
         back.bind(on_release=lambda *_: app.close_top())
+        head.add_widget(home_btn(app))
         head.add_widget(back)
         head.add_widget(label(S.SETTINGS_TITLE, font_size=FONT_TITLE))
         col.add_widget(head)
-        self.status = label("", size_hint_y=None, height=dp(22), font_size="13sp",
+        self.status = label("", size_hint_y=None, height=dp(24), font_size=FONT_HELPER, bold=True,
                             padding=(dp(14), 0))
         col.add_widget(self.status)
 
@@ -47,7 +48,7 @@ class SettingsScreen(Overlay):
     def address_row(self, title, addr, empty=""):
         valid = len(addr) == 42 and addr.startswith("0x") and all(c in "0123456789abcdefABCDEF" for c in addr[2:])
         p = Panel(orientation="vertical", size_hint_y=None, height=dp(124), spacing=dp(6))
-        p.add_widget(label(f"[b]{title}[/b]\n[size=12sp]{short(addr) if valid or not empty else empty}[/size]",
+        p.add_widget(label(f"[b]{title}[/b]\n[size=14sp][b]{short(addr) if valid or not empty else empty}[/b][/size]",
                            size_hint_y=None, height=dp(44)))
         btns = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(8))
         for text, fn in ((S.BTN_COPY, lambda: self.copy(title, addr)),
@@ -61,8 +62,8 @@ class SettingsScreen(Overlay):
         return p
 
     def layout_row(self):
-        p = Panel(orientation="vertical", size_hint_y=None, height=dp(112), spacing=dp(6))
-        p.add_widget(label(S.SETTINGS_LAYOUT, size_hint_y=None, height=dp(44), font_size="13sp"))
+        p = Panel(orientation="vertical", size_hint_y=None, height=dp(124), spacing=dp(6))
+        p.add_widget(label(S.SETTINGS_LAYOUT, size_hint_y=None, height=dp(56), font_size=FONT_HELPER, bold=True))
         b = Choice(base=BLUE, fg=WHITE, text=S.SETTINGS_LAYOUT_COPY, size_hint_y=None,
                    height=dp(44), bold=True)
         b.bind(on_release=lambda *_: self.copy(S.SETTINGS_LAYOUT_COPY, self.app.layout_report()))

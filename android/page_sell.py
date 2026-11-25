@@ -11,12 +11,12 @@ import core
 import sell
 import strings as S
 import tx
-from design import BTN_OFF_DARK, FONT_TITLE, TRACK_GRAY
+from design import BTN_OFF_DARK, FONT_HELPER, FONT_ROW, FONT_SECTION, FONT_TITLE, TRACK_GRAY
 from page_offers import STATUS_STYLE
 from page_tx import TxScreen
 from theme import (BLACK, BLUE, BROWN, CREAM, DARK_GREEN, GRAY, GREEN, LEDGER_ADDR, LIGHT, PILL_BG,
                    WHITE, left_text, short)
-from widgets import (Badge, Card, Choice, IconBtn, Overlay, Pill, PullScroll, Tappable, ThinBar, label,
+from widgets import (home_btn, Badge, Card, Choice, IconBtn, Overlay, Pill, PullScroll, Tappable, ThinBar, label,
                      make_input, text_label, title_row)
 
 
@@ -179,9 +179,10 @@ class SellScreen(Overlay):
         self.open_done, self.open_err = False, ""
 
         col = BoxLayout(orientation="vertical")
-        head = BoxLayout(size_hint_y=None, height=dp(72), padding=[dp(14), dp(10)], spacing=dp(14))
-        back = IconBtn(icon="back", bg=WHITE, color=BLACK, size_hint=(None, 1), width=dp(56))
+        head = BoxLayout(size_hint_y=None, height=dp(64), padding=[dp(14), dp(8)], spacing=dp(6))
+        back = IconBtn(icon="back", bg=WHITE, color=BLACK, size_hint=(None, 1), width=dp(44))
         back.bind(on_release=lambda *_: self.close())
+        head.add_widget(home_btn(app, before=self.close))
         head.add_widget(back)
         head.add_widget(label(S.SELL_TITLE, font_size=FONT_TITLE))
         col.add_widget(head)
@@ -202,7 +203,7 @@ class SellScreen(Overlay):
         self.row = row
 
         # message / offer info / open offers: an empty one is taken out, so it leaves no gap
-        self.msg = text_label("", font_size="13sp")
+        self.msg = text_label("", font_size=FONT_HELPER, bold=True)
         self.msg.bind(text=lambda *_: self._sync())
         self.info = self._box()
         self.open_box = self._box()
@@ -294,16 +295,16 @@ class SellScreen(Overlay):
             b.add_widget(Card(S.SELL_ERROR.format(error=escape_markup(self.open_err))))
             return
         if not self.found:
-            b.add_widget(label(S.SELL_OPEN_NONE, size_hint_y=None, height=dp(60), valign="top",
-                               font_size="13sp"))
+            b.add_widget(label(S.SELL_OPEN_NONE, size_hint_y=None, height=dp(44), valign="top",
+                               font_size=FONT_HELPER, bold=True))
         for s in self.found:
             b.add_widget(self.sale_card(s))
         b.add_widget(title_row(S.SELLC_SOLD_H))
         if self.sold is None:
             b.add_widget(label(S.SELLC_SOLD_LOADING, size_hint_y=None, height=dp(28)))
         elif not self.sold:
-            b.add_widget(label(S.SELLC_SOLD_NONE, size_hint_y=None, height=dp(40), valign="top",
-                               font_size="13sp"))
+            b.add_widget(label(S.SELLC_SOLD_NONE, size_hint_y=None, height=dp(44), valign="top",
+                               font_size=FONT_HELPER, bold=True))
         for r in self.sold or []:
             b.add_widget(self.sold_card(r))
 
@@ -312,11 +313,11 @@ class SellScreen(Overlay):
                     size=(dp(104), dp(30)), pos_hint={"center_y": 0.5})
 
     def card_row(self, kind, title, sub, pill):
-        row = BoxLayout(size_hint_y=None, height=dp(52), spacing=dp(12))
+        row = BoxLayout(size_hint_y=None, height=dp(58), spacing=dp(12))
         row.add_widget(Badge(kind, pos_hint={"center_y": 0.5}))
         mid = BoxLayout(orientation="vertical")
-        mid.add_widget(label(title, font_size="17sp"))
-        mid.add_widget(label(sub, font_size="13sp"))
+        mid.add_widget(label(title, font_size=FONT_ROW))
+        mid.add_widget(label(sub, font_size=FONT_HELPER, bold=True))
         row.add_widget(mid)
         row.add_widget(pill)
         return row
@@ -336,7 +337,7 @@ class SellScreen(Overlay):
         left = s["sweepable_at"] - self.block
         grey = state in ("written", "named")          # still tappable: "written" is the one to Sync
         c = Tappable(orientation="vertical", padding=dp(12), spacing=dp(6), size_hint_y=None,
-                     height=dp(118), bg=GRAY if grey else WHITE)
+                     height=dp(128), bg=GRAY if grey else WHITE)
         c.bind(on_release=lambda *_, i=s["id"]: self.pick(i))
         if s["kind"] == "B":
             you = s["target"].lower() == self.me.lower()
@@ -348,7 +349,7 @@ class SellScreen(Overlay):
         window = max(s["sweepable_at"] - s["created_at"], 1)
         c.add_widget(ThinBar(left / window, BLACK if left <= core.WINDOW else GREEN))
         c.add_widget(label(S.SELLC_LEFT.format(left=left_text(left), block=s["sweepable_at"]),
-                           size_hint_y=None, height=dp(20), font_size="13sp"))
+                           size_hint_y=None, height=dp(22), font_size=FONT_HELPER, bold=True))
         return c
 
     def sold_card(self, r):
@@ -364,7 +365,7 @@ class SellScreen(Overlay):
             bg, fg, bar, text = TRACK_GRAY, BTN_OFF_DARK, GREEN, S.STATUS["closed"]
         live = bool(o) and o["left"] > 0
         c = Tappable(orientation="vertical", padding=dp(12), spacing=dp(6), size_hint_y=None,
-                     height=dp(118 if live else 76))
+                     height=dp(128 if live else 80))
         c.bind(on_release=lambda *_, rr=r: self.open_sold(rr))
         c.add_widget(self.card_row(r["kind"], S.SOLD_TITLE.format(id=r["id"], n=r["records"]), sub,
                                    self.pill(text, bg, fg)))
@@ -372,7 +373,7 @@ class SellScreen(Overlay):
             window = max(o.get("sweepable_at", 0) - o.get("created_at", 0), 1)
             c.add_widget(ThinBar(o["left"] / window, bar))
             c.add_widget(label(S.OC_LEFT.format(left=left_text(o["left"]), block=o["sweepable_at"]),
-                               size_hint_y=None, height=dp(20), font_size="13sp"))
+                               size_hint_y=None, height=dp(22), font_size=FONT_HELPER, bold=True))
         return c
 
     def open_sold(self, r):
@@ -458,7 +459,7 @@ class SellScreen(Overlay):
             b.add_widget(Card(S.SELL_WHY_DEAD if dead else S.SELL_WHY[why], bg=BLACK, fg=WHITE))
         need = max(0, s["records_left"] - st["ready"])
         if ok:
-            b.add_widget(label(S.SELL_HOW_MANY, size_hint_y=None, height=dp(24)))
+            b.add_widget(label(S.SELL_HOW_MANY, size_hint_y=None, height=dp(28), font_size=FONT_SECTION))
             self.k_in = make_input(S.HINT_SELL_K.format(max=tx.SELL_BATCH_MAX),
                                    str(max(1, min(need, tx.SELL_BATCH_MAX))), filt="int")
             b.add_widget(self.k_in)

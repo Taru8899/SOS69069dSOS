@@ -12,6 +12,7 @@ import activity
 import core
 import strings as S
 import util
+from design import FONT_HELPER, FONT_ROW
 from theme import BLACK, BLUE, ETHERSCAN_TX, GREEN, RED, WHITE, short
 from widgets import Card, Choice, Dot, Panel, Tappable, label
 
@@ -145,7 +146,7 @@ class ActivityPage:
             if self.ui.get("act_sel") == r["tx"]:
                 b.add_widget(self.detail(r))
         if capped:
-            b.add_widget(label(S.ACT_MINE_LIMIT.format(n=MINE_LIMIT), font_size="12sp",
+            b.add_widget(label(S.ACT_MINE_LIMIT.format(n=MINE_LIMIT), font_size=FONT_HELPER, bold=True,
                                size_hint_y=None, height=dp(24)))
         if not st.complete and not capped and not (st.scope == "mine" and len(rows) >= MINE_LIMIT):
             more = Choice(base=BLACK, fg=WHITE, text=S.ACT_LOADING if slot.busy else S.ACT_LOAD_OLDER,
@@ -177,7 +178,7 @@ class ActivityPage:
         if st.truncated:
             b.add_widget(Card(S.ACT_TRUNCATED))
         b.add_widget(label(S.ACT_COMPLETE if st.complete else S.ACT_WINDOW.format(
-            lo=st.lo or 0, hi=st.latest), size_hint_y=None, height=dp(20), font_size="12sp"))
+            lo=st.lo or 0, hi=st.latest), size_hint_y=None, height=dp(22), font_size=FONT_HELPER, bold=True))
 
     def row(self, r):
         icon, col = S.ACT_ICONS.get(r["kind"], ("?", BLACK))
@@ -186,8 +187,8 @@ class ActivityPage:
         c.bind(on_release=lambda *_: self.select(r["tx"]))
         c.add_widget(Dot(bg=col, text=icon, color=WHITE, pos_hint={"center_y": 0.5}))
         mid = BoxLayout(orientation="vertical")
-        mid.add_widget(label(f"[b]{escape_markup(row_title(r))}[/b]", font_size="15sp"))
-        mid.add_widget(label(escape_markup(row_sub(r)), font_size="12sp"))
+        mid.add_widget(label(f"[b]{escape_markup(row_title(r))}[/b]", font_size=FONT_ROW))
+        mid.add_widget(label(escape_markup(row_sub(r)), font_size=FONT_HELPER, bold=True))
         c.add_widget(mid)
         amt, acol = row_amount(r)
         if amt:
@@ -196,15 +197,15 @@ class ActivityPage:
         return c
 
     def detail(self, r):
-        p = Panel(orientation="vertical", size_hint_y=None, height=dp(250), spacing=dp(6))
-        p.add_widget(label(f"[size=12sp]{S.ACT_DETAIL_TX}[/size]\n[b]{short(r['tx'])}[/b]",
+        p = Panel(orientation="vertical", size_hint_y=None, height=dp(258), spacing=dp(6))
+        p.add_widget(label(f"[size=14sp]{S.ACT_DETAIL_TX}[/size]\n[b]{short(r['tx'])}[/b]",
                            size_hint_y=None, height=dp(40)))
-        p.add_widget(label(f"[size=12sp]{S.ACT_DETAIL_FROM}[/size] {short(r['frm']) or '-'}   "
-                           f"[size=12sp]{S.ACT_DETAIL_TO}[/size] {short(r['to']) or '-'}",
-                           size_hint_y=None, height=dp(24), font_size="13sp"))
+        p.add_widget(label(f"[size=14sp]{S.ACT_DETAIL_FROM}[/size] {short(r['frm']) or '-'}   "
+                           f"[size=14sp]{S.ACT_DETAIL_TO}[/size] {short(r['to']) or '-'}",
+                           size_hint_y=None, height=dp(26), font_size=FONT_HELPER, bold=True))
         p.add_widget(label(S.ACT_DETAIL_BLOCK.format(block=r["block"]), size_hint_y=None,
-                           height=dp(20), font_size="12sp"))
-        self.msg = label("", size_hint_y=None, height=dp(20), font_size="12sp", color=RED)
+                           height=dp(22), font_size=FONT_HELPER, bold=True))
+        self.msg = label("", size_hint_y=None, height=dp(22), font_size=FONT_HELPER, bold=True, color=RED)
         p.add_widget(self.msg)
         btns = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(8))
         cp = Choice(base=BLUE, fg=WHITE, text=S.BTN_COPY, size_hint_x=0.4, bold=True)

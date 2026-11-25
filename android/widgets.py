@@ -20,7 +20,7 @@ from kivy.uix.widget import Widget
 import core
 import strings as S
 import util
-from design import RADIUS, RADIUS_PANEL, FIELD_H, WELCOME_SPINNER, FONT_TITLE, BTN_OFF_DARK, BTN_OFF_LIGHT, GRAY, HINT_GRAY, LIGHT_BLUE, NAV_GRAY, OK_BG, PANEL_GRAY, RED_BG, SELECTION, TILE_CAP_OFF, TRACK_GRAY, TRANSPARENT, WHITE_70, WHITE_85, DARK_GREEN
+from design import RADIUS, RADIUS_PANEL, FIELD_H, WELCOME_SPINNER, FONT_TITLE, FONT_HELPER, FONT_ROW, BTN_OFF_DARK, BTN_OFF_LIGHT, GRAY, HINT_GRAY, LIGHT_BLUE, NAV_GRAY, OK_BG, PANEL_GRAY, RED_BG, SELECTION, TILE_CAP_OFF, TRACK_GRAY, TRANSPARENT, WHITE_70, WHITE_85, DARK_GREEN
 from theme import (BLACK, BLUE, BUILD, FIELD, FIELD_FOCUS, GREEN, HAS_FIELD, HAS_LOGO, HAS_START, LOGO, RED, START, WHITE,
                    WORDMARK, HAS_WORDMARK, left_text)
 
@@ -782,12 +782,25 @@ class Welcome(FloatLayout):
         return self.collide_point(*touch.pos)
 
 
+def home_btn(app, before=None, width=44):
+    """Round white Wallet icon, left of the back arrow on every page: goes to the Wallet page."""
+    b = IconBtn(icon="wallet", bg=WHITE, color=BLACK, size_hint=(None, 1), width=dp(width))
+
+    def go(*_):
+        if before:
+            before()                       # the page cleans up after itself first
+        app.go_home()
+    b.bind(on_release=go)
+    return b
+
+
 def page_head(app, title):
     """Back button + title row used by every overlay page."""
-    head = BoxLayout(size_hint_y=None, height=dp(64), padding=[dp(14), dp(8)], spacing=dp(14))
+    head = BoxLayout(size_hint_y=None, height=dp(64), padding=[dp(14), dp(8)], spacing=dp(6))
     back = IconBtn(icon="back", bg=WHITE, color=BLACK,
-                    size_hint=(None, 1), width=dp(52))
+                    size_hint=(None, 1), width=dp(44))
     back.bind(on_release=lambda *_: app.close_top())
+    head.add_widget(home_btn(app))
     head.add_widget(back)
     head.add_widget(label(title, font_size=FONT_TITLE))
     return head
@@ -918,17 +931,17 @@ OFFER_STATUS_STYLE = {"redeemable": (OK_BG, DARK_GREEN),
 def offer_row(o, on_tap=None):
     """Compact offer row as in the mockup: badge, '5 dSOS · #482', second line, status pill."""
     bg, fg = OFFER_STATUS_STYLE.get(o["status"], OFFER_STATUS_STYLE["redeemable"])
-    c = Tappable(padding=[dp(12), dp(10)], spacing=dp(12), size_hint_y=None, height=dp(78))
+    c = Tappable(padding=[dp(12), dp(10)], spacing=dp(12), size_hint_y=None, height=dp(84))
     if on_tap:
         c.bind(on_release=lambda *_: on_tap())
     c.add_widget(Badge(o["kind"], pos_hint={"center_y": 0.5}))
     mid = BoxLayout(orientation="vertical")
     mid.add_widget(label(S.OC_TITLE.format(
         count=o["count"], id=o["id"], pin=S.OFFER_PIN_TAG if o["kind"] == "G" else ""),
-        font_size="16sp"))
+        font_size=FONT_ROW))
     eth = core.eth(o["count"] * core.UNIT)
     sub = S.WROW_EXPIRED if o["left"] <= 0 else S.WROW_SUB.format(eth=eth, left=left_text(o["left"]))
-    mid.add_widget(label(sub, font_size="13sp"))
+    mid.add_widget(label(sub, font_size=FONT_HELPER, bold=True))
     c.add_widget(mid)
     c.add_widget(status_pill(S.STATUS.get(o["status"], o["status"]), bg, fg))
     return c

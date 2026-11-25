@@ -16,7 +16,7 @@ import strings as S
 import tx
 import util
 from page_tx import TxScreen
-from design import NOTE_GRAY
+from design import NOTE_GRAY, FONT_HELPER, FONT_SECTION
 from theme import BLACK, BLUE, DSOS_ADDR, LIGHT, RED, WHITE, WINDOWS, short, set_visible
 from widgets import (Icon, IconRow, Card, Choice, DashedBox, Overlay, Panel, PullScroll, IconBtn, TypeCard,
                      label, make_input, page_head, text_label)
@@ -60,7 +60,7 @@ class CreateScreen(Overlay):
         add(self.err_box)
         self.err_box._on = False
 
-        add(label(S.CREATE_TYPE, size_hint_y=None, height=dp(24)), True)
+        add(label(S.CREATE_TYPE, size_hint_y=None, height=dp(28), font_size=FONT_SECTION), True)
         grid = GridLayout(cols=2, spacing=dp(10), size_hint_y=None, height=dp(2 * 64 + 10))
         self.type_cards = {}
         for code, title, sub, hx in S.CREATE_TYPES:
@@ -100,16 +100,16 @@ class CreateScreen(Overlay):
         add(sl, True)
 
         # slices paid per SOS record (A and B offers only)
-        self.per_title = label(S.CREATE_PER_RECORD, size_hint_y=None, height=dp(24))
+        self.per_title = label(S.CREATE_PER_RECORD, size_hint_y=None, height=dp(28), font_size=FONT_SECTION)
         add(self.per_title, True)
         self.per_in = make_input(S.HINT_PER_RECORD, "1", filt="int")
         self.per_in.bind(text=lambda *_: self.refresh())
         add(self.per_in)
-        self.per_note = text_label("", font_size="13sp")
+        self.per_note = text_label("", font_size=FONT_HELPER, bold=True)
         add(self.per_note)
 
         # redeem window
-        add(label(S.CREATE_WINDOW, size_hint_y=None, height=dp(24)), True)
+        add(label(S.CREATE_WINDOW, size_hint_y=None, height=dp(28), font_size=FONT_SECTION), True)
         wrow = BoxLayout(size_hint_y=None, height=dp(52), spacing=dp(8))
         self.win_chips = {}
         for key in (*WINDOWS, S.WINDOW_CUSTOM):
@@ -121,7 +121,7 @@ class CreateScreen(Overlay):
         self.custom_in = make_input(S.HINT_CUSTOM_BLOCKS, filt="int")
         add(self.custom_in)
         self.custom_in.bind(text=lambda *_: self.refresh())
-        self.win_note = text_label("", font_size="13sp")
+        self.win_note = text_label("", font_size=FONT_HELPER, bold=True)
         add(self.win_note)
 
         # PIN (gated offers only)
@@ -134,11 +134,11 @@ class CreateScreen(Overlay):
         self.pin_eye.bind(on_release=lambda *_: self.toggle_pin())
         self.pin_row.add_widget(self.pin_eye)
         add(self.pin_row, True)
-        self.pin_note = text_label(S.CREATE_PIN_NOTE, font_size="13sp")
+        self.pin_note = text_label(S.CREATE_PIN_NOTE, font_size=FONT_HELPER, bold=True)
         add(self.pin_note)
 
         # holder
-        self.holder_title = label(S.CREATE_HOLDER, size_hint_y=None, height=dp(24))
+        self.holder_title = label(S.CREATE_HOLDER, size_hint_y=None, height=dp(28), font_size=FONT_SECTION)
         add(self.holder_title, True)
         hold = Panel(orientation="vertical", size_hint_y=None, height=dp(150), spacing=dp(6))
         self.holder_btn = IconRow("user", size_hint_y=None, height=dp(56))
@@ -178,7 +178,7 @@ class CreateScreen(Overlay):
                           font_size="18sp", size_hint_y=None, height=dp(58))
         self.btn.bind(on_release=lambda *_: self.on_create())
         foot.add_widget(self.btn)
-        self.note = Label(text="", color=NOTE_GRAY, font_size="13sp",
+        self.note = Label(text="", color=NOTE_GRAY, font_size=FONT_HELPER, bold=True,
                           halign="center", valign="middle")
         self.note.bind(size=lambda i, s: setattr(i, "text_size", s))
         foot.add_widget(self.note)

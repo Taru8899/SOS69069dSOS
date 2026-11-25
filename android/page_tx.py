@@ -12,10 +12,10 @@ import core
 import strings as S
 import tx
 import util
-from design import FONT_TITLE
+from design import FONT_HELPER, FONT_TITLE
 from theme import (BLACK, BLUE, DAPP_URL, DARK_GREEN, DSOS_ADDR, ETHERSCAN_ADDR, ETHERSCAN_TX,
                    ETHERSCAN_WRITE, LEDGER_ADDR, LIGHT, LIGHT_GREEN, RED, WHITE, short)
-from widgets import PullScroll, Card, Choice, Overlay, Panel, IconBtn, Tap, label
+from widgets import home_btn, PullScroll, Card, Choice, Overlay, Panel, IconBtn, Tap, label
 
 POLL_SECONDS = 4
 POLL_TRIES = 45          # 45 x 4 s = 3 minutes
@@ -47,15 +47,16 @@ class TxScreen(Overlay):
         self.wallet = getattr(app, "wallet", None)
 
         col = BoxLayout(orientation="vertical")
-        head = BoxLayout(size_hint_y=None, height=dp(72), padding=[dp(14), dp(10)], spacing=dp(14))
+        head = BoxLayout(size_hint_y=None, height=dp(64), padding=[dp(14), dp(8)], spacing=dp(6))
         back = IconBtn(icon="back", bg=WHITE, color=BLACK,
-                        size_hint=(None, 1), width=dp(56))
+                        size_hint=(None, 1), width=dp(44))
         back.bind(on_release=lambda *_: self.close())
+        head.add_widget(home_btn(app, before=self.close))
         head.add_widget(back)
         head.add_widget(label(S.TX_TITLE, font_size=FONT_TITLE))
         col.add_widget(head)
 
-        self.status = label("", size_hint_y=None, height=dp(22), font_size="13sp",
+        self.status = label("", size_hint_y=None, height=dp(24), font_size=FONT_HELPER, bold=True,
                             padding=(dp(14), 0))
         col.add_widget(self.status)
 
@@ -155,7 +156,7 @@ class TxScreen(Overlay):
 
     def copy_row(self, title, value, shown):
         row = Panel(size_hint_y=None, height=dp(56), spacing=dp(8))
-        row.add_widget(label(f"[size=12sp]{escape_markup(title)}[/size]\n[b]{escape_markup(shown)}[/b]"))
+        row.add_widget(label(f"[size=14sp][b]{escape_markup(title)}[/b][/size]\n[b]{escape_markup(shown)}[/b]"))
         btn = Choice(base=BLUE, fg=WHITE, text=S.BTN_COPY, size_hint=(None, None),
                      size=(dp(72), dp(36)), pos_hint={"center_y": 0.5}, bold=True)
         btn.bind(on_release=lambda *_: self.copy(title, value))
