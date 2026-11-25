@@ -472,18 +472,22 @@ class SellScreen(Overlay):
             b.add_widget(Card(S.SELL_WHY_DEAD if dead else S.SELL_WHY[why], bg=BLACK, fg=WHITE))
         need = max(0, s["records_left"] - st["ready"])
         if ok:
-            b.add_widget(label(S.SELL_HOW_MANY, size_hint_y=None, height=dp(28), font_size=FONT_SECTION))
-            self.k_in = make_input(S.HINT_SELL_K.format(max=tx.SELL_BATCH_MAX),
-                                   str(max(1, min(need, tx.SELL_BATCH_MAX))), filt="int")
-            b.add_widget(self.k_in)
-            w = Choice(base=BLUE, fg=WHITE, bold=True, size_hint_y=None, height=dp(52),
-                       text=S.BTN_SELL_WRITE_NONE)
-            w.bind(on_release=lambda *_: self.on_write())
-            b.add_widget(w)
+            if st["ready"] > 0:     # records wait on the ledger: only Sync is offered
+                b.add_widget(label(S.SELL_SYNC_NOW, size_hint_y=None, height=dp(28), font_size=FONT_HELPER))
+            else:
+                b.add_widget(label(S.SELL_HOW_MANY, size_hint_y=None, height=dp(28), font_size=FONT_SECTION))
+                self.k_in = make_input(S.HINT_SELL_K.format(max=tx.SELL_BATCH_MAX),
+                                       str(max(1, min(need, tx.SELL_BATCH_MAX))), filt="int")
+                b.add_widget(self.k_in)
+                w = Choice(base=BLUE, fg=WHITE, bold=True, size_hint_y=None, height=dp(52),
+                           text=S.BTN_SELL_WRITE_NONE)
+                w.bind(on_release=lambda *_: self.on_write())
+                b.add_widget(w)
             self.n_in = make_input(S.HINT_SELL_N, str(max(1, st["ready"])), filt="int")
             b.add_widget(self.n_in)
-            sy = Choice(base=LIGHT, fg=BLACK, bold=True, size_hint_y=None, height=dp(52),
-                        text=S.BTN_SELL_SYNC_NONE)
+            hot = st["ready"] > 0
+            sy = Choice(base=BLUE if hot else LIGHT, fg=WHITE if hot else BLACK, bold=True,
+                        size_hint_y=None, height=dp(52), text=S.BTN_SELL_SYNC_NONE)
             sy.bind(on_release=lambda *_: self.on_sync())
             b.add_widget(sy)
         if left <= 0 and s["active"]:

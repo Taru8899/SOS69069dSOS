@@ -313,6 +313,15 @@ class DsosApp(App):
     def _mark_tabs(self):
         # Send, Receive and Sell open overlays (no highlight); Redeem also covers the Stake page
         on = {"credits": "redeem", "stake": "redeem"}.get(self.page, "")
+        tabs = {SendScreen: "send", RedeemScreen: "receive", SellScreen: "sell"}
+        other = (CreateScreen, DonateScreen, EconomicsScreen, SettingsScreen)
+        for w in reversed(self.overlays):       # topmost page decides; transaction pages inherit
+            if type(w) in tabs:
+                on = tabs[type(w)]
+                break
+            if isinstance(w, other):
+                on = ""
+                break
         for name, b in self.nav_btns.items():
             b.set_active(name == on)
 
@@ -343,6 +352,7 @@ class DsosApp(App):
             self.set_drawer(False)
         self.overlays.append(w)
         self.body.add_widget(w)
+        self._mark_tabs()
 
     def open_create(self):
         self.close_all()
@@ -401,6 +411,7 @@ class DsosApp(App):
     def close_top(self):
         if self.overlays:
             self.body.remove_widget(self.overlays.pop())
+            self._mark_tabs()
 
     def close_all(self):
         while self.overlays:

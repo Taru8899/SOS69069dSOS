@@ -782,6 +782,7 @@ SELL_WHY = {
     "named": "Only the named seller can sell to this B offer.",
 }
 SELL_HOW_MANY = "[b]Records to write[/b]"
+SELL_SYNC_NOW = "Records are on the ledger. Confirm them in dSOS."
 HINT_SELL_K = "How many (up to {max})"
 BTN_SELL_WRITE_NONE = "Write records to the ledger"
 HINT_SELL_N = "Records to confirm in dSOS"
