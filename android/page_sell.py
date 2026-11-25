@@ -20,6 +20,13 @@ from widgets import (home_btn, Badge, Card, Choice, IconBtn, Overlay, Pill, Pull
                      make_input, text_label, title_row)
 
 
+def info_line(s, me):
+    """dSOS contract / slices per record / offer creator / you, each as its last 4 characters. A reminder
+    on screen only: nothing of it is written to the ledger or signed."""
+    return S.SELL_LINE.format(dsos=core.DSOS[-4:].lower(), per=s["per_record"],
+                              to=s["donor"][-4:].lower(), frm=me[-4:].lower())
+
+
 class DoneHook:
     """Mixin for a TxScreen: calls `on_ok()` once the transaction is confirmed (the page refreshes)."""
     on_ok = None
@@ -179,13 +186,13 @@ class SellScreen(Overlay):
         self.open_done, self.open_err = False, ""
 
         col = BoxLayout(orientation="vertical")
-        head = BoxLayout(size_hint_y=None, height=dp(64), padding=[dp(14), dp(8)], spacing=dp(6))
+        head = BoxLayout(size_hint_y=None, height=dp(64), padding=[0, dp(8)], spacing=dp(6))
         back = IconBtn(icon="back", bg=WHITE, color=BLACK, size_hint=(None, 1), width=dp(44))
         back.bind(on_release=lambda *_: self.close())
         head.add_widget(home_btn(app, before=self.close))
         head.add_widget(back)
         head.add_widget(label(S.SELL_TITLE, font_size=FONT_TITLE))
-        col.add_widget(head)
+        self.head = head              # the title row scrolls with the page
 
         sv = PullScroll(on_pull=self.pull)
         form = BoxLayout(orientation="vertical", spacing=dp(8), size_hint_y=None,
@@ -200,7 +207,7 @@ class SellScreen(Overlay):
                 allow=self.d["allowance"], produced=self.d["produced"], redeemed=self.d["redeemed"]),
                 font_size=FONT_HELPER, bold=True)
 
-        row = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(6))
+        row = BoxLayout(size_hint_y=None, height=dp(48), spacing=dp(6))
         self.id_in = make_input(S.HINT_SELL_ID, str(sale_id) if sale_id else "", filt="int")
         go = Choice(base=BLUE, fg=WHITE, text=S.BTN_SELL_LOAD, bold=True, size_hint=(None, 1), width=dp(90))
         go.bind(on_release=lambda *_: self.load())
@@ -230,7 +237,7 @@ class SellScreen(Overlay):
         return b
 
     def _sync(self):
-        want = [self.row, self.steps] + ([self.allow] if self.allow else [])
+        want = [self.head, self.row, self.steps] + ([self.allow] if self.allow else [])
         if self.msg.text:
             want.append(self.msg)
         want += [b for b in (self.info, self.open_box) if b.children]
@@ -454,7 +461,7 @@ class SellScreen(Overlay):
         b.add_widget(Card(S.SELL_INFO.format(
             id=s["id"], kind=s["kind"], donor=short(s["donor"]), named=named, per=s["per_record"],
             records=s["records_left"], slices=s["slices_left"], block=s["sweepable_at"],
-            time=left_text(left),
+            time=left_text(left), line=info_line(s, self.me),
             state=S.SELL_STATE_OPEN if s["active"] and left > 0 else S.SELL_STATE_CLOSED)))
         capped = S.SELL_MINE_CAPPED.format(n=st["scanned"]) if s["records_left"] > st["scanned"] else ""
         earned = S.SELL_EARNED_ID.format(id=st["earned"]) if st["earned"] else S.SELL_EARNED_NONE
@@ -525,7 +532,8 @@ class SellScreen(Overlay):
         s = self.sale
         plan = {"id": s["id"], "donor": s["donor"], "hashes": hashes}
         n = len(hashes)
-        summary = S.SELL_WRITE_SUMMARY.format(n=n, id=s["id"], donor=short(s["donor"]))
+        summary = S.SELL_WRITE_SUMMARY.format(n=n, id=s["id"], donor=short(s["donor"]),
+                                              line=info_line(s, self.me))
         R = S.SELL_WRITE_ROWS
         rows = [(R["signer"], self.me, short(self.me)), (R["to"], s["donor"], short(s["donor"])),
                 (R["n"], str(n), str(n))]
@@ -547,7 +555,8 @@ class SellScreen(Overlay):
         p, R = t["params"], S.SYNC_RECORDS_ROWS
         rows = [(R["id"], p["id"], p["id"]), (R["n"], p["n"], p["n"]),
                 (R["nonce"], p["expectedNonce"], p["expectedNonce"])]
-        summary = S.SYNC_RECORDS_SUMMARY.format(n=n, id=s["id"], per=s["per_record"])
+        summary = S.SYNC_RECORDS_SUMMARY.format(n=n, id=s["id"], per=s["per_record"],
+                                                line=info_line(s, self.me))
         scr = SyncTxScreen(self.app, t, summary, S.SYNC_RECORDS_FN, rows, S.SYNC_RECORDS_TIP,
                            S.SYNC_RECORDS_WARN)
         scr.on_ok = self.after_tx

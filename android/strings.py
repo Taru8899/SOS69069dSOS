@@ -755,7 +755,7 @@ MARK_LOADING = "..."
 SELLC_SOLD_LOADING = "Looking for your sales..."
 SELLC_SOLD_NONE = "No sales by you among the newest offers."
 SOLD_TITLE = "[b]#{id} \u00b7 sold {n} record(s)[/b]"
-SOLD_SUB = "earned {slices} dSOS \u2192 your offer #{earned}"
+SOLD_SUB = "earned {slices} dSOS in your offer #{earned}"
 SOLD_SUB_NONE = "earned {slices} dSOS"
 SOLD_CLOSED = "Offer closed"
 SELL_STATE_OPEN = "open"
@@ -763,7 +763,8 @@ SELL_STATE_CLOSED = "closed"
 SELL_INFO = ("[b]Offer #{id}[/b] · type {kind} · {state}\n"
              "Creator (receives the records) {donor}{named}\n"
              "{per} slice(s) per record · {records} record(s) still wanted · {slices} slices left\n"
-             "Expires at block {block:,} ({time})")
+             "Expires at block {block:,} ({time})\n{line}")
+SELL_LINE = "dSOS \u2026{dsos} \u00b7 {per} slice(s) per record \u00b7 to \u2026{to} \u00b7 from \u2026{frm}"   # shown only, never written
 SELL_INFO_NAMED = "\nOnly {target} can confirm records"
 SELL_MINE = ("[b]You[/b]\nNext record index {nxt} · on the ledger, not yet confirmed: {ready}{capped}\n{earned}")
 SELL_MINE_CAPPED = " (checked the next {n} only)"
@@ -790,7 +791,7 @@ SELL_ERR_NOTHING_WRITE = "Nothing to write: your next records are already on the
 SELL_ERR_K = "Enter how many records to write."
 SELL_ERR_N = "Enter how many records to confirm, up to the number already on the ledger."
 SELL_WRITE_SUMMARY = ("[b]Write {n} record(s) to the SOS ledger[/b]\nFor offer #{id}\n"
-                      "Addressed to {donor}, signed by you")
+                      "Addressed to {donor}, signed by you\n{line}")
 SELL_WRITE_ROWS = {"signer": "signer (address)", "to": "intendedTo (address)", "n": "records"}
 SELL_WRITE_TIP = ("Your wallet signs each record (no gas), then one transaction sends them all to the "
                   "ledger. This transaction goes to the SOS69069 ledger, not to dSOS. After it is "
@@ -803,7 +804,7 @@ SELL_SIGNED = "All {n} signature(s) received. Checking them against the ledger..
 SELL_SIGN_BAD = "The ledger would not accept these records ({reason}). Nothing was sent."
 SELL_WROTE_NEXT = "Records written. Open Sell records and press Sync."
 SYNC_RECORDS_FN = "syncRecords"
-SYNC_RECORDS_SUMMARY = "[b]Confirm {n} record(s)[/b]\nOffer #{id} · {per} slice(s) per record"
+SYNC_RECORDS_SUMMARY = "[b]Confirm {n} record(s)[/b]\nOffer #{id} · {per} slice(s) per record\n{line}"
 SYNC_RECORDS_ROWS = {"id": "id (uint256)", "n": "n (uint256)", "nonce": "expectedNonce (uint256)"}
 SYNC_RECORDS_TIP = ("dSOS checks that each record is on the ledger and moves its slices into your own "
                     "offer. If the offer fills up first, only the records still wanted count. "

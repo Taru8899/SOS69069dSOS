@@ -803,7 +803,7 @@ def home_btn(app, before=None, width=44):
 
 def page_head(app, title):
     """Back button + title row used by every overlay page."""
-    head = BoxLayout(size_hint_y=None, height=dp(64), padding=[dp(14), dp(8)], spacing=dp(6))
+    head = BoxLayout(size_hint_y=None, height=dp(64), padding=[0, dp(8)], spacing=dp(6))
     back = IconBtn(icon="back", bg=WHITE, color=BLACK,
                     size_hint=(None, 1), width=dp(44))
     back.bind(on_release=lambda *_: app.close_top())

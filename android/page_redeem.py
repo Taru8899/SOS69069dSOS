@@ -30,19 +30,19 @@ class RedeemScreen(Overlay):
         self.row_btns = {}
 
         col = BoxLayout(orientation="vertical")
-        head = BoxLayout(size_hint_y=None, height=dp(64), padding=[dp(14), dp(8)], spacing=dp(6))
+        head = BoxLayout(size_hint_y=None, height=dp(64), padding=[0, dp(8)], spacing=dp(6))
         back = IconBtn(icon="back", bg=WHITE, color=BLACK,
                         size_hint=(None, 1), width=dp(44))
         back.bind(on_release=lambda *_: app.close_top())
         head.add_widget(home_btn(app))
         head.add_widget(back)
         head.add_widget(label(S.RO_TITLE, font_size=FONT_TITLE))
-        col.add_widget(head)
 
         sv = PullScroll(on_pull=app.pull_overlay)
         form = BoxLayout(orientation="vertical", spacing=dp(10), size_hint_y=None,
                          padding=[dp(14), 0, dp(14), dp(14)])
         form.bind(minimum_height=form.setter("height"))
+        form.add_widget(head)          # the title row scrolls with the page
 
         av = Panel(size_hint_y=None, height=dp(84))
         av.add_widget(label(S.RO_AVAILABLE.format(n=self.total)))

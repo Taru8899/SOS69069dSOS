@@ -35,7 +35,7 @@ class CreateScreen(Overlay):
 
         col = BoxLayout(orientation="vertical")
 
-        col.add_widget(page_head(app, S.CREATE_TITLE))
+        head = page_head(app, S.CREATE_TITLE)       # scrolls with the page
 
         # scrolling form
         sv = PullScroll(on_pull=lambda: None)      # no reload on this page
@@ -54,6 +54,8 @@ class CreateScreen(Overlay):
                 self._order.append(gap)
             w._on = True
             self._order.append(w)
+
+        add(head)
 
         # red error card (empty and 0 high until there is something to say)
         self.err_box = BoxLayout(orientation="vertical", size_hint_y=None, height=0)
@@ -127,7 +129,7 @@ class CreateScreen(Overlay):
         # PIN (gated offers only)
         self.pin_in = make_input(S.CREATE_PIN_HINT, password=True)
         self.pin_in.bind(text=lambda *_: self.refresh())
-        self.pin_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(6))
+        self.pin_row = BoxLayout(size_hint_y=None, height=dp(48), spacing=dp(6))
         self.pin_row.add_widget(self.pin_in)
         self.pin_eye = Choice(base=BLUE, fg=WHITE, text=S.PIN_SHOW, bold=True,
                               size_hint=(None, 1), width=dp(72))
@@ -144,7 +146,7 @@ class CreateScreen(Overlay):
         self.holder_btn = IconRow("user", size_hint_y=None, height=dp(56))
         self.holder_btn.bind(on_release=lambda *_: self.toggle_holder())
         hold.add_widget(self.holder_btn)
-        self.other_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(6))
+        self.other_row = BoxLayout(size_hint_y=None, height=dp(48), spacing=dp(6))
         self.other_in = make_input(S.HINT_HOLDER)
         self.other_in.bind(text=lambda *_: self.refresh())
         pb = Choice(base=BLUE, fg=WHITE, text=S.BTN_PASTE, bold=True, size_hint=(None, 1),

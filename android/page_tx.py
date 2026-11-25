@@ -47,23 +47,22 @@ class TxScreen(Overlay):
         self.wallet = getattr(app, "wallet", None)
 
         col = BoxLayout(orientation="vertical")
-        head = BoxLayout(size_hint_y=None, height=dp(64), padding=[dp(14), dp(8)], spacing=dp(6))
+        head = BoxLayout(size_hint_y=None, height=dp(64), padding=[0, dp(8)], spacing=dp(6))
         back = IconBtn(icon="back", bg=WHITE, color=BLACK,
                         size_hint=(None, 1), width=dp(44))
         back.bind(on_release=lambda *_: self.close())
         head.add_widget(home_btn(app, before=self.close))
         head.add_widget(back)
         head.add_widget(label(S.TX_TITLE, font_size=FONT_TITLE))
-        col.add_widget(head)
 
-        self.status = label("", size_hint_y=None, height=dp(24), font_size=FONT_HELPER, bold=True,
-                            padding=(dp(14), 0))
-        col.add_widget(self.status)
+        self.status = label("", size_hint_y=None, height=dp(24), font_size=FONT_HELPER, bold=True)
 
         sv = PullScroll(on_pull=lambda: None)      # no reload on this page
         box = BoxLayout(orientation="vertical", spacing=dp(6), size_hint_y=None,
                         padding=[dp(14), 0, dp(14), dp(20)])
         box.bind(minimum_height=box.setter("height"))
+        box.add_widget(head)          # the title row and the status line scroll with the page
+        box.add_widget(self.status)
         self.box = box
 
         box.add_widget(Card(summary))

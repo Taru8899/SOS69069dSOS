@@ -180,7 +180,7 @@ class OffersPage:
         mid.add_widget(plus)
         p.add_widget(mid)
 
-        self.to_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(6))
+        self.to_row = BoxLayout(size_hint_y=None, height=dp(48), spacing=dp(6))
         self.to_in = make_input(S.HINT_RECIPIENT, self.to_text)
         self.to_in.bind(text=lambda _i, v: self.on_to_text(v))
         pb = Choice(base=BLUE, fg=WHITE, text=S.BTN_PASTE, bold=True, size_hint=(None, 1),
@@ -191,7 +191,7 @@ class OffersPage:
         p.add_widget(self.to_row)
 
         if o["kind"] == "G":                  # gated: the PIN goes where the recipient would be
-            pin_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(6))
+            pin_row = BoxLayout(size_hint_y=None, height=dp(48), spacing=dp(6))
             self.pin_in = make_input(S.OD_PIN_HINT, self.pin_text, password=True)
             self.pin_in.bind(text=lambda _i, v: self.on_pin_text(v))
             pp = Choice(base=BLUE, fg=WHITE, text=S.BTN_PASTE, bold=True, size_hint=(None, 1),

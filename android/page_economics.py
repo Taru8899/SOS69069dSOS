@@ -111,7 +111,7 @@ class EconomicsScreen(Overlay):
         super().__init__(**kw)
         self.app = app
         col = BoxLayout(orientation="vertical")
-        head = BoxLayout(size_hint_y=None, height=dp(64), padding=[dp(14), dp(8)], spacing=dp(6))
+        head = BoxLayout(size_hint_y=None, height=dp(64), padding=[0, dp(8)], spacing=dp(6))
         back = IconBtn(icon="back", bg=WHITE, color=BLACK, size_hint=(None, 1), width=dp(44))
         back.bind(on_release=lambda *_: app.close_top())
         head.add_widget(home_btn(app))
@@ -121,11 +121,11 @@ class EconomicsScreen(Overlay):
                          size=(dp(160), dp(34)), pos_hint={"center_y": 0.5})
         pill.bind(on_release=lambda *_: app.close_top())      # triangle down = Economics is open
         head.add_widget(pill)
-        col.add_widget(head)
         sv = PullScroll(on_pull=app.pull_overlay)
         box = BoxLayout(orientation="vertical", spacing=dp(10), size_hint_y=None,
                         padding=[dp(14), 0, dp(14), dp(20)])
         box.bind(minimum_height=box.setter("height"))
+        box.add_widget(head)          # the title row scrolls with the page
         for title, rows in groups(app.data):
             p = Panel(orientation="vertical", size_hint_y=None, spacing=dp(0))
             p.bind(minimum_height=p.setter("height"))
