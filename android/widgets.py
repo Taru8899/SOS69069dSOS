@@ -346,14 +346,21 @@ def offer_card(o):
         sendable=S.YES if o["sendable"] else S.NO, sweepable_at=o["sweepable_at"]))
 
 
-def title_row(text, link_text=None, on_link=None):
-    row = BoxLayout(size_hint_y=None, height=dp(34))
-    row.add_widget(label(f"[b]{text}[/b]", font_size="18sp"))
-    if link_text:
-        btn = NavBtn(text=f"[b]{link_text}[/b]", markup=True, color=BLACK,
-                     size_hint_x=None, width=dp(90))
-        btn.bind(on_release=lambda *_: on_link())
-        row.add_widget(btn)
+def title_row(text, on_link=None):
+    """Section heading. With `on_link` the heading itself is the link: same text, thin underline and
+    a small black triangle after it (like the wallet address in the header); tap = on_link()."""
+    if not on_link:
+        row = BoxLayout(size_hint_y=None, height=dp(34))
+        row.add_widget(label(f"[b]{text}[/b]", font_size="18sp"))
+        return row
+    row = Tap(size_hint_y=None, height=dp(34), spacing=dp(6))
+    lab = Label(text=f"[u][b]{text}[/b][/u]", markup=True, color=BLACK, font_size="18sp",
+                halign="left", valign="middle", size_hint=(None, 1))
+    lab.bind(texture_size=lambda i, ts: setattr(i, "width", ts[0]))
+    row.add_widget(lab)
+    row.add_widget(Chevron(pos_hint={"center_y": 0.5}))
+    row.add_widget(BoxLayout())
+    row.bind(on_release=lambda *_: on_link())
     return row
 
 

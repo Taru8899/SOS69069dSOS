@@ -108,7 +108,7 @@ def build(app, b, d):
     acts.add_widget(action_btn("credits", S.ACTION_REDEEM, lambda: app.set_page("credits")))
     b.add_widget(acts)
     b.add_widget(stake_need_card(app, d))
-    b.add_widget(title_row(S.ACTIVE_OFFERS, S.LINK_SEE_ALL, lambda: app.set_page("offers")))
+    b.add_widget(title_row(S.ACTIVE_OFFERS, lambda: app.set_page("offers")))
     if not d["offers"]:
         b.add_widget(Card(S.NO_ACTIVE_OFFERS))
     shown = sorted(d["offers"], key=lambda o: (o["left"] <= 0, o["sweepable_at"]))[:2]

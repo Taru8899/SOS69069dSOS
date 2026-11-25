@@ -728,12 +728,7 @@ BTN_REC_RETRY = "Record in ledger again"
 
 # ------------------------------------------------------------------ v10: sell SOS records (A / B offers)
 SELL_TITLE = "[b]Sell records[/b]"
-SELL_INTRO = ("[b]Sell SOS records to an A or B offer[/b]\n"
-              "1. Write your records to the SOS ledger. You sign each one in your wallet. The creator of "
-              "the offer is the receiver.\n"
-              "2. Confirm them in dSOS (Sync). Every confirmed record moves its slices into your own "
-              "offer, first come first served.\n"
-              "3. Redeem in the Offers tab before expiry. dSOS never writes to the ledger itself.")
+SELL_STEPS = "Sign records \u00b7 Sync them in dSOS \u00b7 Redeem them"
 HINT_SELL_ID = "A / B offer id"
 BTN_SELL_LOAD = "Load"
 SELL_BAD_ID = "Enter the id of an A or B offer."

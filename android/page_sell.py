@@ -192,7 +192,13 @@ class SellScreen(Overlay):
                          padding=[dp(14), 0, dp(14), dp(20)])
         form.bind(minimum_height=form.setter("height"))
         self.form = form
-        self.intro = Card(S.SELL_INTRO)
+        # one plain line of steps (15 sp like the old box text) and the A / B allowance, no box
+        self.steps = text_label(S.SELL_STEPS, font_size="15sp")
+        self.allow = None
+        if self.d.get("produced") or self.d.get("redeemed"):
+            self.allow = text_label(S.OFFERS_ALLOWANCE.format(
+                allow=self.d["allowance"], produced=self.d["produced"], redeemed=self.d["redeemed"]),
+                font_size=FONT_HELPER, bold=True)
 
         row = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(6))
         self.id_in = make_input(S.HINT_SELL_ID, str(sale_id) if sale_id else "", filt="int")
@@ -224,7 +230,7 @@ class SellScreen(Overlay):
         return b
 
     def _sync(self):
-        want = [self.intro, self.row]
+        want = [self.row, self.steps] + ([self.allow] if self.allow else [])
         if self.msg.text:
             want.append(self.msg)
         want += [b for b in (self.info, self.open_box) if b.children]
