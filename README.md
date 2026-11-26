@@ -1,6 +1,9 @@
 ## SOS69069 dSOS
 0xbD08A73E02BA266f5cC8c4c6a08348d806e61f2C
 
+https://drive.google.com/file/d/12Xk0UGCUoU9j1wH8VC4S1nN3eUn4ebKo/view?usp=drivesdk
+
+https://drive.google.com/file/d/1vJIiH9coovPRCiBbvgxm7t1H0WWmlBBW/view?usp=drivesdk
 
 https://github.com/Taru8899/SOS69069dSOS/actions/runs/45618507218
 **dSOS** is a fully permissionless, no-admin smart contract that turns SOS ledger records into redeemable ETH slices (and vice-versa), while also running a shared ETH pool that only staked users can draw from via credits.
